@@ -1,5 +1,5 @@
 // src/App.tsx
-import React from "react";
+import "./style.css";
 
 function App() {
     const handleClick = () => {
