@@ -19,7 +19,7 @@ export default function App() {
     const [tokens, setTokens] = useState<any[]>([]);
 
     // Search & Command State
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
     // 1. Initial Load
@@ -122,7 +122,6 @@ export default function App() {
         <MainLayout
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onSearch={setSearchQuery}
             onCommand={handleCommand}
             isSearchLoading={isProcessing}
         >

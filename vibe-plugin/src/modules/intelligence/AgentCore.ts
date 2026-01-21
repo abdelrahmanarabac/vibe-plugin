@@ -1,4 +1,4 @@
-import { IAIService } from "./interfaces/IAIService";
+import type { IAIService } from "./interfaces/IAIService";
 import { SemanticIntelligence } from "./SemanticIntelligence";
 import { QualityGate } from "./QualityGate";
 import type { AgentContext, VibeToken } from "./types";
@@ -11,6 +11,7 @@ import { MemoryService } from "./MemoryService";
  */
 export class AgentCore {
     private ai: IAIService;
+    // @ts-ignore - MemoryService is active but treated as unused until Phase 3.2 logic expansion
     private memory: MemoryService;
 
     constructor(aiService: IAIService, memoryService?: MemoryService) {

@@ -1,4 +1,5 @@
-import { IAIService } from "../../modules/intelligence/interfaces/IAIService";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { IAIService } from "../../modules/intelligence/interfaces/IAIService";
 
 type ModelTier = 'LITE' | 'SMART' | 'VISION';
 
@@ -52,7 +53,7 @@ export class GeminiService implements IAIService {
         const model = this.getModel('VISION');
         const result = await model.generateContent([
             prompt,
-            { inlineData: { data: Buffer.from(imageBytes).toString("base64"), mimeType: "image/png" } }
+            { inlineData: { data: btoa(String.fromCharCode(...new Uint8Array(imageBytes))), mimeType: "image/png" } }
         ]);
         const response = await result.response;
         return response.text();

@@ -1,4 +1,4 @@
-import { VibeToken } from "../../logic/types";
+import type { VibeToken } from "./types";
 
 export interface ProjectMemory {
     projectId: string;
