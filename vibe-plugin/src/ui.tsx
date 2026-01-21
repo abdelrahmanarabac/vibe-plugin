@@ -1,11 +1,12 @@
 // src/ui.tsx
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import App from './App';
 import './style.css'; // لو عايز الاستايل
+import { ErrorBoundary } from './ui/components/ErrorBoundary';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
+const root = createRoot(document.getElementById('root')!);
+root.render(
+    <ErrorBoundary>
         <App />
-    </React.StrictMode>
+    </ErrorBoundary>
 );
