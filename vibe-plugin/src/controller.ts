@@ -4,6 +4,7 @@ import { TokenGraph } from './core/TokenGraph';
 import { PerceptionEngine } from './modules/intelligence/PerceptionEngine';
 import { ComponentBuilder } from './modules/construction/ComponentBuilder';
 import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
+import type { PluginAction } from './shared/types';
 
 console.clear();
 
@@ -18,7 +19,7 @@ const collectionRenamer = new CollectionRenamer();
 figma.showUI(__html__, { width: 500, height: 700, themeColors: true });
 
 // Message Handler
-figma.ui.onmessage = async (msg) => {
+figma.ui.onmessage = async (msg: PluginAction) => {
     try {
         switch (msg.type) {
             // Storage Proxy Handlers (for UI thread)
@@ -212,6 +213,25 @@ figma.ui.onmessage = async (msg) => {
                     type: 'PREVIEW_CLASSIFICATIONS_RESULT',
                     payload: classifications
                 });
+                break;
+            }
+
+            case 'RENAME_COLLECTION': {
+                const { oldName, newName } = msg.payload;
+
+                // 1. Get all collections (Async for safety in large docs)
+                const collections = await figma.variables.getLocalVariableCollectionsAsync();
+
+                // 2. Find the target
+                const targetCollection = collections.find(c => c.name === oldName);
+
+                if (targetCollection) {
+                    // 3. Execute Rename
+                    targetCollection.name = newName;
+                    figma.notify(`✅ Renamed collection to "${newName}"`);
+                } else {
+                    figma.notify(`❌ Collection "${oldName}" not found`, { error: true });
+                }
                 break;
             }
         }

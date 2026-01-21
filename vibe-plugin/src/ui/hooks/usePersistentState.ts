@@ -1,24 +1,50 @@
-// src/ui/hooks/usePersistentState.ts
-import { useState, useEffect } from 'react';
-import { SettingsService } from '../../infra/SettingsService';
+import { useState, useRef, useEffect } from 'react';
 
-export function usePersistentApiKey() {
-    const [apiKey, setApiKey] = useState("");
-    const [isLoaded, setIsLoaded] = useState(false);
+/**
+ * ⚡ High-Performance Persistence Hook
+ * Decouples UI state from I/O operations using Debounce.
+ * Prevents main-thread freezing during rapid typing.
+ */
+export function usePersistentState<T>(key: string, initialValue: T) {
+    const [state, setState] = useState<T>(initialValue);
+    const timeoutRef = useRef<number | null>(null);
+    const isFirstMount = useRef(true);
 
-    // Load on mount
+    // 1. Initial Load
     useEffect(() => {
-        SettingsService.loadApiKey().then((val) => {
-            if (val) setApiKey(val);
-            setIsLoaded(true);
-        });
-    }, []);
+        // Request initial value from controller
+        parent.postMessage({ pluginMessage: { type: 'STORAGE_GET', key } }, '*');
 
-    // Save on change (debounced slightly or just direct)
-    const setAndSaveKey = (newKey: string) => {
-        setApiKey(newKey);
-        SettingsService.saveApiKey(newKey);
+        const handleMessage = (event: MessageEvent) => {
+            const { type, key: msgKey, value } = event.data?.pluginMessage || {};
+            if (type === 'STORAGE_GET_RESPONSE' && msgKey === key && value !== null) {
+                setState(value);
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [key]);
+
+    const setDebouncedState = (newValue: T) => {
+        // 2. Optimistic UI Update (Instant Feedback)
+        setState(newValue);
+
+        // 3. Debounce I/O (Wait 800ms)
+        if (timeoutRef.current) {
+            window.clearTimeout(timeoutRef.current);
+        }
+
+        timeoutRef.current = window.setTimeout(() => {
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'STORAGE_SET',
+                    key,
+                    value: newValue
+                }
+            }, '*');
+        }, 800);
     };
 
-    return { apiKey, setApiKey: setAndSaveKey, isLoaded };
+    return [state, setDebouncedState] as const;
 }

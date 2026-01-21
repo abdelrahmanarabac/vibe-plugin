@@ -35,12 +35,13 @@ export interface ScannedPrimitive {
     usageCount?: number;
 }
 
-export type IntentType = 'GENERATE_SYSTEM' | 'MODIFY_TOKEN' | 'ANSWER_QUESTION';
+export type IntentType = 'GENERATE_SYSTEM' | 'MODIFY_TOKEN' | 'ANSWER_QUESTION' | 'RENAME_COLLECTION';
 
 export interface UserIntent {
     type: IntentType;
     confidence: number;
     originalQuery: string;
+    payload?: any;
 }
 
 export interface AgentContext {

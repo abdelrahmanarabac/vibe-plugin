@@ -7,6 +7,7 @@ import { SettingsScreen } from './ui/screens/SettingsScreen';
 import { ImpactWarning, type ImpactReport } from './ui/components/ImpactWarning';
 import { SettingsService } from './infra/SettingsService';
 import { type TokenEntity } from './core/types';
+import type { PluginEvent } from './shared/types';
 
 /**
  * 🎯 Vibe Tokens - Main Application
@@ -37,22 +38,23 @@ export default function App() {
         parent.postMessage({ pluginMessage: { type: 'SCAN_VARS' } }, '*');
     }, []);
 
-    // Message Handler
+    // Message Handler (Observer Pattern)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            const msg = event.data?.pluginMessage;
+            // 🛡️ Safety Check: Ensure pluginMessage structure exists
+            const msg: PluginEvent = event.data?.pluginMessage;
             if (!msg) return;
 
             switch (msg.type) {
                 case 'GRAPH_SYNCED':
-                    setTokens(msg.payload || []);
+                    setTokens(msg.tokens || []);
                     setIsGraphSynced(true);
                     break;
                 case 'SCAN_COMPLETE':
                     setStats(msg.payload);
                     break;
                 case 'ERROR':
-                    console.error('Controller Error:', msg.payload);
+                    console.error('Controller Error:', msg.message);
                     break;
                 case 'IMPACT_REPORT':
                     setImpactReport(msg.payload);
@@ -61,15 +63,20 @@ export default function App() {
                     parent.postMessage({
                         pluginMessage: {
                             type: 'NOTIFY',
-                            message: `Scanned ${msg.payload.primitives.length} design primitives.`
+                            message: `Scanned ${msg.primitives.length} design primitives.`
                         }
                     }, '*');
                     break;
             }
         };
 
+        // 1. Add Listener
         window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
+
+        // 2. CLEANUP IS MANDATORY (The Ghost Hunter)
+        return () => {
+            window.removeEventListener('message', handleMessage);
+        };
     }, []);
 
     // Sync Graph when API Key is available
@@ -123,9 +130,25 @@ export default function App() {
             }, '*');
 
             const { GeminiService } = await import('./infra/api/GeminiService');
-            const ai = new GeminiService(apiKey);
+            const { IntentEngine } = await import('./modules/intelligence/IntentEngine');
 
-            // Generate AI response
+            const ai = new GeminiService(apiKey);
+            const intentEngine = new IntentEngine(ai);
+
+            // 🧠 Classify Intent
+            const intent = await intentEngine.classify(query);
+
+            if (intent.type === 'RENAME_COLLECTION' && intent.payload) {
+                parent.postMessage({
+                    pluginMessage: {
+                        type: 'RENAME_COLLECTION',
+                        payload: intent.payload
+                    }
+                }, '*');
+                return;
+            }
+
+            // Fallback: Generate AI response
             const prompt = `You are Vibe Token OS, a Figma design token assistant. 
 User request: "${query}"
 

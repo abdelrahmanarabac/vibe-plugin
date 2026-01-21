@@ -50,7 +50,11 @@ export class TokenGraph {
         const impacted: TokenEntity[] = [];
 
         const dfs = (currentId: string) => {
-            if (visited.has(currentId)) return;
+            if (visited.has(currentId)) {
+                // 🛑 Cycle Detected - Break Recursion
+                console.warn(`⚠️ Cycle detected at token: ${currentId} while analyzing impact of ${tokenId}`);
+                return;
+            }
             visited.add(currentId);
 
             const token = this.nodes.get(currentId);
@@ -63,6 +67,9 @@ export class TokenGraph {
             for (const dependentId of dependents) {
                 dfs(dependentId);
             }
+
+            // Backtrack (optional, but for impact analysis we generally want to avoid re-visiting regardless of path)
+            // visited.delete(currentId); 
         };
 
         dfs(tokenId);

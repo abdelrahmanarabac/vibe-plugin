@@ -17,6 +17,22 @@ export class IntentEngine {
      */
     async classify(query: string): Promise<UserIntent> {
         // 1. Fast Path: Heuristics / Keyword Matching (System 1)
+
+        // 🧠 Zero-Shot Rename Detection
+        const RENAME_COLLECTION_REGEX = /(?:rename|change)\s+(?:collection|group)\s+(?:from\s+)?['"]?([^'"]+)['"]?\s+to\s+['"]?([^'"]+)['"]?/i;
+        const renameMatch = query.match(RENAME_COLLECTION_REGEX);
+        if (renameMatch) {
+            return {
+                type: 'RENAME_COLLECTION',
+                confidence: 1.0,
+                originalQuery: query,
+                payload: {
+                    oldName: renameMatch[1],
+                    newName: renameMatch[2]
+                }
+            };
+        }
+
         // Check for strong verbs indicating generation
         if (query.match(/generate|create|scaffold|make a theme|build/i)) {
             // If it has "system", "theme", "tokens" -> GENERATE
