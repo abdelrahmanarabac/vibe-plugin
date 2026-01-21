@@ -5,7 +5,8 @@ import { EditorView } from './ui/EditorView';
 import { SmartInspector } from './ui/components/SmartInspector';
 import { OnboardingFlow } from './ui/components/OnboardingFlow';
 import { ImpactWarning, type ImpactReport } from './ui/components/ImpactWarning';
-import { loadAPIKey, saveAPIKey } from './infra/CryptoService';
+import { SettingsService } from './infra/SettingsService';
+
 
 import { AIOrchestrator } from './modules/ai/AIOrchestrator';
 import { CommandParser } from './modules/ai/CommandParser';
@@ -23,11 +24,11 @@ export default function App() {
 
     // 1. Initial Load
     useEffect(() => {
-        loadAPIKey().then(key => {
+        SettingsService.loadApiKey().then(key => {
             if (key) setApiKey(key);
         });
 
-        window.onmessage = (event) => {
+        const handleMessage = (event: MessageEvent) => {
             const { type, payload } = event.data.pluginMessage || {};
             switch (type) {
                 case 'GRAPH_SYNCED':
@@ -41,9 +42,35 @@ export default function App() {
                 case 'IMPACT_REPORT':
                     setImpactReport(payload);
                     break;
+                case 'SCAN_RESULT':
+                    console.log('Perception Engine Result:', payload.primitives);
+                    parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: `Scanned ${payload.primitives.length} design primitives.` } }, '*');
+                    break;
+                case 'SCAN_IMAGE_RESULT':
+                    console.log('Vision Data Received (Bytes):', payload.bytes.length);
+                    // 1. Notify User
+                    parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "Analyzing Image..." } }, '*');
+
+                    // 2. Trigger AI Vision
+                    if (apiKey) {
+                        const orchestrator = new AIOrchestrator(apiKey);
+                        orchestrator.execute('semantic-description', `Analyze this design screenshot and extract the color palette and typography style.`)
+                            .then(response => {
+                                console.log("Vision AI Response:", response);
+                                parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "Vision Analysis Complete!" } }, '*');
+                            })
+                            .catch(err => {
+                                console.error("Vision AI Error:", err);
+                                parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "Vision Analysis Failed." } }, '*');
+                            });
+                    }
+                    break;
             }
         };
-    }, []);
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [apiKey]); // Added apiKey dependency for Vision trigger
 
     // 2. Lifecycle
     useEffect(() => {
@@ -82,7 +109,7 @@ export default function App() {
     };
 
     const handleSaveKey = async (key: string) => {
-        await saveAPIKey(key);
+        await SettingsService.saveApiKey(key);
         setApiKey(key);
         setIsGraphSynced(false);
     };

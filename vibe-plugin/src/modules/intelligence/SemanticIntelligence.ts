@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { VibeToken } from "./types";
+import { ColorUtils } from "./ColorUtils";
 
 // Updated Schema to accept Numbers (for Spacing/Radius) and Strings
 const TokenSchema = z.object({

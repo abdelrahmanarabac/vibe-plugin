@@ -6,11 +6,18 @@ interface OnboardingFlowProps {
 
 export function OnboardingFlow({ onSaveKey }: OnboardingFlowProps) {
     const [key, setKey] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
 
-    const handleSave = () => {
-        if (key.trim().length > 10) {
-            onSaveKey(key.trim());
+    const handleSave = async () => {
+        const trimmedKey = key.trim();
+        if (trimmedKey.length >= 10) {
+            setIsLoading(true);
+            try {
+                await onSaveKey(trimmedKey);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -41,10 +48,17 @@ export function OnboardingFlow({ onSaveKey }: OnboardingFlowProps) {
 
                         <button
                             onClick={handleSave}
-                            disabled={key.length < 10}
-                            className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.01] active:scale-[0.99]"
+                            disabled={key.length < 10 || isLoading}
+                            className="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                         >
-                            INITIALIZE SYSTEM
+                            {isLoading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    INITIALIZING...
+                                </>
+                            ) : (
+                                "INITIALIZE SYSTEM"
+                            )}
                         </button>
 
                         <div className="relative my-6">

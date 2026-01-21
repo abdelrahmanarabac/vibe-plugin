@@ -1,6 +1,7 @@
 import { VariableManager } from './modules/governance/VariableManager';
 import { DocsRenderer } from './modules/documentation/DocsRenderer';
 import { TokenGraph } from './core/TokenGraph';
+import { PerceptionEngine } from './modules/intelligence/PerceptionEngine';
 
 console.clear();
 
@@ -29,11 +30,58 @@ figma.ui.onmessage = async (msg) => {
 
             case 'STORAGE_SET': {
                 await figma.clientStorage.setAsync(msg.key, msg.value);
+                if (msg.key === 'VIBE_API_KEY_ENCRYPTED') {
+                    figma.notify('🔒 Key Secured: Vibe System Primed.');
+                }
                 break;
             }
 
             case 'STORAGE_REMOVE': {
                 await figma.clientStorage.deleteAsync(msg.key);
+                break;
+            }
+
+            // Auto-Discovery & Scanning
+            case 'SCAN_SELECTION': {
+                const selection = figma.currentPage.selection;
+                // Use the new PerceptionEngine!
+                const primitives = PerceptionEngine.scan(selection);
+                figma.ui.postMessage({
+                    type: 'SCAN_RESULT',
+                    primitives
+                });
+                break;
+            }
+
+            // Vision Capability
+            case 'SCAN_IMAGE': {
+                const selection = figma.currentPage.selection[0];
+                if (selection) {
+                    try {
+                        const bytes = await selection.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 0.5 } });
+                        figma.ui.postMessage({ type: 'SCAN_IMAGE_RESULT', bytes });
+                    } catch (e) {
+                        figma.notify("Failed to export image. Select a layer first.");
+                    }
+                } else {
+                    figma.notify("Select a layer to scan vision.");
+                }
+                break;
+            }
+
+            // Vector Memory (Persistence)
+            case 'MEMORY_SAVE': {
+                await figma.clientStorage.setAsync(msg.key, msg.data);
+                break;
+            }
+
+            case 'MEMORY_LOAD': {
+                const data = await figma.clientStorage.getAsync(msg.key);
+                figma.ui.postMessage({
+                    type: 'MEMORY_LOAD_RESPONSE',
+                    key: msg.key,
+                    data
+                });
                 break;
             }
 

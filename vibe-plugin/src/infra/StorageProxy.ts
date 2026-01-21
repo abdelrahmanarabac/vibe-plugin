@@ -14,7 +14,7 @@ class FigmaStorageProxy {
 
     constructor() {
         // Listen for responses from controller
-        window.onmessage = (event) => {
+        window.addEventListener('message', (event) => {
             const { type, key, value } = event.data.pluginMessage || {};
 
             if (type === 'STORAGE_GET_RESPONSE') {
@@ -24,7 +24,7 @@ class FigmaStorageProxy {
                     this.pendingRequests.delete(key);
                 }
             }
-        };
+        });
     }
 
     /**

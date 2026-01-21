@@ -1,43 +1,52 @@
-import { FlashLiteService } from './FlashLiteService';
-import { FlashService } from './FlashService';
-import { Flash3Service } from './Flash3Service';
+import { GeminiService } from '../../infra/api/GeminiService';
+import { MemoryService } from '../intelligence/MemoryService';
 
 export type AITask =
-    | 'naming-correction'      // Flash-lite
-    | 'color-suggestion'       // Flash-lite
-    | 'nl-command'             // Flash (Natural Language)
-    | 'scale-generation'       // Flash
-    | 'semantic-description'   // Flash
-    | 'code-generation'        // Flash-3
-    | 'brand-extraction'       // Flash-3
-    | 'advanced-refactor';     // Flash-3
+    | 'naming-correction'
+    | 'color-suggestion'
+    | 'nl-command'
+    | 'scale-generation'
+    | 'semantic-description'
+    | 'code-generation'
+    | 'brand-extraction'
+    | 'advanced-refactor';
 
 export class AIOrchestrator {
-    private flashLite: FlashLiteService;
-    private flash: FlashService;
-    private flash3: Flash3Service;
+    private ai: GeminiService;
+    private memory: MemoryService;
 
     constructor(apiKey: string) {
-        this.flashLite = new FlashLiteService(apiKey);
-        this.flash = new FlashService(apiKey);
-        this.flash3 = new Flash3Service(apiKey);
+        this.ai = new GeminiService(apiKey);
+        this.memory = new MemoryService();
     }
 
     async execute(task: AITask, prompt: string): Promise<string> {
+        // Retrieve Context (if applicable)
+        let context = "";
+        if (['nl-command', 'color-suggestion', 'semantic-description'].includes(task)) {
+            const history = await this.memory.retrieveContext(prompt);
+            if (history.length > 0) {
+                const examples = history.map(h => `${h.name}: ${JSON.stringify(h.$value)}`).join('\n');
+                context = `\n[Project Context - Mimic this style]:\n${examples}\n`;
+            }
+        }
+
+        const finalPrompt = prompt + context;
+
         switch (task) {
             case 'naming-correction':
             case 'color-suggestion':
-                return this.flashLite.generate(prompt);
+                return this.ai.generate(finalPrompt, 'LITE');
 
             case 'nl-command':
             case 'scale-generation':
             case 'semantic-description':
-                return this.flash.generate(prompt);
+                return this.ai.generate(finalPrompt, 'LITE'); // Using Lite for now for speed, can upgrade to SMART
 
             case 'code-generation':
             case 'brand-extraction':
             case 'advanced-refactor':
-                return this.flash3.generate(prompt);
+                return this.ai.generate(finalPrompt, 'SMART'); // "Smart" maps to Flash 2.0/3.0
 
             default:
                 throw new Error(`Unknown task: ${task}`);

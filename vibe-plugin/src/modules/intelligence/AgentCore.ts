@@ -1,7 +1,8 @@
-import { AIService } from "./AIService";
+import { IAIService } from "./interfaces/IAIService";
 import { SemanticIntelligence } from "./SemanticIntelligence";
 import { QualityGate } from "./QualityGate";
 import type { AgentContext, VibeToken } from "./types";
+import { MemoryService } from "./MemoryService";
 
 /**
  * ⚡ AgentCore
@@ -9,10 +10,12 @@ import type { AgentContext, VibeToken } from "./types";
  * Orchestrates the Thinking -> Acting -> Healing loop.
  */
 export class AgentCore {
-    private ai: AIService;
+    private ai: IAIService;
+    private memory: MemoryService;
 
-    constructor(apiKey: string) {
-        this.ai = new AIService(apiKey);
+    constructor(aiService: IAIService, memoryService?: MemoryService) {
+        this.ai = aiService;
+        this.memory = memoryService || new MemoryService();
     }
 
     /**
