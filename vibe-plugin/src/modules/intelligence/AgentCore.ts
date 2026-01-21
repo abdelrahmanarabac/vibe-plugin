@@ -11,12 +11,12 @@ import { MemoryService } from "./MemoryService";
  */
 export class AgentCore {
     private ai: IAIService;
-    // @ts-ignore - MemoryService is active but treated as unused until Phase 3.2 logic expansion
-    private memory: MemoryService;
+    // @ts-ignore
+    private _memory: MemoryService;
 
     constructor(aiService: IAIService, memoryService?: MemoryService) {
         this.ai = aiService;
-        this.memory = memoryService || new MemoryService();
+        this._memory = memoryService || new MemoryService();
     }
 
     /**

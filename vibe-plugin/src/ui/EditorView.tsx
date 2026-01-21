@@ -3,9 +3,10 @@ import { TokenEditor } from './components/TokenEditor';
 import { ScaleGeneratorUI } from './components/ScaleGeneratorUI';
 import { TokenTree } from './components/TokenTree';
 import { GraphEditor } from './components/GraphEditor';
+import { type TokenEntity } from '../core/types';
 
 interface EditorViewProps {
-    tokens: any[];
+    tokens: TokenEntity[];
     searchFocus?: string;
 }
 

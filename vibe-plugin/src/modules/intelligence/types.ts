@@ -35,6 +35,14 @@ export interface ScannedPrimitive {
     usageCount?: number;
 }
 
+export type IntentType = 'GENERATE_SYSTEM' | 'MODIFY_TOKEN' | 'ANSWER_QUESTION';
+
+export interface UserIntent {
+    type: IntentType;
+    confidence: number;
+    originalQuery: string;
+}
+
 export interface AgentContext {
     apiKey: string;
     vibe: string;

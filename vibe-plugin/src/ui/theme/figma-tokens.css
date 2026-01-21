@@ -1,0 +1,265 @@
+/* Figma Native Theme - Operation Renaissance */
+/* Based on Figma Plugin Guidelines 2025 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    /* ========================================
+     🎨 FIGMA NATIVE COLOR SYSTEM
+     ======================================== */
+
+    /* Background Colors */
+    --figma-bg-primary: #2c2c2c;
+    --figma-bg-secondary: #383838;
+    --figma-bg-tertiary: #444444;
+    --figma-bg-hover: #4a4a4a;
+    --figma-bg-active: #5c5c5c;
+
+    /* Text Colors */
+    --figma-text-primary: #ffffff;
+    --figma-text-secondary: rgba(255, 255, 255, 0.7);
+    --figma-text-tertiary: rgba(255, 255, 255, 0.5);
+    --figma-text-disabled: rgba(255, 255, 255, 0.3);
+
+    /* Brand & Accent */
+    --figma-accent: #0D99FF;
+    --figma-accent-hover: #0A84E0;
+    --figma-accent-active: #0070CC;
+
+    /* Status Colors */
+    --figma-success: #14AE5C;
+    --figma-warning: #FFAB00;
+    --figma-error: #F24822;
+    --figma-info: #0D99FF;
+
+    /* Borders */
+    --figma-border: rgba(255, 255, 255, 0.1);
+    --figma-border-strong: rgba(255, 255, 255, 0.2);
+    --figma-focus-ring: rgba(13, 153, 255, 0.5);
+
+    /* ========================================
+     📐 TYPOGRAPHY
+     ======================================== */
+    --figma-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --figma-font-size-xs: 11px;
+    --figma-font-size-sm: 12px;
+    --figma-font-size-base: 13px;
+    --figma-font-size-lg: 14px;
+    --figma-font-weight-normal: 400;
+    --figma-font-weight-medium: 500;
+    --figma-font-weight-bold: 600;
+    --figma-line-height: 1.4;
+
+    /* ========================================
+     📏 SPACING & SIZING
+     ======================================== */
+    --figma-space-xs: 4px;
+    --figma-space-sm: 8px;
+    --figma-space-md: 12px;
+    --figma-space-lg: 16px;
+    --figma-space-xl: 24px;
+
+    /* Border Radius - Figma uses smaller radii */
+    --figma-radius-sm: 4px;
+    --figma-radius-md: 6px;
+    --figma-radius-lg: 8px;
+
+    /* ========================================
+     ⚡ TRANSITIONS
+     ======================================== */
+    --figma-transition-fast: 100ms ease;
+    --figma-transition-normal: 150ms ease;
+}
+
+/* ========================================
+   🧱 GLOBAL RESET
+   ======================================== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--figma-bg-primary);
+    color: var(--figma-text-primary);
+    font-family: var(--figma-font);
+    font-size: var(--figma-font-size-base);
+    line-height: var(--figma-line-height);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+/* ========================================
+   🕹️ FIGMA NATIVE BUTTONS
+   ======================================== */
+.figma-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--figma-space-sm);
+    padding: var(--figma-space-sm) var(--figma-space-md);
+    font-family: var(--figma-font);
+    font-size: var(--figma-font-size-sm);
+    font-weight: var(--figma-font-weight-medium);
+    border: none;
+    border-radius: var(--figma-radius-md);
+    cursor: pointer;
+    transition: background-color var(--figma-transition-fast);
+    outline: none;
+}
+
+.figma-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--figma-focus-ring);
+}
+
+/* Primary Button */
+.figma-btn-primary {
+    background-color: var(--figma-accent);
+    color: white;
+}
+
+.figma-btn-primary:hover {
+    background-color: var(--figma-accent-hover);
+}
+
+.figma-btn-primary:active {
+    background-color: var(--figma-accent-active);
+}
+
+/* Secondary Button */
+.figma-btn-secondary {
+    background-color: transparent;
+    color: var(--figma-text-primary);
+    border: 1px solid var(--figma-border-strong);
+}
+
+.figma-btn-secondary:hover {
+    background-color: var(--figma-bg-hover);
+}
+
+/* Ghost Button */
+.figma-btn-ghost {
+    background-color: transparent;
+    color: var(--figma-text-secondary);
+}
+
+.figma-btn-ghost:hover {
+    background-color: var(--figma-bg-hover);
+    color: var(--figma-text-primary);
+}
+
+/* Disabled */
+.figma-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ========================================
+   📥 FIGMA NATIVE INPUTS
+   ======================================== */
+.figma-input {
+    width: 100%;
+    padding: var(--figma-space-sm) var(--figma-space-md);
+    background-color: var(--figma-bg-tertiary);
+    border: 1px solid var(--figma-border);
+    border-radius: var(--figma-radius-sm);
+    color: var(--figma-text-primary);
+    font-family: var(--figma-font);
+    font-size: var(--figma-font-size-base);
+    outline: none;
+    transition: border-color var(--figma-transition-fast);
+}
+
+.figma-input:focus {
+    border-color: var(--figma-accent);
+    box-shadow: 0 0 0 1px var(--figma-accent);
+}
+
+.figma-input::placeholder {
+    color: var(--figma-text-disabled);
+}
+
+/* ========================================
+   🏷️ FIGMA NATIVE LABELS
+   ======================================== */
+.figma-label {
+    display: block;
+    font-size: var(--figma-font-size-xs);
+    font-weight: var(--figma-font-weight-medium);
+    color: var(--figma-text-secondary);
+    margin-bottom: var(--figma-space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ========================================
+   📦 FIGMA NATIVE PANELS
+   ======================================== */
+.figma-panel {
+    background-color: var(--figma-bg-secondary);
+    border: 1px solid var(--figma-border);
+    border-radius: var(--figma-radius-lg);
+    padding: var(--figma-space-lg);
+}
+
+.figma-panel-header {
+    font-size: var(--figma-font-size-sm);
+    font-weight: var(--figma-font-weight-bold);
+    color: var(--figma-text-primary);
+    margin-bottom: var(--figma-space-md);
+}
+
+/* ========================================
+   📜 SCROLLBAR (Native Look)
+   ======================================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   ✨ UTILITY CLASSES
+   ======================================== */
+.figma-divider {
+    height: 1px;
+    background-color: var(--figma-border);
+    margin: var(--figma-space-md) 0;
+}
+
+.figma-flex {
+    display: flex;
+}
+
+.figma-flex-col {
+    flex-direction: column;
+}
+
+.figma-items-center {
+    align-items: center;
+}
+
+.figma-justify-between {
+    justify-content: space-between;
+}
+
+.figma-gap-sm {
+    gap: var(--figma-space-sm);
+}
+
+.figma-gap-md {
+    gap: var(--figma-space-md);
+}

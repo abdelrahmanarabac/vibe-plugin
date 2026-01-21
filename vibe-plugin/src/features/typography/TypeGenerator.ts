@@ -20,10 +20,10 @@ export class TypeGenerator {
             { name: 'display', level: 6, weight: 'Bold', lh: 1.1 },
             { name: 'h1', level: 5, weight: 'Bold', lh: 1.1 },
             { name: 'h2', level: 4, weight: 'Bold', lh: 1.2 },
-            { name: 'h3', level: 3, weight: 'SemiBold', lh: 1.2 },
-            { name: 'h4', level: 2, weight: 'SemiBold', lh: 1.3 },
-            { name: 'h5', level: 1, weight: 'SemiBold', lh: 1.4 },
-            { name: 'h6', level: 0, weight: 'SemiBold', lh: 1.4 },
+            { name: 'h3', level: 3, weight: 'Semi Bold', lh: 1.2 },
+            { name: 'h4', level: 2, weight: 'Semi Bold', lh: 1.3 },
+            { name: 'h5', level: 1, weight: 'Semi Bold', lh: 1.4 },
+            { name: 'h6', level: 0, weight: 'Semi Bold', lh: 1.4 },
         ];
 
         headings.forEach(h => {

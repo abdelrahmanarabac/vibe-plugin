@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, Command, ArrowRight } from 'lucide-react';
+import { Search, Sparkles, X } from 'lucide-react';
 
 interface OmniboxProps {
     onCommand: (query: string) => void;
@@ -8,82 +8,79 @@ interface OmniboxProps {
     placeholder?: string;
 }
 
-export const Omnibox: React.FC<OmniboxProps> = ({ onCommand, isProcessing, placeholder = "Describe your vibe (e.g., 'Cyberpunk Neon')..." }) => {
+export const Omnibox: React.FC<OmniboxProps> = ({ onCommand, isProcessing, placeholder = "Describe your vibe..." }) => {
+    const [isOpen, setIsOpen] = useState(false);
     const [query, setQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Auto-focus on mount
+    // Auto-focus when opened
     useEffect(() => {
-        inputRef.current?.focus();
-    }, []);
+        if (isOpen) {
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [isOpen]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (query.trim() && !isProcessing) {
             onCommand(query);
+            setQuery('');
+            setIsOpen(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="relative w-full max-w-lg mx-auto mt-8 z-50">
-            <div className={`
-                relative flex items-center bg-white/10 backdrop-blur-xl border border-white/20 
-                rounded-2xl shadow-2xl transition-all duration-300
-                ${isProcessing ? 'border-primary-500/50 shadow-primary-500/20' : 'hover:border-white/30'}
-            `}>
-
-                {/* Icon Socket */}
-                <div className="pl-4 text-white/50">
-                    {isProcessing ? (
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        >
-                            <Sparkles className="w-6 h-6 text-primary-400" />
-                        </motion.div>
-                    ) : (
-                        <Search className="w-6 h-6" />
-                    )}
-                </div>
-
-                {/* Main Input */}
-                <input
-                    ref={inputRef}
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={placeholder}
-                    disabled={isProcessing}
-                    className="w-full bg-transparent border-none text-white placeholder-white/40 text-lg px-4 py-4 focus:ring-0 outline-none"
-                    autoComplete="off"
-                />
-
-                {/* Right Action */}
-                <div className="pr-4">
-                    <AnimatePresence>
-                        {query.length > 0 && !isProcessing && (
-                            <motion.button
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                type="submit"
-                                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
-                            >
-                                <ArrowRight className="w-5 h-5" />
-                            </motion.button>
-                        )}
-                        {query.length === 0 && (
-                            <div className="flex items-center gap-1 text-xs text-white/30 border border-white/10 px-2 py-1 rounded">
-                                <Command className="w-3 h-3" />
-                                <span>K</span>
+        <div className="relative flex flex-col items-end">
+            <AnimatePresence>
+                {/* Expanded Input State */}
+                {isOpen && (
+                    <motion.form
+                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                        onSubmit={handleSubmit}
+                        className="absolute bottom-16 right-0 w-[400px] z-50"
+                    >
+                        <div className="relative flex items-center bg-[#1E1E1E] border border-[#A855F7]/50 rounded-xl shadow-2xl shadow-[#A855F7]/20 p-2 gap-2">
+                            <div className="pl-2">
+                                {isProcessing ? (
+                                    <Sparkles className="w-5 h-5 text-[#A855F7] animate-spin" />
+                                ) : (
+                                    <Search className="w-5 h-5 text-white/50" />
+                                )}
                             </div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder={placeholder}
+                                disabled={isProcessing}
+                                className="flex-1 bg-transparent border-none text-white text-sm focus:ring-0 outline-none p-1"
+                                autoFocus
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setIsOpen(false)}
+                                className="p-1 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    </motion.form>
+                )}
+            </AnimatePresence>
 
-            {/* Quick Suggestions (Future Phase) */}
-            {/* <div className="absolute top-full left-0 w-full mt-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl p-2" /> */}
-        </form>
+            {/* FAB Trigger Button */}
+            <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex items-center justify-center w-12 h-12 rounded-full shadow-lg transition-all duration-300 ${isOpen ? 'bg-[#A855F7] text-white rotate-90' : 'bg-white text-black hover:bg-[#A855F7] hover:text-white'
+                    } ${isProcessing ? 'animate-pulse cursor-wait' : ''}`}
+            >
+                {isOpen ? <X size={20} /> : <Search size={20} />}
+            </motion.button>
+        </div>
     );
 };

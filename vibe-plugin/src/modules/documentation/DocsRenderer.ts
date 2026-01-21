@@ -33,7 +33,7 @@ export class DocsRenderer {
             figma.loadFontAsync({ family: "Inter", style: "Regular" }),
             figma.loadFontAsync({ family: "Inter", style: "Medium" }),
             figma.loadFontAsync({ family: "Inter", style: "Bold" }),
-            figma.loadFontAsync({ family: "Inter", style: "SemiBold" })
+            figma.loadFontAsync({ family: "Inter", style: "Semi Bold" })
         ]);
 
         const page = this.getOrCreatePage();
@@ -156,7 +156,7 @@ export class DocsRenderer {
         const typeText = figma.createText();
         typeText.characters = token.$type;
         typeText.fontSize = 10;
-        typeText.fontName = { family: "Inter", style: "SemiBold" };
+        typeText.fontName = { family: "Inter", style: "Semi Bold" };
         typeText.fills = [{ type: 'SOLID', color: COLORS.CHIP_TEXT }];
         chip.appendChild(typeText);
 

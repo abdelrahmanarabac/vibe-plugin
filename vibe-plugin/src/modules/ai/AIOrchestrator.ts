@@ -1,4 +1,5 @@
 import { GeminiService } from '../../infra/api/GeminiService';
+import { IntentEngine } from '../intelligence/IntentEngine';
 import { MemoryService } from '../intelligence/MemoryService';
 
 export type AITask =
@@ -15,9 +16,19 @@ export class AIOrchestrator {
     private ai: GeminiService;
     private memory: MemoryService;
 
+    private intentEngine: IntentEngine;
+
     constructor(apiKey: string) {
         this.ai = new GeminiService(apiKey);
         this.memory = new MemoryService();
+        this.intentEngine = new IntentEngine(this.ai);
+    }
+
+    /**
+     * Phase 3.6: Intent Classification
+     */
+    async classify(query: string) {
+        return this.intentEngine.classify(query);
     }
 
     async execute(task: AITask, prompt: string): Promise<string> {

@@ -2,6 +2,8 @@ import { VariableManager } from './modules/governance/VariableManager';
 import { DocsRenderer } from './modules/documentation/DocsRenderer';
 import { TokenGraph } from './core/TokenGraph';
 import { PerceptionEngine } from './modules/intelligence/PerceptionEngine';
+import { ComponentBuilder } from './modules/construction/ComponentBuilder';
+import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
 
 console.clear();
 
@@ -9,9 +11,11 @@ console.clear();
 const graph = new TokenGraph();
 const variableManager = new VariableManager(graph);
 const docsRenderer = new DocsRenderer(graph);
+const componentBuilder = new ComponentBuilder(graph);
+const collectionRenamer = new CollectionRenamer();
 
 // 2. Setup UI
-figma.showUI(__html__, { width: 400, height: 600, themeColors: true });
+figma.showUI(__html__, { width: 500, height: 700, themeColors: true });
 
 // Message Handler
 figma.ui.onmessage = async (msg) => {
@@ -30,8 +34,8 @@ figma.ui.onmessage = async (msg) => {
 
             case 'STORAGE_SET': {
                 await figma.clientStorage.setAsync(msg.key, msg.value);
-                if (msg.key === 'VIBE_API_KEY_ENCRYPTED') {
-                    figma.notify('🔒 Key Secured: Vibe System Primed.');
+                if (msg.key === 'VIBE_API_KEY') {
+                    figma.notify('✅ API Key Saved');
                 }
                 break;
             }
@@ -66,6 +70,14 @@ figma.ui.onmessage = async (msg) => {
                 } else {
                     figma.notify("Select a layer to scan vision.");
                 }
+                break;
+            }
+
+            // Phase 4: Component Construction
+            case 'CREATE_COMPONENT': {
+                const { recipe } = msg;
+                await componentBuilder.createButton(recipe.variant);
+                figma.notify(`Created ${recipe.variant} Button`);
                 break;
             }
 
@@ -110,6 +122,51 @@ figma.ui.onmessage = async (msg) => {
                 break;
             }
 
+            case 'SCAN_VARS': {
+                // Real Data Scan
+                const localVars = figma.variables.getLocalVariables();
+                const collections = figma.variables.getLocalVariableCollections();
+
+                const report = {
+                    totalVariables: localVars.length,
+                    collections: collections.length,
+                    styles: figma.getLocalPaintStyles().length + figma.getLocalTextStyles().length,
+                    lastSync: Date.now()
+                };
+
+                figma.ui.postMessage({ type: 'SCAN_COMPLETE', payload: report });
+                break;
+            }
+
+            case 'CREATE_VARIABLE': {
+                const { name, type, value } = msg.payload;
+
+                // Get or create default collection
+                let collections = figma.variables.getLocalVariableCollections();
+                let collection = collections[0];
+
+                if (!collection) {
+                    collection = figma.variables.createVariableCollection('Vibe Tokens');
+                }
+
+                // Create variable
+                const variable = figma.variables.createVariable(name, collection, type === 'color' ? 'COLOR' : type === 'number' ? 'FLOAT' : 'STRING');
+
+                // Set value
+                const modeId = collection.modes[0].modeId;
+                if (type === 'color') {
+                    const rgb = hexToRgb(value);
+                    variable.setValueForMode(modeId, rgb);
+                } else if (type === 'number') {
+                    variable.setValueForMode(modeId, parseFloat(value));
+                } else {
+                    variable.setValueForMode(modeId, value);
+                }
+
+                figma.ui.postMessage({ type: 'VARIABLE_CREATED', payload: { id: variable.id, name: variable.name } });
+                break;
+            }
+
             case 'RESIZE_WINDOW': {
                 const { width, height } = msg;
                 figma.ui.resize(width, height);
@@ -118,6 +175,43 @@ figma.ui.onmessage = async (msg) => {
 
             case 'NOTIFY': {
                 figma.notify(msg.message);
+                break;
+            }
+
+            // Collection Auto-Rename
+            case 'RENAME_COLLECTIONS': {
+                const { dryRun } = msg.payload || { dryRun: false };
+                const result = await collectionRenamer.renameAll(dryRun);
+
+                if (result.success) {
+                    figma.notify(`✅ Renamed ${result.renamedCount} collection(s). Skipped: ${result.skippedCount}.`);
+                } else {
+                    figma.notify(`⚠️ Renaming completed with ${result.errors.length} error(s). Check console.`, { error: true });
+                }
+
+                figma.ui.postMessage({
+                    type: 'RENAME_COLLECTIONS_RESULT',
+                    payload: result
+                });
+                break;
+            }
+
+            case 'RENAME_COLLECTION_BY_ID': {
+                const { collectionId } = msg.payload;
+                const success = await collectionRenamer.renameById(collectionId);
+                figma.ui.postMessage({
+                    type: 'RENAME_COLLECTION_RESULT',
+                    payload: { collectionId, success }
+                });
+                break;
+            }
+
+            case 'PREVIEW_CLASSIFICATIONS': {
+                const classifications = await collectionRenamer.previewClassifications();
+                figma.ui.postMessage({
+                    type: 'PREVIEW_CLASSIFICATIONS_RESULT',
+                    payload: classifications
+                });
                 break;
             }
         }
@@ -129,3 +223,13 @@ figma.ui.onmessage = async (msg) => {
         });
     }
 };
+
+// Helper function to convert hex to RGB
+function hexToRgb(hex: string): RGB {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16) / 255,
+        g: parseInt(result[2], 16) / 255,
+        b: parseInt(result[3], 16) / 255
+    } : { r: 0, g: 0, b: 0 };
+}
