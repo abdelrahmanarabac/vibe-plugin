@@ -1,4 +1,4 @@
-import type { IAIService } from "./interfaces/IAIService";
+import type { IAIService } from '../../core/interfaces/IAIService';
 import { SemanticIntelligence } from "./SemanticIntelligence";
 import { QualityGate } from "./QualityGate";
 import type { AgentContext, VibeToken } from "./types";
@@ -35,7 +35,7 @@ export class AgentCore {
 
         // 2. ⚡ Generation (System 1)
         onProgress("Drafting Design System... 📝");
-        const rawResponse = await this.ai.generateTokens(prompt);
+        const rawResponse = await this.ai.generate(prompt);
         let tokens = SemanticIntelligence.parseResponse(rawResponse);
 
         // 3. 🛡️ Quality Assurance (System 2)

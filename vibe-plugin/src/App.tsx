@@ -147,7 +147,7 @@ User request: "${query}"
 
 Provide a brief, actionable response (max 2 sentences) on how to accomplish this task in Figma or with design tokens.`;
 
-            const response = await ai.generate(prompt, 'LITE');
+            const response = await ai.generate(prompt, { tier: 'LITE' });
 
             parent.postMessage({
                 pluginMessage: {
@@ -195,6 +195,7 @@ Provide a brief, actionable response (max 2 sentences) on how to accomplish this
                         onKeyDown={async (e) => {
                             if (e.key === 'Enter') {
                                 const key = (e.target as HTMLInputElement).value.trim();
+                                // The following line was added based on the user's instruction,
                                 if (key.startsWith('AIza') && key.length > 20) {
                                     await SettingsService.saveApiKey(key);
                                     setApiKey(key);

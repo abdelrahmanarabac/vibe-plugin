@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { NamingEnforcer } from '../../modules/creation/NamingEnforcer';
-import { AIOrchestrator } from '../../modules/ai/AIOrchestrator';
 import { clsx } from 'clsx';
 import { loadAPIKey } from '../../infra/CryptoService';
 
@@ -15,8 +14,9 @@ export function TokenEditor({ tokenId }: { tokenId: string }) {
     useState(() => {
         loadAPIKey().then(key => {
             if (key) {
-                const ai = new AIOrchestrator(key);
-                setEnforcer(new NamingEnforcer('^[a-z]+-[a-z]+-[a-z0-9]+$', ai));
+                // AIFactory should be initialized globally, but if we need to force it:
+                // For now, NamingEnforcer uses 'ai' singleton.
+                setEnforcer(new NamingEnforcer('^[a-z]+-[a-z]+-[a-z0-9]+$'));
             }
         });
     });

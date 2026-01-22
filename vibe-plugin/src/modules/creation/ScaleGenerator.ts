@@ -1,7 +1,7 @@
 import { colord, extend } from 'colord';
 import a11yPlugin from 'colord/plugins/a11y';
 import mixPlugin from 'colord/plugins/mix';
-import { AIOrchestrator } from '../ai/AIOrchestrator';
+import { ai } from '../../core/services/AIFactory';
 
 extend([a11yPlugin, mixPlugin]);
 
@@ -13,11 +13,6 @@ export interface ColorScaleStep {
 }
 
 export class ScaleGenerator {
-    private aiOrchestrator: AIOrchestrator;
-
-    constructor(ai: AIOrchestrator) {
-        this.aiOrchestrator = ai;
-    }
 
     /**
      * Generates a 50-950 scale based on a single hex color.
@@ -39,7 +34,7 @@ export class ScaleGenerator {
     `;
 
         try {
-            const aiResponse = await this.aiOrchestrator.execute('scale-generation', prompt);
+            const aiResponse = await ai.generate(prompt, { tier: 'LITE' });
             const cleanJson = aiResponse.replace(/```json|```/g, '').trim();
             const aiHexes: string[] = JSON.parse(cleanJson);
 

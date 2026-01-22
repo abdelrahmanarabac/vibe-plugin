@@ -1,4 +1,4 @@
-import type { IAIService } from "./interfaces/IAIService";
+import type { IAIService } from '../../core/interfaces/IAIService';
 import type { UserIntent } from "./types";
 
 /**
@@ -57,7 +57,7 @@ export class IntentEngine {
                 Return ONLY the Category Name.
             `;
 
-            const result = await this.ai.generateTokens(prompt);
+            const result = await this.ai.generate(prompt);
             const cleanResult = result.trim().toUpperCase();
 
             if (cleanResult.includes('GENERATE')) return { type: 'GENERATE_SYSTEM', confidence: 0.95, originalQuery: query };

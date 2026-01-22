@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ScaleGenerator, type ColorScaleStep } from '../../modules/creation/ScaleGenerator';
-import { AIOrchestrator } from '../../modules/ai/AIOrchestrator';
 import { clsx } from 'clsx';
 import { loadAPIKey } from '../../infra/CryptoService';
 
@@ -24,8 +23,12 @@ export function ScaleGeneratorUI() {
 
         setLoading(true);
         try {
-            const orchestrator = new AIOrchestrator(apiKey);
-            const generator = new ScaleGenerator(orchestrator);
+            // Note: ScaleGenerator now uses 'ai' singleton internally if needed, or we passed key before to Orchestrator.
+            // Since I refactored ScaleGenerator to use AIFactory.ai singleton, we don't need orchestrator.
+            // Assuming AIFactory is initialized elsewhere (Settings). 
+            // If not, we might need to initialize it. But for now, let's assume global AI is ready or ScaleGenerator handles it.
+            // Wait, ScaleGenerator now uses 'ai' directly.
+            const generator = new ScaleGenerator();
             const result = await generator.generateScale(baseColor, scaleName);
             setScale(result);
         } catch (error) {

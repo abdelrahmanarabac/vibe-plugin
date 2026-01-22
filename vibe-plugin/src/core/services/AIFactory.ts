@@ -1,5 +1,6 @@
 import { BrowserAIService } from './BrowserAIService';
-import type { IAIService } from '../ports/IAIService';
+import { CachedAIService } from '../../infra/api/CachedAIService';
+import type { IAIService } from '../../core/interfaces/IAIService';
 
 export class AIFactory {
     private static instance: IAIService;
@@ -22,11 +23,13 @@ export class AIFactory {
                 console.warn("AIFactory: Initializing without API Key. AI features will fail until initialized.");
             }
 
-            this.instance = new BrowserAIService({
+            const baseService = new BrowserAIService({
                 apiKey: this.apiKey,
                 model: 'gemini-2.0-flash', // Optimized for speed as requested
-                // "خليك في ال استراتيجية بتاعتك" -> Stick to Strategy: Speed & Quality
             });
+
+            // Decorate with Caching
+            this.instance = new CachedAIService(baseService);
         }
         return this.instance;
     }

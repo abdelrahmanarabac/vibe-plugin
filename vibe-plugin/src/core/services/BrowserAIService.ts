@@ -1,10 +1,11 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import type { IAIService, AIOptions } from '../ports/IAIService';
+import type { IAIService, AIOptions } from '../../core/interfaces/IAIService';
 
 export class BrowserAIService implements IAIService {
     private client: GoogleGenerativeAI;
     private model: GenerativeModel;
     private liteModel: GenerativeModel;
+    private visionModel: GenerativeModel;
 
     constructor(config: { apiKey: string; model?: string }) {
         if (!config.apiKey) {
@@ -12,12 +13,13 @@ export class BrowserAIService implements IAIService {
         }
         this.client = new GoogleGenerativeAI(config.apiKey);
         this.model = this.client.getGenerativeModel({ model: config.model || "gemini-2.0-flash" });
-        this.liteModel = this.client.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+        this.liteModel = this.client.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        this.visionModel = this.client.getGenerativeModel({ model: "gemini-2.5-flash" });
     }
 
     async generate(prompt: string, options?: AIOptions): Promise<string> {
         try {
-            const targetModel = (options?.context === 'LITE') ? this.liteModel : this.model;
+            const targetModel = (options?.tier === 'LITE') ? this.liteModel : this.model;
 
             const result = await targetModel.generateContent({
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -37,10 +39,9 @@ export class BrowserAIService implements IAIService {
 
     async generateJSON<T>(prompt: string, _schema?: any): Promise<T> {
         const jsonPrompt = `${prompt} \n\n IMPORTANT: Return ONLY valid JSON. No markdown formatting.`;
-        const text = await this.generate(jsonPrompt, { temperature: 0.2 });
+        const text = await this.generate(jsonPrompt, { temperature: 0.2, tier: 'LITE' });
 
         let cleaned = text.trim();
-        // Remove markdown code blocks if present
         if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
         if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
         if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
@@ -53,15 +54,16 @@ export class BrowserAIService implements IAIService {
         }
     }
 
-    async stream(prompt: string, onChunk: (chunk: string) => void): Promise<void> {
+    async analyzeImage(imageBytes: Uint8Array, prompt: string): Promise<string> {
         try {
-            const result = await this.model.generateContentStream(prompt);
-            for await (const chunk of result.stream) {
-                const text = chunk.text();
-                onChunk(text);
-            }
-        } catch (error) {
-            console.error("AI Stream Error:", error);
+            const result = await this.visionModel.generateContent([
+                prompt,
+                { inlineData: { data: btoa(String.fromCharCode(...new Uint8Array(imageBytes))), mimeType: "image/png" } }
+            ]);
+            return result.response.text();
+        } catch (error: any) {
+            console.error("Vision Analysis Failed:", error);
+            throw new Error(`Vision Error: ${error.message}`);
         }
     }
 }

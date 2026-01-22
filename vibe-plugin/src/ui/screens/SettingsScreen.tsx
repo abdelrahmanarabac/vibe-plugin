@@ -58,7 +58,7 @@ export function SettingsScreen() {
         try {
             const { GeminiService } = await import('../../infra/api/GeminiService');
             const ai = new GeminiService(apiKey);
-            await ai.generate('Respond with OK', 'LITE', 1);
+            await ai.generate('Respond with OK', { tier: 'LITE', retries: 1 });
             setStatus('success');
             parent.postMessage({
                 pluginMessage: { type: 'NOTIFY', message: '✅ Connection Successful' }
