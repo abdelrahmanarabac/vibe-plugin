@@ -1,4 +1,5 @@
-import type { ICapability, AgentContext, CapabilityError } from './interfaces/ICapability';
+import type { ICapability, AgentContext } from './interfaces/ICapability';
+import { CapabilityError } from './interfaces/ICapability';
 import type { PluginAction } from '../shared/types';
 import type { Result } from '../shared/utils/Result';
 import { err } from '../shared/utils/Result';

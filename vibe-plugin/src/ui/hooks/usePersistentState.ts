@@ -8,7 +8,7 @@ import { useState, useRef, useEffect } from 'react';
 export function usePersistentState<T>(key: string, initialValue: T) {
     const [state, setState] = useState<T>(initialValue);
     const timeoutRef = useRef<number | null>(null);
-    const isFirstMount = useRef(true);
+    // const isFirstMount = useRef(true);
 
     // 1. Initial Load
     useEffect(() => {

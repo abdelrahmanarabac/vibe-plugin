@@ -21,8 +21,7 @@ export class ConsoleLogger implements ILogger {
     }
 
     debug(message: string, meta?: Record<string, any>): void {
-        if (process.env.NODE_ENV === 'development') {
-            console.debug(`${this.prefix} 🐛 ${message}`, meta || '');
-        }
+        // Always log debug in this dev phase
+        console.debug(`${this.prefix} 🐛 ${message}`, meta || '');
     }
 }

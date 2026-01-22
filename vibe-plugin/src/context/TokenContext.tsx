@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type { VibeToken } from '../core/schema/TokenSchema';
 import { SemanticMapper } from '../features/color/SemanticMapper';
-import { LayoutGenerator } from '../features/layout/LayoutGenerator';
-import { TypeGenerator } from '../features/typography/TypeGenerator';
+// import { LayoutGenerator } from '../features/layout/LayoutGenerator';
+// import { TypeGenerator } from '../features/typography/TypeGenerator';
 
 // 1. Valid Interface Separation
 interface TokenState {
@@ -44,13 +45,9 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
             const seedColor = "#0080FF";
 
             const colorTokens = SemanticMapper.generateSystem({ primary: seedColor });
-            const layoutTokens = LayoutGenerator.generate();
-            const typeTokens = TypeGenerator.generate();
-
+            // Archived Generators removed
             const systemTokens = [
-                ...colorTokens,
-                ...layoutTokens,
-                ...typeTokens
+                ...colorTokens
             ];
 
             setTokens(systemTokens);

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { IAIService, AIOptions } from '../ports/IAIService';
+import type { IAIService, AIOptions } from '../ports/IAIService';
 
 export class BrowserAIService implements IAIService {
     private client: GoogleGenerativeAI;
@@ -35,7 +35,7 @@ export class BrowserAIService implements IAIService {
         }
     }
 
-    async generateJSON<T>(prompt: string, schema?: any): Promise<T> {
+    async generateJSON<T>(prompt: string, _schema?: any): Promise<T> {
         const jsonPrompt = `${prompt} \n\n IMPORTANT: Return ONLY valid JSON. No markdown formatting.`;
         const text = await this.generate(jsonPrompt, { temperature: 0.2 });
 

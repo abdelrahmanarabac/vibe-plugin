@@ -1,5 +1,5 @@
 import { BrowserAIService } from './BrowserAIService';
-import { IAIService } from '../ports/IAIService';
+import type { IAIService } from '../ports/IAIService';
 
 export class AIFactory {
     private static instance: IAIService;

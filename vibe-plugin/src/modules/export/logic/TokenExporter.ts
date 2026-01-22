@@ -1,4 +1,4 @@
-import { TokenEntity } from '../../tokens/domain/entities/Token';
+import type { TokenEntity } from '../../tokens/domain/entities/Token';
 
 export interface ExportResult {
     filename: string;

@@ -158,10 +158,10 @@ function EmptyState() {
             <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => parent.postMessage({ pluginMessage: { type: 'SCAN_SELECTION' } }, '*')}
+                onClick={() => parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: 'Use the + button or Omnibox to create tokens.' } }, '*')}
                 className="px-5 py-2.5 bg-gradient-to-r from-[#A855F7] to-[#7C3AED] text-white text-sm font-medium rounded-lg shadow-lg shadow-[#A855F7]/20 hover:shadow-[#A855F7]/40 transition-all"
             >
-                Scan Selection
+                Start Creating
             </motion.button>
         </motion.div>
     );

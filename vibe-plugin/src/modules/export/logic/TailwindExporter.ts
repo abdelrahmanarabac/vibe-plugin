@@ -1,5 +1,6 @@
-import { TokenExporter, ExportResult } from './TokenExporter';
-import { TokenEntity } from '../../tokens/domain/entities/Token';
+import { TokenExporter } from './TokenExporter';
+import type { ExportResult } from './TokenExporter';
+import type { TokenEntity } from '../../tokens/domain/entities/Token';
 
 export class TailwindExporter extends TokenExporter {
     execute(tokens: TokenEntity[]): ExportResult {

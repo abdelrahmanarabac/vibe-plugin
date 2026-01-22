@@ -1,4 +1,4 @@
-import { TokenEntity } from '../domain/entities/Token';
+import type { TokenEntity } from '../domain/entities/Token';
 
 export class TokenCompiler {
 
@@ -18,7 +18,7 @@ export class TokenCompiler {
 
         const rawValue = token.value as string;
         // Regex to find {alias}
-        const aliasRegex = /{([^}]+)}/g;
+        // const aliasRegex = /{([^}]+)}/g;
 
         // Single Alias Replacement (Optimization: Direct lookup)
         const match = rawValue.match(/^{([^}]+)}$/);

@@ -1,6 +1,6 @@
 import type { TokenEntity, VariableScope } from '../../core/types';
 import { TokenGraph } from '../../core/TokenGraph';
-import { ImpactAnalyzer } from './ImpactAnalyzer';
+// import { ImpactAnalyzer } from './ImpactAnalyzer';
 
 // Helper to map Figma types to W3C
 function mapFigmaResolvedType(type: "COLOR" | "FLOAT" | "STRING" | "BOOLEAN"): TokenEntity['$extensions']['figma']['resolvedType'] {
@@ -9,11 +9,11 @@ function mapFigmaResolvedType(type: "COLOR" | "FLOAT" | "STRING" | "BOOLEAN"): T
 
 export class VariableManager {
     private graph: TokenGraph;
-    private impactAnalyzer: ImpactAnalyzer;
+    // private impactAnalyzer: ImpactAnalyzer;
 
     constructor(graph: TokenGraph) {
         this.graph = graph;
-        this.impactAnalyzer = new ImpactAnalyzer(graph);
+        // this.impactAnalyzer = new ImpactAnalyzer(graph);
     }
 
     /**
@@ -95,45 +95,70 @@ export class VariableManager {
     }
 
     /**
-     * Updates a variable value.
-     * Returns impact report BEFORE applying changes (for UI confirmation).
-     * @param id The variable ID to update
-     * @param newValue The proposed new value (used for future value-based impact logic)
+     * Creates a new variable.
      */
-    async updateVariable(id: string, newValue: string | number | VariableAlias): Promise<{ success: boolean, impactReport?: any }> {
-        const variable = await figma.variables.getVariableByIdAsync(id);
-        if (!variable) throw new Error(`Variable ${id} not found`);
+    async createVariable(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void> {
+        let collections = await figma.variables.getLocalVariableCollectionsAsync();
+        let collection = collections[0];
 
-        // CRITICAL: Check impact BEFORE applying changes
-        const impactReport = this.impactAnalyzer.analyzeImpact(id);
+        if (!collection) {
+            collection = figma.variables.createVariableCollection('Vibe Tokens');
+        }
 
-        // NOTE: `newValue` is currently unused in the impact analysis (topology only),
-        // but reserved here for future logic (e.g. contrast checks).
-        // @ts-ignore - Reserved for future use
-        const _futureValue = newValue;
+        const variable = figma.variables.createVariable(
+            name,
+            collection,
+            type === 'color' ? 'COLOR' : type === 'number' ? 'FLOAT' : 'STRING'
+        );
 
-        return {
-            success: false, // Not applied yet
-            impactReport: impactReport
-        };
+        const modeId = collection.modes[0].modeId;
+
+        if (type === 'color') {
+            const rgb = this.hexToRgb(value);
+            variable.setValueForMode(modeId, rgb);
+        } else if (type === 'number') {
+            variable.setValueForMode(modeId, parseFloat(value));
+        } else {
+            variable.setValueForMode(modeId, value);
+        }
     }
 
     /**
-     * Confirms and applies a variable update after user approval.
-     * Should only be called after updateVariable() and user confirmation.
+     * Updates a variable value directly.
      */
-    async confirmUpdate(id: string, newValue: string | number | VariableAlias): Promise<void> {
+    async updateVariable(id: string, newValue: string | number | VariableAlias): Promise<void> {
         const variable = await figma.variables.getVariableByIdAsync(id);
         if (!variable) throw new Error(`Variable ${id} not found`);
 
         const collections = await figma.variables.getLocalVariableCollectionsAsync();
         const collection = collections.find(c => c.variableIds.includes(id));
+
         if (collection) {
             const modeId = collection.modes[0].modeId;
-            variable.setValueForMode(modeId, newValue);
+            // Handle color conversion if needed
+            if (variable.resolvedType === 'COLOR' && typeof newValue === 'string') {
+                variable.setValueForMode(modeId, this.hexToRgb(newValue));
+            } else {
+                variable.setValueForMode(modeId, newValue);
+            }
         }
+    }
 
-        // Trigger re-sync after update
-        // The controller should broadcast a GRAPH_UPDATED event
+    async renameVariable(id: string, newName: string): Promise<void> {
+        const variable = await figma.variables.getVariableByIdAsync(id);
+        if (variable) {
+            variable.name = newName;
+        } else {
+            throw new Error(`Variable ${id} not found`);
+        }
+    }
+
+    private hexToRgb(hex: string): RGB {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
+        } : { r: 0, g: 0, b: 0 };
     }
 }

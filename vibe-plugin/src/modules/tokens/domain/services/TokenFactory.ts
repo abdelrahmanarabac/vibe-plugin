@@ -1,4 +1,4 @@
-import { TokenEntity } from '../entities/Token';
+import type { TokenEntity } from '../entities/Token';
 
 export class TokenFactory {
     static create(props: Partial<TokenEntity> & { name: string; value: any; type: any }): TokenEntity {

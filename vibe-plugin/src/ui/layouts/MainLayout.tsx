@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, Settings } from 'lucide-react';
+import { LayoutGrid, Settings, Layers } from 'lucide-react';
 import { Omnibox } from '../components/Omnibox';
 
 export type ViewType = 'dashboard' | 'graph' | 'table' | 'settings';
@@ -24,9 +24,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {/* Minimal Header with Pill Tabs */}
             <header className="flex-none p-3 flex items-center justify-between border-b border-white/5 bg-[#1E1E1E]/90 backdrop-blur-md z-40">
                 <div className="flex items-center gap-1">
-                    <TabButton active={activeTab === 'dashboard'} onClick={() => onTabChange('dashboard')} label="Dashboard" icon={<LayoutGrid size={14} />} />
-                    {/* Temporarily hidden: Graph and Table tabs (non-functional) */}
-                    {/* <TabButton active={activeTab === 'graph'} onClick={() => onTabChange('graph')} label="Graph" icon={<Network size={14} />} /> */}
+                    <TabButton active={activeTab === 'dashboard'} onClick={() => onTabChange('dashboard')} label="Overview" icon={<LayoutGrid size={14} />} />
+                    <TabButton active={activeTab === 'graph'} onClick={() => onTabChange('graph')} label="Tokens" icon={<Layers size={14} />} />
                     {/* <TabButton active={activeTab === 'table'} onClick={() => onTabChange('table')} label="Data" icon={<Table2 size={14} />} /> */}
                     <TabButton active={activeTab === 'settings'} onClick={() => onTabChange('settings')} label="Settings" icon={<Settings size={14} />} />
                 </div>

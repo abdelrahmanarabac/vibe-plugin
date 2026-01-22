@@ -11,21 +11,29 @@ import type { PluginEvent } from './shared/types';
 
 /**
  * 🎯 Vibe Tokens - Main Application
- * Clean, minimal, Figma-native design
+ * Updated for Pure Token Management with Live Sync
  */
 export default function App() {
     // Core State
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [impactReport, setImpactReport] = useState<ImpactReport | null>(null);
+
+    // Live Sync State
     const [isGraphSynced, setIsGraphSynced] = useState(false);
-    const [activeTab, setActiveTab] = useState<ViewType>('dashboard');
+    const [liveIndicator, setLiveIndicator] = useState(false);
+    // const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+
+    // UI State
+    const [activeTab, setActiveTab] = useState<ViewType>('graph'); // Default to Graph/List
     const [tokens, setTokens] = useState<TokenEntity[]>([]);
+
+    // Unused state removed for clean build
     const [isProcessing, setIsProcessing] = useState(false);
 
     const [stats, setStats] = useState({ totalVariables: 0, collections: 0, styles: 0, lastSync: 0 });
 
-    // Load API Key on Mount & Initial Scan
+    // Load API Key on Mount
     useEffect(() => {
         SettingsService.loadApiKey()
             .then(key => {
@@ -34,57 +42,55 @@ export default function App() {
             })
             .catch(() => setIsLoading(false));
 
-        // Trigger initial data scan
-        parent.postMessage({ pluginMessage: { type: 'SCAN_VARS' } }, '*');
+        // Initial manual sync request
+        parent.postMessage({ pluginMessage: { type: 'SYNC_GRAPH' } }, '*');
     }, []);
 
     // Message Handler (Observer Pattern)
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            // 🛡️ Safety Check: Ensure pluginMessage structure exists
             const msg: PluginEvent = event.data?.pluginMessage;
             if (!msg) return;
 
             switch (msg.type) {
+                case 'GRAPH_UPDATED':
                 case 'GRAPH_SYNCED':
                     setTokens(msg.tokens || []);
                     setIsGraphSynced(true);
+                    // setLastSyncTime(msg.timestamp || Date.now());
+
+                    // Flash Live Indicator
+                    setLiveIndicator(true);
+                    setTimeout(() => setLiveIndicator(false), 2000);
+
+                    // Update stats implicitly from tokens
+                    setStats(prev => ({ ...prev, totalVariables: msg.tokens?.length || 0, lastSync: Date.now() }));
                     break;
+
                 case 'SCAN_COMPLETE':
                     setStats(msg.payload);
                     break;
+
                 case 'ERROR':
                     console.error('Controller Error:', msg.message);
+                    setImpactReport(prev => ({
+                        ...prev!,
+                        timestamp: Date.now(),
+                        changes: [],
+                        overallImpact: 'LOW',
+                        summary: msg.message
+                    }));
                     break;
+
                 case 'IMPACT_REPORT':
                     setImpactReport(msg.payload);
-                    break;
-                case 'SCAN_RESULT':
-                    parent.postMessage({
-                        pluginMessage: {
-                            type: 'NOTIFY',
-                            message: `Scanned ${msg.primitives.length} design primitives.`
-                        }
-                    }, '*');
                     break;
             }
         };
 
-        // 1. Add Listener
         window.addEventListener('message', handleMessage);
-
-        // 2. CLEANUP IS MANDATORY (The Ghost Hunter)
-        return () => {
-            window.removeEventListener('message', handleMessage);
-        };
+        return () => window.removeEventListener('message', handleMessage);
     }, []);
-
-    // Sync Graph when API Key is available
-    useEffect(() => {
-        if (apiKey && !isGraphSynced) {
-            parent.postMessage({ pluginMessage: { type: 'SYNC_GRAPH' } }, '*');
-        }
-    }, [apiKey, isGraphSynced]);
 
     // Command Handler (Omnibox)
     const handleCommand = async (query: string) => {
@@ -97,20 +103,7 @@ export default function App() {
 
         setIsProcessing(true);
         try {
-            // Simple command shortcuts
-            if (query.startsWith('/button')) {
-                parent.postMessage({
-                    pluginMessage: {
-                        type: 'CREATE_COMPONENT',
-                        recipe: { type: 'BUTTON', variant: 'PRIMARY' }
-                    }
-                }, '*');
-                parent.postMessage({
-                    pluginMessage: { type: 'NOTIFY', message: '🎨 Creating button component...' }
-                }, '*');
-                return;
-            }
-
+            // Simplified Commands
             if (query.startsWith('/rename-collections') || query.startsWith('/rename')) {
                 parent.postMessage({
                     pluginMessage: {
@@ -156,7 +149,6 @@ Provide a brief, actionable response (max 2 sentences) on how to accomplish this
 
             const response = await ai.generate(prompt, 'LITE');
 
-            // Show response in notification
             parent.postMessage({
                 pluginMessage: {
                     type: 'NOTIFY',
@@ -164,7 +156,6 @@ Provide a brief, actionable response (max 2 sentences) on how to accomplish this
                 }
             }, '*');
 
-            console.log('AI Response:', response);
         } catch (e) {
             console.error(e);
             parent.postMessage({
@@ -188,7 +179,7 @@ Provide a brief, actionable response (max 2 sentences) on how to accomplish this
         );
     }
 
-    // No API Key - Simple Inline Setup (No Onboarding)
+    // No API Key - Simple Inline Setup
     if (!apiKey) {
         return (
             <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#2c2c2c] p-8">
@@ -226,21 +217,30 @@ Provide a brief, actionable response (max 2 sentences) on how to accomplish this
 
     // Main Application
     return (
-        <MainLayout
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onCommand={handleCommand}
-            isSearchLoading={isProcessing}
-        >
-            {activeTab === 'dashboard' && <Dashboard tokens={tokens} stats={stats} />}
-            {activeTab === 'graph' && <EditorView tokens={tokens} searchFocus="" />}
-            {activeTab === 'table' && <SmartInspector tokens={tokens} onUpdate={handleUpdate} />}
-            {activeTab === 'settings' && <SettingsScreen />}
+        <div className="h-full flex flex-col overflow-hidden relative">
+            {/* Live Indicator Overlay */}
+            <div className={`absolute top-3 right-3 flex items-center gap-2 transition-opacity duration-300 ${isGraphSynced ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`w-2 h-2 rounded-full ${liveIndicator ? 'bg-green-400 animate-pulse' : 'bg-green-600/50'}`}></div>
+                <span className="text-[10px] text-white/30 font-mono">LIVE</span>
+            </div>
 
-            <ImpactWarning
-                report={impactReport}
-                onDismiss={() => setImpactReport(null)}
-            />
-        </MainLayout>
+            <MainLayout
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onCommand={handleCommand}
+                isSearchLoading={isProcessing}
+            >
+                {/* Re-ordered Views: Graph is now primary */}
+                {activeTab === 'graph' && <EditorView tokens={tokens} searchFocus="" />}
+                {activeTab === 'dashboard' && <Dashboard tokens={tokens} stats={stats} />}
+                {activeTab === 'table' && <SmartInspector tokens={tokens} onUpdate={handleUpdate} />}
+                {activeTab === 'settings' && <SettingsScreen />}
+
+                <ImpactWarning
+                    report={impactReport}
+                    onDismiss={() => setImpactReport(null)}
+                />
+            </MainLayout>
+        </div>
     );
 }

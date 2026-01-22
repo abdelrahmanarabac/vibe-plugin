@@ -82,14 +82,21 @@ export interface ICapability {
  * CapabilityError - Structured error type for capability failures
  */
 export class CapabilityError extends Error {
+    public readonly code: string;
+    public readonly severity: 'warning' | 'error' | 'critical';
+    public readonly recoverable: boolean;
+
     constructor(
-        public readonly code: string,
+        code: string,
         message: string,
-        public readonly severity: 'warning' | 'error' | 'critical' = 'error',
-        public readonly recoverable: boolean = false
+        severity: 'warning' | 'error' | 'critical' = 'error',
+        recoverable: boolean = false
     ) {
         super(message);
         this.name = 'CapabilityError';
+        this.code = code;
+        this.severity = severity;
+        this.recoverable = recoverable;
     }
 }
 

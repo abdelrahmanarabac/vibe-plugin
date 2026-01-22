@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { TokenEntity } from '../../modules/tokens/domain/entities/Token';
+import type { TokenEntity } from '../../modules/tokens/domain/entities/Token';
 // Note: In Vite, use 'import ...?worker'
 // import CompilerWorker from '../../workers/CompilerWorker?worker'; 
 

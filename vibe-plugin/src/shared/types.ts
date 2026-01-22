@@ -1,12 +1,9 @@
 export type PluginAction =
     | { type: 'SCAN_VARS' }
-    | { type: 'SCAN_SELECTION' }
-    | { type: 'SCAN_IMAGE' }
     | { type: 'SYNC_GRAPH' }
+    | { type: 'SYNC_VARIABLES' }
     | { type: 'GENERATE_DOCS' }
-    | { type: 'CREATE_COMPONENT'; recipe: { type: string; variant: string } }
     | { type: 'CREATE_VARIABLE'; payload: { name: string; type: 'color' | 'number' | 'string'; value: any } }
-    | { type: 'UPDATE_VARIABLE'; id: string; newValue: any }
     | { type: 'UPDATE_VARIABLE'; id: string; newValue: any }
     | { type: 'RENAME_COLLECTION'; payload: { oldName: string; newName: string } }
     | { type: 'RENAME_COLLECTIONS'; payload: { dryRun: boolean } }
@@ -19,13 +16,16 @@ export type PluginAction =
     | { type: 'STORAGE_REMOVE'; key: string }
     | { type: 'MEMORY_SAVE'; key: string; data: any }
     | { type: 'MEMORY_LOAD'; key: string }
-    | { type: 'CREATE_TOKENS'; payload: { name: string; tokens: any[] } };
+    | { type: 'CREATE_TOKENS'; payload: { name: string; tokens: any[] } }
+    | { type: 'CREATE_TOKEN'; payload: { name: string; type: 'color' | 'number' | 'string'; value: any } }
+    | { type: 'UPDATE_TOKEN'; id: string; newValue: any }
+    | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } };
 
 export type PluginEvent =
     | { type: 'SCAN_COMPLETE'; payload: any }
     | { type: 'SCAN_RESULT'; primitives: any[] }
-    | { type: 'SCAN_IMAGE_RESULT'; bytes: Uint8Array }
-    | { type: 'GRAPH_SYNCED'; tokens: any[] }
+    | { type: 'GRAPH_SYNCED'; tokens: any[]; timestamp?: number }
+    | { type: 'GRAPH_UPDATED'; tokens: any[]; timestamp: number }
     | { type: 'VARIABLE_CREATED'; payload: { id: string; name: string } }
     | { type: 'VARIABLE_UPDATED'; id: string }
     | { type: 'RENAME_COLLECTIONS_RESULT'; payload: any }
