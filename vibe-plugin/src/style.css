@@ -5,10 +5,11 @@
   --color-surface-0: #1E1E1E;
   --color-surface-1: #2C2C2C;
   --color-surface-active: #383838;
-  --color-surface-glass: rgba(255, 255, 255, 0.05);
+  --color-surface-glass: rgba(30, 30, 30, 0.6); /* #1E1E1E with opacity included in utility */
 
   --color-primary: #A855F7;
   --color-primary-hover: #9333EA;
+  --color-primary-accent: #7C3AED; /* For gradients */
   --color-primary-dim: rgba(168, 85, 247, 0.5);
 
   --color-success: #22C55E;
@@ -18,6 +19,7 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #A1A1AA;
   --color-text-muted: #52525B;
+  --color-text-on-brand: #FFFFFF;
 
   --font-sans: "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "monospace";

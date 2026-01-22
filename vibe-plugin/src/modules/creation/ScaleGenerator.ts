@@ -1,7 +1,7 @@
 import { colord, extend } from 'colord';
 import a11yPlugin from 'colord/plugins/a11y';
 import mixPlugin from 'colord/plugins/mix';
-import { ai } from '../../core/services/AIFactory';
+import type { IAIService } from '../../core/interfaces/IAIService';
 
 extend([a11yPlugin, mixPlugin]);
 
@@ -12,38 +12,47 @@ export interface ColorScaleStep {
     contrastOnBlack: number;
 }
 
+/**
+ * 🎨 ScaleGenerator (Domain Logic)
+ * Generates perceptually uniform color scales using a hybrid Math + AI approach.
+ */
 export class ScaleGenerator {
 
     /**
      * Generates a 50-950 scale based on a single hex color.
-     * Hybrid approach: Math (Base) -> AI (Refinement)
+     * Injects IAIService for perceptual tuning.
      */
-    async generateScale(baseHex: string, namePrefix: string = 'primary'): Promise<ColorScaleStep[]> {
+    async generateScale(baseHex: string, namePrefix: string = 'primary', ai: IAIService): Promise<ColorScaleStep[]> {
         if (!colord(baseHex).isValid()) {
             throw new Error(`Invalid base color: ${baseHex}`);
         }
 
-        // 1. Generate Mathematical Baseline (Fast fallback if AI fails)
+        // 1. Generate Mathematical Baseline (Safety Fallback)
         const mathScale = this.generateMathScale(baseHex);
 
         // 2. Ask AI to "perceptually tune" it (The Vibe Magic)
         const prompt = `
-      Task: Generate a 11-step perceptual color scale (50, 100, 200, ..., 900, 950) based on ${baseHex}.
-      Constraint: The scale must be perceptually uniform. 500 should be close to the base color.
-      Format: Return ONLY a JSON array of hex strings: ["#xxxxxx", ...]. No markdown, no text.
-    `;
+            Task: Generate an 11-step perceptual color scale (50, 100, 200, ..., 900, 950) based on ${baseHex}.
+            Constraint: The scale must be perceptually uniform. 500 should be the base color.
+            Format: Return ONLY a JSON array of hex strings: ["#xxxxxx", ...]. No markdown.
+        `;
 
         try {
             const aiResponse = await ai.generate(prompt, { tier: 'LITE' });
-            const cleanJson = aiResponse.replace(/```json|```/g, '').trim();
-            const aiHexes: string[] = JSON.parse(cleanJson);
+
+            // JSON Cleansing
+            let cleanJson = aiResponse.trim();
+            if (cleanJson.startsWith('```json')) cleanJson = cleanJson.slice(7);
+            if (cleanJson.startsWith('```')) cleanJson = cleanJson.slice(3);
+            if (cleanJson.endsWith('```')) cleanJson = cleanJson.slice(0, -3);
+
+            const aiHexes: string[] = JSON.parse(cleanJson.trim());
 
             if (Array.isArray(aiHexes) && aiHexes.length >= 10) {
-                // Map AI hexes to steps
                 return this.mapHexesToSteps(aiHexes, namePrefix);
             }
         } catch (error) {
-            console.warn('AI Scale generation failed, falling back to math scale.', error);
+            console.warn('[ScaleGenerator] AI Tuning failed. Falling back to mathematical baseline.', error);
         }
 
         return this.mapHexesToSteps(mathScale, namePrefix);
@@ -51,7 +60,6 @@ export class ScaleGenerator {
 
     private generateMathScale(baseHex: string): string[] {
         const color = colord(baseHex);
-        // Simple mixing strategy: Mix with white for tints, black for shades
         const scale: string[] = [];
 
         // 50, 100, 200, 300, 400 (Tints)
@@ -70,8 +78,6 @@ export class ScaleGenerator {
 
     private mapHexesToSteps(hexes: string[], prefix: string): ColorScaleStep[] {
         const steps = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-
-        // Ensure we match lengths if possible, otherwise truncate/pad
         const result: ColorScaleStep[] = [];
 
         steps.forEach((step, index) => {

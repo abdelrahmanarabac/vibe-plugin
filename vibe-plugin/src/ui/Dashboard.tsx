@@ -1,5 +1,4 @@
-// import React from 'react'; // JSX Transform active
-import { ShieldCheck, Zap, FileText, Download, Plus, Layers } from 'lucide-react';
+import { ShieldCheck, Zap, Download, Plus, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../core/types';
 import { NewTokenDialog } from './components/NewTokenDialog';
@@ -10,6 +9,10 @@ interface DashboardProps {
     stats?: { totalVariables: number; collections: number; styles: number; lastSync: number };
 }
 
+/**
+ * 📊 Elite Dashboard Fragment
+ * Higher contrast, super rounded corners, and clear information hierarchy.
+ */
 export function Dashboard({ tokens = [], stats }: DashboardProps) {
     const [showNewTokenDialog, setShowNewTokenDialog] = useState(false);
 
@@ -18,32 +21,19 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
     };
 
     const handleCreateToken = (data: { name: string; type: string; value: string }) => {
-        // Send to controller to create Figma variable
         parent.postMessage({
             pluginMessage: {
                 type: 'CREATE_VARIABLE',
                 payload: data
             }
         }, '*');
-        parent.postMessage({
-            pluginMessage: {
-                type: 'NOTIFY',
-                message: `Token "${data.name}" created!`
-            }
-        }, '*');
     };
 
     const handleExport = () => {
         const exportData = {
-            version: '3.0',
+            version: '3.1',
             exportedAt: new Date().toISOString(),
-            stats,
-            tokens: tokens.map(t => ({
-                id: t.id,
-                name: t.name,
-                type: t.$type,
-                value: t.$value
-            }))
+            tokens: tokens.map(t => ({ id: t.id, name: t.name, type: t.$type, value: t.$value }))
         };
 
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -53,69 +43,55 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
         a.download = `vibe-tokens-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-
-        parent.postMessage({
-            pluginMessage: {
-                type: 'NOTIFY',
-                message: 'Tokens exported successfully!'
-            }
-        }, '*');
     };
 
-    // const recentlyUpdated = tokens.filter(t => (t as any).updatedAt > Date.now() - 86400000).length;
-
     return (
-        <div className="p-4 max-w-5xl mx-auto">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-                <StatCard
-                    label="Local Vars"
-                    value={stats?.totalVariables.toString() || "0"}
-                    icon={<Zap className="text-[#A855F7]" size={18} />}
-                    subtext={`${stats?.collections || 0} collections found`}
-                    accentColor="#A855F7"
+        <div className="flex flex-col gap-6 max-w-4xl mx-auto py-2">
+            {/* 📈 Stats Dashboard Fragment */}
+            <div className="grid grid-cols-2 gap-4">
+                <StatFragment
+                    label="Tokens in Graph"
+                    value={String(stats?.totalVariables ?? 0)}
+                    icon={<Zap size={20} className="text-primary" />}
+                    subtext={`${stats?.collections ?? 0} Collections Synced`}
+                    color="primary"
                 />
-                <StatCard
+                <StatFragment
                     label="Figma Styles"
-                    value={stats?.styles.toString() || "0"}
-                    icon={<ShieldCheck className="text-[#22C55E]" size={18} />}
-                    subtext="Paint & Text styles"
-                    accentColor="#22C55E"
-                />
-                <StatCard
-                    label="Graph Nodes"
-                    value={tokens.length.toString()}
-                    icon={<FileText className="text-[#F59E0B]" size={18} />}
-                    subtext="Synced in graph"
-                    accentColor="#F59E0B"
+                    value={String(stats?.styles ?? 0)}
+                    icon={<ShieldCheck size={20} className="text-secondary" />}
+                    subtext="Visual Definitions"
+                    color="secondary"
                 />
             </div>
 
-            {/* Empty State or Quick Actions */}
-            {tokens.length === 0 ? (
-                <EmptyState />
-            ) : (
-                <>
-                    <h2 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Quick Actions</h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                        <ActionCard
-                            title="New Token"
-                            icon={<Plus size={16} />}
-                            onClick={handleNewToken}
-                        />
-                        <ActionCard
-                            title="Generate Docs"
-                            icon={<FileText size={16} />}
-                            onClick={() => parent.postMessage({ pluginMessage: { type: 'GENERATE_DOCS' } }, '*')}
-                        />
-                        <ActionCard
-                            title="Export JSON"
-                            icon={<Download size={16} />}
-                            onClick={handleExport}
-                        />
+            {/* 🕹️ Action Surface */}
+            <div className="vibe-card bg-white/[0.02] border-white/5 space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-sm font-bold tracking-tight text-white mb-1">Quick Workspace</h2>
+                        <p className="text-[11px] text-text-dim">Build and export your token systems at light speed.</p>
                     </div>
-                </>
-            )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <ActionButton
+                        title="Create New Token"
+                        description="Add color, spacing, or radius"
+                        icon={<Plus size={18} />}
+                        onClick={handleNewToken}
+                    />
+                    <ActionButton
+                        title="Export System"
+                        description="W3C JSON Compatible"
+                        icon={<Download size={18} />}
+                        onClick={handleExport}
+                    />
+                </div>
+            </div>
+
+            {/* 🧩 Empty State Fragment */}
+            {tokens.length === 0 && <EmptyStateFragment />}
 
             <NewTokenDialog
                 isOpen={showNewTokenDialog}
@@ -126,86 +102,71 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
     );
 }
 
-/**
- * Empty State Component - Shown when no tokens exist
- */
-function EmptyState() {
+function StatFragment({ label, value, icon, subtext, color }: { label: string, value: string, icon: React.ReactNode, subtext: string, color: 'primary' | 'secondary' }) {
+    const accents = {
+        primary: 'border-primary/20 bg-primary/5',
+        secondary: 'border-secondary/20 bg-secondary/5'
+    };
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-center py-12 px-6 text-center"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -4, borderColor: 'rgba(255,255,255,0.2)' }}
+            className={`p-5 rounded-[32px] border border-white/10 bg-[#0A0C14]/60 backdrop-blur-xl transition-all ${accents[color]}`}
         >
-            <div className="w-32 h-32 mb-6 relative">
-                <img
-                    src="/empty-state.png"
-                    alt="Empty State"
-                    className="w-full h-full object-contain opacity-80"
-                    onError={(e) => {
-                        // Fallback to icon if image fails
-                        e.currentTarget.style.display = 'none';
-                    }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                    <Layers size={48} className="text-[#A855F7]/30" />
+            <div className="flex items-center justify-between mb-4">
+                <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 shadow-inner">
+                    {icon}
+                </div>
+                <div className={`text-[10px] font-bold uppercase tracking-widest ${color === 'primary' ? 'text-primary' : 'text-secondary'}`}>
+                    Active
                 </div>
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">No Tokens Yet</h3>
-            <p className="text-sm text-white/40 max-w-xs mb-6">
-                Use the Omnibox above to describe your vibe and generate a complete token system.
-            </p>
-            <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: 'Use the + button or Omnibox to create tokens.' } }, '*')}
-                className="px-5 py-2.5 bg-gradient-to-r from-[#A855F7] to-[#7C3AED] text-white text-sm font-medium rounded-lg shadow-lg shadow-[#A855F7]/20 hover:shadow-[#A855F7]/40 transition-all"
-            >
-                Start Creating
-            </motion.button>
+            <div className="text-3xl font-extrabold text-white mb-1 font-display leading-none">{value}</div>
+            <div className="text-[11px] font-bold text-text-dim uppercase tracking-tighter opacity-80">{label}</div>
+            <div className="mt-4 pt-4 border-t border-white/5 text-[10px] text-text-muted flex items-center gap-2">
+                <div className={`w-1 h-1 rounded-full ${color === 'primary' ? 'bg-primary animate-pulse' : 'bg-secondary'}`} />
+                {subtext}
+            </div>
         </motion.div>
     );
 }
 
-interface StatCardProps {
-    label: string;
-    value: string;
-    icon: React.ReactNode;
-    subtext: string;
-    accentColor: string;
+function ActionButton({ title, description, icon, onClick }: { title: string, description: string, icon: React.ReactNode, onClick: () => void }) {
+    return (
+        <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onClick}
+            className="flex flex-col gap-3 p-4 rounded-[24px] bg-white/5 border border-white/5 hover:border-white/20 hover:bg-white/[0.08] text-left transition-all"
+        >
+            <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-[#030407] border border-white/10 text-text-bright shadow-lg">
+                {icon}
+            </div>
+            <div>
+                <div className="text-sm font-bold text-white mb-0.5">{title}</div>
+                <div className="text-[10px] text-text-dim line-clamp-1">{description}</div>
+            </div>
+        </motion.button>
+    );
 }
 
-const StatCard = ({ label, value, icon, subtext, accentColor }: StatCardProps) => (
-    <motion.div
-        whileHover={{ scale: 1.02, y: -2 }}
-        className="p-4 rounded-xl bg-[#1E1E1E]/60 backdrop-blur-sm border border-white/5 hover:border-white/10 transition-all"
-        style={{ boxShadow: `0 4px 20px ${accentColor}10` }}
-    >
-        <div className="flex justify-between items-start mb-2">
-            <span className="text-white/40 text-[10px] font-medium uppercase tracking-wider">{label}</span>
-            {icon}
-        </div>
-        <div className="text-2xl font-bold text-white mb-0.5">{value}</div>
-        <div className="text-[10px] text-white/30">{subtext}</div>
-    </motion.div>
-);
-
-interface ActionCardProps {
-    title: string;
-    icon: React.ReactNode;
-    onClick: () => void;
+function EmptyStateFragment() {
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="py-12 flex flex-col items-center text-center px-10"
+        >
+            <div className="w-24 h-24 mb-6 relative">
+                <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse" />
+                <Layers size={96} strokeWidth={1} className="relative text-white/20" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2 font-display uppercase tracking-tight">System Ready for Inputs</h3>
+            <p className="text-xs text-text-dim max-w-xs mb-8">
+                Your token graph is empty. Type a brand vibe or specific styles in the Omnibox below to start building.
+            </p>
+        </motion.div>
+    );
 }
-
-const ActionCard = ({ title, icon, onClick }: ActionCardProps) => (
-    <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        onClick={onClick}
-        className="flex items-center gap-3 p-3 rounded-lg bg-[#1E1E1E]/40 border border-white/5 hover:border-[#A855F7]/30 hover:bg-[#1E1E1E]/60 transition-all group text-left"
-    >
-        <div className="p-2 rounded-md bg-[#2C2C2C] text-white/50 group-hover:text-[#A855F7] transition-colors">
-            {icon}
-        </div>
-        <span className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">{title}</span>
-    </motion.button>
-);

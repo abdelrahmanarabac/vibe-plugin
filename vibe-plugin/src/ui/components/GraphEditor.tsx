@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../../core/types';
 
@@ -19,16 +19,37 @@ interface GraphEditorProps {
     onSelect: (id: string) => void;
 }
 
+/**
+ * 🌌 Spatial Graph Editor
+ * Visualizes token relationships with draggable nodes and connecting edges.
+ */
 export function GraphEditor({ tokens, onSelect }: GraphEditorProps) {
-    // Initial Layout: Grid or Random positions
-    const [nodes, setNodes] = useState<Node[]>(() => {
-        return tokens.map((t, i) => ({
-            id: t.id,
-            token: t,
-            x: 100 + (i % 5) * 150,
-            y: 100 + Math.floor(i / 5) * 120
-        }));
-    });
+    const [nodes, setNodes] = useState<Node[]>([]);
+
+    // 🔄 Sync nodes state when tokens prop updates (Essential for async data flow)
+    useEffect(() => {
+        setNodes(currNodes => {
+            const newNodeList: Node[] = [];
+
+            tokens.forEach((t) => {
+                const existing = currNodes.find(n => n.id === t.id);
+                if (existing) {
+                    // Preserve position but update token data
+                    newNodeList.push({ ...existing, token: t });
+                } else {
+                    // New node: Initial layout (Grid)
+                    newNodeList.push({
+                        id: t.id,
+                        token: t,
+                        x: 100 + (newNodeList.length % 5) * 150,
+                        y: 100 + Math.floor(newNodeList.length / 5) * 120
+                    });
+                }
+            });
+
+            return newNodeList;
+        });
+    }, [tokens]);
 
     const edges = useMemo(() => {
         const list: Edge[] = [];
@@ -47,11 +68,11 @@ export function GraphEditor({ tokens, onSelect }: GraphEditorProps) {
     };
 
     return (
-        <div className="w-full h-full bg-surface-0 relative overflow-hidden cursor-grab active:cursor-grabbing select-none">
+        <div className="w-full h-full bg-[#030407]/40 relative overflow-hidden cursor-grab active:cursor-grabbing select-none rounded-[32px]">
             <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
                     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="rgba(168, 85, 247, 0.3)" />
+                        <polygon points="0 0, 10 3.5, 0 7" fill="rgba(0, 240, 255, 0.2)" />
                     </marker>
                 </defs>
                 {edges.map((edge, idx) => {
@@ -66,8 +87,8 @@ export function GraphEditor({ tokens, onSelect }: GraphEditorProps) {
                             y1={sourceNode.y + 20}
                             x2={targetNode.x + 60}
                             y2={targetNode.y + 20}
-                            stroke="rgba(168, 85, 247, 0.2)"
-                            strokeWidth="1"
+                            stroke="rgba(0, 240, 255, 0.15)"
+                            strokeWidth="1.5"
                             markerEnd="url(#arrowhead)"
                         />
                     );
@@ -82,26 +103,28 @@ export function GraphEditor({ tokens, onSelect }: GraphEditorProps) {
                     onDrag={(_e, info) => handleDrag(node.id, info)}
                     onClick={() => onSelect(node.id)}
                     style={{ x: node.x, y: node.y }}
-                    className="absolute w-[120px] p-2 rounded-lg bg-surface-1 border border-surface-active shadow-glass backdrop-blur-sm cursor-pointer hover:border-primary/50 transition-colors z-10"
+                    className="absolute w-[130px] p-2.5 rounded-xl bg-[#0A0C14]/80 border border-white/10 shadow-2xl backdrop-blur-xl cursor-pointer hover:border-primary/50 transition-colors z-10"
                 >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1.5 overflow-hidden">
                         {node.token.$type === 'color' && (
                             <div
-                                className="w-3 h-3 rounded-full border border-white/10"
+                                className="w-3 h-3 flex-shrink-0 rounded-full border border-white/20 shadow-inner"
                                 style={{ backgroundColor: String(node.token.$value) }}
                             />
                         )}
-                        <span className="text-[10px] font-bold text-text-primary truncate">{node.token.name}</span>
+                        <span className="text-[10px] font-bold text-white truncate font-display tracking-tight">
+                            {node.token.name}
+                        </span>
                     </div>
-                    <div className="text-[8px] text-text-muted truncate">
+                    <div className="text-[9px] font-mono text-text-dim truncate bg-white/5 px-1.5 py-0.5 rounded-md border border-white/5 group-hover:text-primary transition-colors">
                         {String(node.token.$value)}
                     </div>
                 </motion.div>
             ))}
 
             {/* Hint Overlay */}
-            <div className="absolute bottom-4 right-4 text-[10px] text-text-muted pointer-events-none bg-surface-0/50 px-2 py-1 rounded border border-surface-active">
-                Drag nodes to organize • Click to inspect
+            <div className="absolute bottom-6 right-6 text-[9px] font-bold uppercase tracking-widest text-text-muted/60 pointer-events-none bg-void/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5">
+                Spatial Perspective • Drag to Navigate
             </div>
         </div>
     );

@@ -4,7 +4,13 @@
   "api": "1.0.0",
   "main": "dist/controller.js",
   "ui": "dist/index.html",
-  "editorType": ["figma"],
+  "editorType": [
+    "figma"
+  ],
   "capabilities": [],
-  "enableProposedApi": false
+  "enableProposedApi": false,
+  "permissions": [
+    "camera",
+    "microphone"
+  ]
 }

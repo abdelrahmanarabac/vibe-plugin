@@ -1,247 +1,140 @@
-import { useEffect, useState } from 'react';
-import { MainLayout, type ViewType } from './ui/layouts/MainLayout';
-import { Dashboard } from './ui/Dashboard';
-import { EditorView } from './ui/EditorView';
-import { SmartInspector } from './ui/components/SmartInspector';
+import { useState } from 'react';
+import { useVibeApp } from './ui/hooks/useVibeApp';
 import { SettingsScreen } from './ui/screens/SettingsScreen';
-import { ImpactWarning, type ImpactReport } from './ui/components/ImpactWarning';
-import { SettingsService } from './infra/SettingsService';
-import { type TokenEntity } from './core/types';
-import type { PluginEvent } from './shared/types';
+import { EditorView } from './ui/EditorView';
+import { Dashboard } from './ui/Dashboard';
+import { Omnibox } from './ui/components/Omnibox';
+import { Coins, LayoutGrid, Layers, Settings as SettingsIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import './ui/theme.css';
 
-/**
- * 🎯 Vibe Tokens - Main Application
- * Updated for Pure Token Management with Live Sync
- */
 export default function App() {
-    // Core State
-    const [apiKey, setApiKey] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [impactReport, setImpactReport] = useState<ImpactReport | null>(null);
+    const vm = useVibeApp();
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph'>('dashboard');
 
-    // Live Sync State
-    const [isGraphSynced, setIsGraphSynced] = useState(false);
-    const [liveIndicator, setLiveIndicator] = useState(false);
-    // const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+    // Fake credits for demo (Matches Dashboard)
+    const credits = 1250;
 
-    // UI State
-    const [activeTab, setActiveTab] = useState<ViewType>('graph'); // Default to Graph/List
-    const [tokens, setTokens] = useState<TokenEntity[]>([]);
-
-    // Unused state removed for clean build
-    const [isProcessing, setIsProcessing] = useState(false);
-
-    const [stats, setStats] = useState({ totalVariables: 0, collections: 0, styles: 0, lastSync: 0 });
-
-    // Load API Key on Mount
-    useEffect(() => {
-        SettingsService.loadApiKey()
-            .then(key => {
-                setApiKey(key || null);
-                setIsLoading(false);
-            })
-            .catch(() => setIsLoading(false));
-
-        // Initial manual sync request
-        parent.postMessage({ pluginMessage: { type: 'SYNC_GRAPH' } }, '*');
-    }, []);
-
-    // Message Handler (Observer Pattern)
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            const msg: PluginEvent = event.data?.pluginMessage;
-            if (!msg) return;
-
-            switch (msg.type) {
-                case 'GRAPH_UPDATED':
-                case 'GRAPH_SYNCED':
-                    setTokens(msg.tokens || []);
-                    setIsGraphSynced(true);
-                    // setLastSyncTime(msg.timestamp || Date.now());
-
-                    // Flash Live Indicator
-                    setLiveIndicator(true);
-                    setTimeout(() => setLiveIndicator(false), 2000);
-
-                    // Update stats implicitly from tokens
-                    setStats(prev => ({ ...prev, totalVariables: msg.tokens?.length || 0, lastSync: Date.now() }));
-                    break;
-
-                case 'SCAN_COMPLETE':
-                    setStats(msg.payload);
-                    break;
-
-                case 'ERROR':
-                    console.error('Controller Error:', msg.message);
-                    setImpactReport(prev => ({
-                        ...prev!,
-                        timestamp: Date.now(),
-                        changes: [],
-                        overallImpact: 'LOW',
-                        summary: msg.message
-                    }));
-                    break;
-
-                case 'IMPACT_REPORT':
-                    setImpactReport(msg.payload);
-                    break;
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, []);
-
-    // Command Handler (Omnibox)
-    const handleCommand = async (query: string) => {
-        if (!apiKey) {
-            parent.postMessage({
-                pluginMessage: { type: 'NOTIFY', message: 'API Key required. Go to Settings.' }
-            }, '*');
-            return;
-        }
-
-        setIsProcessing(true);
-        try {
-            // Simplified Commands
-            if (query.startsWith('/rename-collections') || query.startsWith('/rename')) {
-                parent.postMessage({
-                    pluginMessage: {
-                        type: 'RENAME_COLLECTIONS',
-                        payload: { dryRun: false }
-                    }
-                }, '*');
-                parent.postMessage({
-                    pluginMessage: { type: 'NOTIFY', message: '🔄 Auto-renaming collections...' }
-                }, '*');
-                return;
-            }
-
-            // AI Processing
-            parent.postMessage({
-                pluginMessage: { type: 'NOTIFY', message: '🤖 AI is thinking...' }
-            }, '*');
-
-            const { GeminiService } = await import('./infra/api/GeminiService');
-            const { IntentEngine } = await import('./modules/intelligence/IntentEngine');
-
-            const ai = new GeminiService(apiKey);
-            const intentEngine = new IntentEngine(ai);
-
-            // 🧠 Classify Intent
-            const intent = await intentEngine.classify(query);
-
-            if (intent.type === 'RENAME_COLLECTION' && intent.payload) {
-                parent.postMessage({
-                    pluginMessage: {
-                        type: 'RENAME_COLLECTION',
-                        payload: intent.payload
-                    }
-                }, '*');
-                return;
-            }
-
-            // Fallback: Generate AI response
-            const prompt = `You are Vibe Token OS, a Figma design token assistant. 
-User request: "${query}"
-
-Provide a brief, actionable response (max 2 sentences) on how to accomplish this task in Figma or with design tokens.`;
-
-            const response = await ai.generate(prompt, { tier: 'LITE' });
-
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'NOTIFY',
-                    message: `💡 ${response.substring(0, 100)}${response.length > 100 ? '...' : ''}`
-                }
-            }, '*');
-
-        } catch (e) {
-            console.error(e);
-            parent.postMessage({
-                pluginMessage: { type: 'NOTIFY', message: '❌ Command failed. Check console.' }
-            }, '*');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleUpdate = (id: string, newValue: any) => {
-        parent.postMessage({ pluginMessage: { type: 'UPDATE_VARIABLE', id, newValue } }, '*');
-    };
-
-    // Loading State
-    if (isLoading) {
+    if (vm.settings.isLoading) {
         return (
-            <div className="h-screen w-screen flex items-center justify-center bg-[#2c2c2c]">
-                <div className="text-white/50 text-sm">Loading...</div>
-            </div>
-        );
-    }
-
-    // No API Key - Simple Inline Setup
-    if (!apiKey) {
-        return (
-            <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#2c2c2c] p-8">
-                <div className="max-w-sm w-full space-y-6">
-                    <div className="text-center">
-                        <h1 className="text-xl font-semibold text-white mb-2">Vibe Tokens</h1>
-                        <p className="text-sm text-white/50">Enter your Gemini API Key to continue</p>
-                    </div>
-                    <input
-                        type="password"
-                        placeholder="AIza..."
-                        className="figma-input w-full"
-                        onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
-                                const key = (e.target as HTMLInputElement).value.trim();
-                                // The following line was added based on the user's instruction,
-                                if (key.startsWith('AIza') && key.length > 20) {
-                                    await SettingsService.saveApiKey(key);
-                                    setApiKey(key);
-                                }
-                            }
-                        }}
-                    />
-                    <a
-                        href="https://aistudio.google.com/app/apikey"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block text-center text-sm text-[#0D99FF] hover:underline"
-                    >
-                        Get free API key →
-                    </a>
+            <div className="flex items-center justify-center h-screen bg-[#030407] text-white">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="text-xs font-bold tracking-widest text-primary animate-pulse uppercase">Booting Vibe...</div>
                 </div>
             </div>
         );
     }
 
-    // Main Application
+    if (!vm.settings.apiKey) {
+        return <SettingsScreen apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />;
+    }
+
     return (
-        <div className="h-full flex flex-col overflow-hidden relative">
-            {/* Live Indicator Overlay */}
-            <div className={`absolute top-3 right-3 flex items-center gap-2 transition-opacity duration-300 ${isGraphSynced ? 'opacity-100' : 'opacity-0'}`}>
-                <div className={`w-2 h-2 rounded-full ${liveIndicator ? 'bg-green-400 animate-pulse' : 'bg-green-600/50'}`}></div>
-                <span className="text-[10px] text-white/30 font-mono">LIVE</span>
+        <div className="vibe-root relative">
+            {/* 💎 Elite Header */}
+            <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-void/80 backdrop-blur-xl z-50">
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-primary to-secondary animate-pulse shadow-[0_0_15px_var(--primary-glow)]" />
+                        <div className="absolute inset-0 bg-white/20 blur-[2px] rounded-full" />
+                    </div>
+                    <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40 font-display">
+                        Vibe
+                    </h1>
+                </div>
+
+                {/* Navigation Pill */}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full h-8">
+                        <Coins size={14} className="text-amber-400" />
+                        <span className="text-xs font-bold text-amber-200">{credits.toLocaleString()}</span>
+                    </div>
+
+                    <nav className="flex items-center bg-white/5 p-1 rounded-xl border border-white/5">
+                        <NavButton
+                            active={activeTab === 'dashboard'}
+                            onClick={() => setActiveTab('dashboard')}
+                            icon={<LayoutGrid size={16} />}
+                            label="Overview"
+                        />
+                        <NavButton
+                            active={activeTab === 'graph'}
+                            onClick={() => setActiveTab('graph')}
+                            icon={<Layers size={16} />}
+                            label="Tokens"
+                        />
+                        <NavButton
+                            active={activeTab === 'settings'}
+                            onClick={() => setActiveTab('settings')}
+                            icon={<SettingsIcon size={16} />}
+                            label="Settings"
+                        />
+                    </nav>
+                </div>
+            </header>
+
+            {/* 🌌 Main Content - Fragment Logic */}
+            <main className="vibe-content relative">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
+                        className="h-full"
+                    >
+                        {activeTab === 'dashboard' && (
+                            <div className="fragment-dashboard">
+                                <Dashboard
+                                    tokens={vm.tokens.tokens}
+                                    stats={vm.tokens.stats}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'graph' && (
+                            <div className="fragment-tokens h-full">
+                                <EditorView tokens={vm.tokens.tokens} />
+                            </div>
+                        )}
+
+                        {activeTab === 'settings' && (
+                            <SettingsScreen apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </main>
+
+            {/* 🔮 Global Floating Omnibox - Centered Bottom */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-[440px] px-4">
+                <Omnibox
+                    onCommand={vm.ai.handleCommand}
+                    isProcessing={vm.ai.isProcessing}
+                />
             </div>
 
-            <MainLayout
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                onCommand={handleCommand}
-                isSearchLoading={isProcessing}
-            >
-                {/* Re-ordered Views: Graph is now primary */}
-                {activeTab === 'graph' && <EditorView tokens={tokens} searchFocus="" />}
-                {activeTab === 'dashboard' && <Dashboard tokens={tokens} stats={stats} />}
-                {activeTab === 'table' && <SmartInspector tokens={tokens} onUpdate={handleUpdate} />}
-                {activeTab === 'settings' && <SettingsScreen />}
-
-                <ImpactWarning
-                    report={impactReport}
-                    onDismiss={() => setImpactReport(null)}
-                />
-            </MainLayout>
+            {/* Background Vibe Overlays (Decorative) */}
+            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+                <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 blur-[120px] rounded-full" />
+            </div>
         </div>
+    );
+}
+
+function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${active
+                    ? 'bg-white text-black shadow-lg shadow-white/10'
+                    : 'text-text-dim hover:text-white hover:bg-white/5'
+                }`}
+        >
+            {icon}
+            <span className={active ? 'block' : 'hidden'}>{label}</span>
+        </button>
     );
 }

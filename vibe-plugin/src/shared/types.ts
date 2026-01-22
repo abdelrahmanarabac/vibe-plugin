@@ -1,4 +1,6 @@
 export type PluginAction =
+    | { type: 'REQUEST_GRAPH' }
+    | { type: 'REQUEST_STATS' }
     | { type: 'SCAN_VARS' }
     | { type: 'SYNC_GRAPH' }
     | { type: 'SYNC_VARIABLES' }
@@ -26,6 +28,7 @@ export type PluginEvent =
     | { type: 'SCAN_RESULT'; primitives: any[] }
     | { type: 'GRAPH_SYNCED'; tokens: any[]; timestamp?: number }
     | { type: 'GRAPH_UPDATED'; tokens: any[]; timestamp: number }
+    | { type: 'STATS_UPDATED'; payload: { totalVariables: number; collections: number; styles: number } }
     | { type: 'VARIABLE_CREATED'; payload: { id: string; name: string } }
     | { type: 'VARIABLE_UPDATED'; id: string }
     | { type: 'RENAME_COLLECTIONS_RESULT'; payload: any }

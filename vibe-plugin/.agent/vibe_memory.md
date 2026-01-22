@@ -15,4 +15,6 @@
 - **Tailwind v4 Migration**: v4 moves from JS-based config to CSS-based `@theme`. Use `@tailwindcss/vite` for seamless build integration and `@import "tailwindcss"` in the main CSS entry.
 - **Unified Shell (OOUX)**: Organizing the UI around a central "Omnibox" (Cmd+K) significantly reduces cognitive load by unifying search, navigation, and AI interaction into a single entry point.
 - **View Isolation**: Keep `MainLayout` as a pure shell. Business views (Dashboard, Editor) should not carry their own headers/footers to ensure a consistent look and feel across the OS.
+- **Gemini Model Naming (2026)**: User environment strictly follows 2026 identifiers (`gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3-flash`). Older 1.5 or 2.0 models may trigger 404 errors.
+- **Manifest Permissions**: Permissions like `clipboard-write` and `display-capture` are invalid in the Figma manifest array and must be excluded to pass validation.
 

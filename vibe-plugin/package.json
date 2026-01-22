@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && esbuild src/controller.ts --bundle --outfile=dist/controller.js --target=es2017",
+    "watch": "tsc --watch & vite build --watch & esbuild src/controller.ts --bundle --outfile=dist/controller.js --target=es2017 --watch",
+    "ui:watch": "vite build --watch",
+    "controller:watch": "esbuild src/controller.ts --bundle --outfile=dist/controller.js --target=es2017 --watch",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -17,6 +20,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "autoprefixer": "^10.4.23",
+    "jsdom": "^27.4.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",

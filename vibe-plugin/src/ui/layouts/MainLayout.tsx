@@ -20,9 +20,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     isSearchLoading
 }) => {
     return (
-        <div className="h-full w-full flex flex-col bg-[#1E1E1E] text-white overflow-hidden font-sans">
+        <div className="h-full w-full flex flex-col bg-surface-0 text-white overflow-hidden font-sans">
             {/* Minimal Header with Pill Tabs */}
-            <header className="flex-none p-3 flex items-center justify-between border-b border-white/5 bg-[#1E1E1E]/90 backdrop-blur-md z-40">
+            <header className="flex-none p-3 flex items-center justify-between border-b border-white/5 bg-surface-0/90 backdrop-blur-md z-40">
                 <div className="flex items-center gap-1">
                     <TabButton active={activeTab === 'dashboard'} onClick={() => onTabChange('dashboard')} label="Overview" icon={<LayoutGrid size={14} />} />
                     <TabButton active={activeTab === 'graph'} onClick={() => onTabChange('graph')} label="Tokens" icon={<Layers size={14} />} />

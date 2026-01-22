@@ -7,6 +7,7 @@ import { VariableManager } from './modules/governance/VariableManager';
 import { DocsRenderer } from './modules/documentation/DocsRenderer';
 import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
 import { CapabilityRegistry } from './core/CapabilityRegistry';
+import { EventLoop } from './core/EventLoop';
 
 // Infra
 import { FigmaVariableRepository } from './infra/repositories/FigmaVariableRepository';
@@ -21,7 +22,7 @@ import { GenerateDocsCapability } from './features/documentation/GenerateDocsCap
 import { RenameCollectionsCapability } from './features/collections/RenameCollectionsCapability';
 
 console.clear();
-console.log('[Vibe] System Booting (Architecture v2.0)...');
+console.log('[Vibe] System Booting (Architecture v2.1)...');
 
 // === 1. Initialize Core Engines ===
 const graph = new TokenGraph();
@@ -45,20 +46,28 @@ const capabilities = [
 
 capabilities.forEach(cap => registry.register(cap));
 
-// === 3. Live Sync State (Legacy Polling - to be refactored to Event Driven later) ===
-// We keep this local function for now as it's not a user-initiated capability but a background process
-let syncInterval: number | null = null;
-let lastVariableHash: string = '';
+// === 3. Initialize Event Loop (Background Services) ===
+// Handler for when the EventLoop detects a need to sync
+const handleSyncRequest = async () => {
+    const tokens = await variableManager.syncFromFigma();
+    figma.ui.postMessage({
+        type: 'GRAPH_UPDATED',
+        tokens,
+        timestamp: Date.now()
+    });
+};
+
+const eventLoop = new EventLoop(handleSyncRequest);
 
 // === 4. Setup UI ===
-figma.showUI(__html__, { width: 400, height: 600, themeColors: true });
+figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 
 // === 5. Bootstrap ===
 (async () => {
     try {
         console.log('[Vibe] Initial Sync...');
-        await performSync();
-        startLiveSync();
+        await handleSyncRequest(); // Initial Sync
+        eventLoop.start();         // Start Polling
         console.log('[Vibe] System Ready.');
     } catch (e) {
         console.error('[Vibe] Bootstrap failed:', e);
@@ -95,12 +104,9 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 
             // Handle Result
             if (result.success) {
-                // If it's a sync-related action, we might want to force a broadcast
-                // Ideally capabilities return specific events, but for now we hook into result types
-                // or just rely on the background poller.
-                // However, Create/Update usually demand instant feedback.
+                // If it's a sync-related action, force a broadcast
                 if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_GRAPH'].includes(msg.type)) {
-                    await performSync();
+                    await handleSyncRequest();
                 }
 
                 if (result.value && result.value.message) {
@@ -113,8 +119,55 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             return;
         }
 
-        // B. System/Utility Fallpack (The "Plumbing" that isn't a capability yet)
+        // B. System/Utility Fallback
         switch (msg.type) {
+            case 'REQUEST_GRAPH': {
+                // UI requests initial token graph state
+                try {
+                    const tokens = graph.getAllNodes();
+                    figma.ui.postMessage({
+                        type: 'GRAPH_UPDATED',
+                        payload: tokens,
+                        timestamp: Date.now()
+                    });
+                } catch (error: any) {
+                    console.error('[Controller] Failed to retrieve graph:', error);
+                    figma.ui.postMessage({
+                        type: 'GRAPH_UPDATED',
+                        payload: [],
+                        timestamp: Date.now()
+                    });
+                }
+                break;
+            }
+            case 'REQUEST_STATS': {
+                // UI requests statistics (collections, variables count)
+                try {
+                    const collections = await figma.variables.getLocalVariableCollectionsAsync();
+                    const variables = await figma.variables.getLocalVariablesAsync();
+                    const styles = await figma.getLocalPaintStylesAsync();
+
+                    figma.ui.postMessage({
+                        type: 'STATS_UPDATED',
+                        payload: {
+                            totalVariables: variables.length,
+                            collections: collections.length,
+                            styles: styles.length
+                        }
+                    });
+                } catch (error: any) {
+                    console.error('[Controller] Failed to retrieve stats:', error);
+                    figma.ui.postMessage({
+                        type: 'STATS_UPDATED',
+                        payload: {
+                            totalVariables: 0,
+                            collections: 0,
+                            styles: 0
+                        }
+                    });
+                }
+                break;
+            }
             case 'STORAGE_GET': {
                 const value = await figma.clientStorage.getAsync(msg.key);
                 figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value: value || null });
@@ -133,12 +186,10 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 figma.notify(msg.message);
                 break;
             }
-            // Explicitly ignore "SYNC_VARIABLES" if it's handled by SYNC_GRAPH capability or aliased
-            // If SYNC_VARIABLES is NOT in registry (it isn't, SYNC_GRAPH is), we handle it:
             case 'SYNC_VARIABLES': {
                 // Alias to SyncGraph
                 await registry.getByCommand('SYNC_GRAPH')?.execute({}, context);
-                await performSync();
+                await handleSyncRequest();
                 break;
             }
             default: {
@@ -151,42 +202,3 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         figma.ui.postMessage({ type: 'ERROR', message: error.message || 'Unknown Controller Error' });
     }
 };
-
-// === 7. Live Sync Logic (Background Process) ===
-// This stays outside the registry as it's an event loop, not a command.
-// TODO: Move to an "EventLoop" or "BackgroundWorker" class in future refactor.
-
-function startLiveSync() {
-    if (syncInterval) return;
-    syncInterval = setInterval(async () => {
-        try {
-            const vars = await figma.variables.getLocalVariablesAsync();
-            const currentHash = computeVariableHash(vars);
-            if (currentHash !== lastVariableHash) {
-                lastVariableHash = currentHash;
-                await performSync();
-            }
-        } catch (e) {
-            console.error('[LiveSync] Error:', e);
-        }
-    }, 1000) as unknown as number;
-}
-
-async function performSync() {
-    const tokens = await variableManager.syncFromFigma();
-    figma.ui.postMessage({
-        type: 'GRAPH_UPDATED',
-        tokens,
-        timestamp: Date.now()
-    });
-}
-
-function computeVariableHash(variables: Variable[]): string {
-    return variables.map(v => {
-        try {
-            return `${v.id}:${v.name}:${v.resolvedType}:${JSON.stringify(v.valuesByMode)}`;
-        } catch (e) {
-            return v.id;
-        }
-    }).join('|');
-}

@@ -31,11 +31,11 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-[#1E1E1E] border border-white/10 rounded-xl p-6 w-96 shadow-2xl"
+                className="bg-surface-0 border border-white/10 rounded-xl p-6 w-96 shadow-2xl"
             >
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Palette size={20} className="text-[#A855F7]" />
+                        <Palette size={20} className="text-primary" />
                         Create New Token
                     </h3>
                     <button
@@ -54,7 +54,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="e.g., primary-500"
-                            className="w-full bg-[#2C2C2C] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] outline-none"
+                            className="w-full bg-surface-1 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                             autoFocus
                         />
                     </div>
@@ -67,7 +67,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                                 setType(e.target.value);
                                 setValue(e.target.value === 'color' ? '#A855F7' : '16');
                             }}
-                            className="w-full bg-[#2C2C2C] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] outline-none"
+                            className="w-full bg-surface-1 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                         >
                             <option value="color">Color</option>
                             <option value="number">Number</option>
@@ -89,7 +89,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                                     type="text"
                                     value={value}
                                     onChange={(e) => setValue(e.target.value)}
-                                    className="flex-1 bg-[#2C2C2C] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] outline-none"
+                                    className="flex-1 bg-surface-1 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                                 />
                             </div>
                         ) : (
@@ -98,7 +98,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                                 value={value}
                                 onChange={(e) => setValue(e.target.value)}
                                 placeholder={type === 'number' ? '16' : 'Token value'}
-                                className="w-full bg-[#2C2C2C] border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] outline-none"
+                                className="w-full bg-surface-1 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                             />
                         )}
                     </div>
@@ -113,7 +113,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 px-4 py-2 bg-[#A855F7] hover:bg-[#9333EA] text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-[#A855F7]/20"
+                            className="flex-1 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg transition-colors shadow-lg shadow-primary/20"
                         >
                             Create Token
                         </button>
