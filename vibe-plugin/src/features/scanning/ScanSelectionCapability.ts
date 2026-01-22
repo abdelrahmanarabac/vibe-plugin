@@ -1,42 +1,51 @@
 import type { ICapability } from '../../core/interfaces/ICapability';
 import type { AgentContext } from '../../core/AgentContext';
 import { Result } from '../../shared/utils/Result';
+import { Traverser } from '../../modules/perception/core/Traverser';
+import { CompositeVisitor } from '../../modules/perception/visitors/CompositeVisitor';
+import { TokenDiscoveryVisitor } from '../../modules/perception/visitors/TokenDiscoveryVisitor';
+import { StatsVisitor } from '../../modules/perception/visitors/StatsVisitor';
 
 export class ScanSelectionCapability implements ICapability {
-    readonly id = 'scan-selection-v1';
+    readonly id = 'scan-selection-v2';
     readonly commandId = 'SCAN_SELECTION';
-    readonly description = 'Scans the current selection for tokens and primitives.';
+    readonly description = 'Scans the current selection using Visitor Pattern v2.';
 
     canExecute(context: AgentContext): boolean {
-        // Can only scan if something is selected
         return context.selection.length > 0;
     }
 
-    async execute(payload: any, context: AgentContext): Promise<Result<any>> {
-        void payload; // explicit ignore or remove if possible
-        console.log('[ScanCapability] Executing on', context.selection.length, 'nodes');
+    async execute(_payload: any, context: AgentContext): Promise<Result<any>> {
+        console.log('[ScanCapability] Initializing Perception Engine v2...');
 
-        const primitives: any[] = [];
+        // 1. Setup Visitors
+        const traverser = new Traverser();
+        const composite = new CompositeVisitor();
 
-        // Basic POC Visitor (to be replaced by PerceptionEngine v2)
-        for (const node of context.selection) {
-            primitives.push(this.visit(node));
-        }
+        const discovery = new TokenDiscoveryVisitor();
+        const stats = new StatsVisitor();
+
+        composite.add(discovery);
+        composite.add(stats);
+
+        // 2. Traverse (One Pass, Multiple Checks)
+        console.time('Traversal');
+        traverser.traverse(context.selection, composite);
+        console.timeEnd('Traversal');
+
+        // 3. Aggregate Results
+        const findings = discovery.getFindings();
+        const report = stats.getReport();
+
+        console.log('[ScanCapability] Stats:', report);
 
         return Result.ok({
-            scannedCount: primitives.length,
-            primitives
+            stats: report,
+            findings: {
+                colors: findings.colors,
+                fonts: findings.fonts,
+                scannedCount: findings.stats.scanned
+            }
         });
-    }
-
-    private visit(node: SceneNode): any {
-        return {
-            id: node.id,
-            name: node.name,
-            type: node.type,
-            // Extract minimal data for POC
-            width: node.width,
-            height: node.height
-        };
     }
 }
