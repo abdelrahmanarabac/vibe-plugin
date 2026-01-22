@@ -8,6 +8,9 @@ import { DocsRenderer } from './modules/documentation/DocsRenderer';
 import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
 import { CapabilityRegistry } from './core/CapabilityRegistry';
 
+// Infra
+import { FigmaVariableRepository } from './infra/repositories/FigmaVariableRepository';
+
 // Capabilities
 import { ScanSelectionCapability } from './features/scanning/ScanSelectionCapability';
 import { SyncGraphCapability } from './features/sync/SyncGraphCapability';
@@ -22,7 +25,8 @@ console.log('[Vibe] System Booting (Architecture v2.0)...');
 
 // === 1. Initialize Core Engines ===
 const graph = new TokenGraph();
-const variableManager = new VariableManager(graph);
+const variableRepository = new FigmaVariableRepository(); // Repo
+const variableManager = new VariableManager(graph, variableRepository); // Injection
 const docsRenderer = new DocsRenderer(graph);
 const collectionRenamer = new CollectionRenamer();
 
