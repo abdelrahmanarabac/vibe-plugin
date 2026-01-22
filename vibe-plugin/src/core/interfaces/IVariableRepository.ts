@@ -1,44 +1,32 @@
-/**
- * IVariableRepository - Repository Pattern for Figma Variables
- * 
- * Abstracts Figma API calls, allowing:
- * 1. Domain logic to be tested without Figma
- * 2. Easy swapping of implementations (mock, real, cached)
- * 3. Clear separation of concerns (Domain vs Infrastructure)
- * 
- * Implementation: FigmaVariableRepository in src/infra/
- */
-
 import type { TokenEntity } from '../types';
 
+/**
+ * Repository Interface for Variable Management.
+ * Decouples Business Logic from Figma API calls.
+ */
 export interface IVariableRepository {
     /**
-     * Fetch all local variables as TokenEntities
+     * Syncs all tokens from the external source (Figma)
      */
-    getAll(): Promise<TokenEntity[]>;
+    sync(): Promise<TokenEntity[]>;
 
     /**
-     * Fetch a single variable by ID
+     * Creates a new variable in the external source
      */
-    getById(id: string): Promise<TokenEntity | null>;
+    create(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void>;
 
     /**
-     * Create a new variable
+     * Updates an existing variable
      */
-    create(token: TokenEntity): Promise<void>;
+    update(id: string, value: any): Promise<void>;
 
     /**
-     * Update an existing variable
+     * Renames a variable
      */
-    update(id: string, updates: Partial<TokenEntity>): Promise<void>;
+    rename(id: string, newName: string): Promise<void>;
 
     /**
-     * Delete a variable
+     * Moves a var to a specific collection (if supported)
      */
-    delete(id: string): Promise<void>;
-
-    /**
-     * Batch operation: sync all variables in a collection
-     */
-    syncCollection(collectionId: string): Promise<TokenEntity[]>;
+    move?(id: string, targetCollectionId: string): Promise<void>;
 }

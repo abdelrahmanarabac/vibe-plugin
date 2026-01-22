@@ -1,11 +1,24 @@
+import type { PluginAction } from './shared/types';
+import type { AgentContext } from './core/AgentContext';
+
+// Core Systems
+import { TokenGraph } from './core/TokenGraph';
 import { VariableManager } from './modules/governance/VariableManager';
 import { DocsRenderer } from './modules/documentation/DocsRenderer';
-import { TokenGraph } from './core/TokenGraph';
 import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
-import type { PluginAction } from './shared/types';
+import { CapabilityRegistry } from './core/CapabilityRegistry';
+
+// Capabilities
+import { ScanSelectionCapability } from './features/scanning/ScanSelectionCapability';
+import { SyncGraphCapability } from './features/sync/SyncGraphCapability';
+import { CreateVariableCapability } from './features/management/CreateVariableCapability';
+import { UpdateVariableCapability } from './features/management/UpdateVariableCapability';
+import { RenameVariableCapability } from './features/management/RenameVariableCapability';
+import { GenerateDocsCapability } from './features/documentation/GenerateDocsCapability';
+import { RenameCollectionsCapability } from './features/collections/RenameCollectionsCapability';
 
 console.clear();
-console.log('[Vibe] System Booting (Token OS Mode)...');
+console.log('[Vibe] System Booting (Architecture v2.0)...');
 
 // === 1. Initialize Core Engines ===
 const graph = new TokenGraph();
@@ -13,155 +26,144 @@ const variableManager = new VariableManager(graph);
 const docsRenderer = new DocsRenderer(graph);
 const collectionRenamer = new CollectionRenamer();
 
-// === 2. Live Sync State ===
+// === 2. Initialize Registry & Capabilities ===
+const registry = new CapabilityRegistry();
+
+const capabilities = [
+    new ScanSelectionCapability(),
+    new SyncGraphCapability(variableManager),
+    new CreateVariableCapability(variableManager),
+    new UpdateVariableCapability(variableManager),
+    new RenameVariableCapability(variableManager),
+    new GenerateDocsCapability(docsRenderer, variableManager),
+    new RenameCollectionsCapability(collectionRenamer)
+];
+
+capabilities.forEach(cap => registry.register(cap));
+
+// === 3. Live Sync State (Legacy Polling - to be refactored to Event Driven later) ===
+// We keep this local function for now as it's not a user-initiated capability but a background process
 let syncInterval: number | null = null;
 let lastVariableHash: string = '';
 
-// === 3. Setup UI ===
+// === 4. Setup UI ===
 figma.showUI(__html__, { width: 400, height: 600, themeColors: true });
 
-// === 4. Bootstrap ===
+// === 5. Bootstrap ===
 (async () => {
     try {
         console.log('[Vibe] Initial Sync...');
-        await performSync(); // Instant sync on load
-        startLiveSync(); // Start polling
-        console.log('[Vibe] System Ready. Live Sync Active.');
+        await performSync();
+        startLiveSync();
+        console.log('[Vibe] System Ready.');
     } catch (e) {
         console.error('[Vibe] Bootstrap failed:', e);
     }
 })();
 
-// === 5. Message Bus ===
+// === 6. Message Dispatcher ===
 figma.ui.onmessage = async (msg: PluginAction) => {
     try {
-        // console.log(`[Command] ${msg.type}`, msg.payload); // Debug log
+        // Build Context on-the-fly
+        const context: AgentContext = {
+            graph,
+            selection: figma.currentPage.selection,
+            page: figma.currentPage,
+            session: { timestamp: Date.now() }
+        };
 
-        switch (msg.type) {
-            // === TOKEN OPERATIONS (CORE) ===
+        // A. Capability Dispatch
+        const capability = registry.getByCommand(msg.type);
+        if (capability) {
+            console.log(`[Dispatcher] Routing ${msg.type} -> ${capability.id}`);
 
-            case 'SYNC_VARIABLES':
-            case 'SYNC_GRAPH': {
-                await performSync();
-                break;
+            if (!capability.canExecute(context)) {
+                console.warn(`[Dispatcher] Capability ${capability.id} declined execution.`);
+                figma.notify(`⚠️ Cannot execute ${msg.type} in current context.`);
+                return;
             }
 
-            case 'CREATE_TOKEN':
-            case 'CREATE_VARIABLE': {
-                const { name, type, value } = msg.payload;
-                await variableManager.createVariable(name, type, value);
-                // Create triggers sync implicitly via polling, but accurate hash update is good
-                await performSync();
-                figma.notify(`✅ Created ${name}`);
-                break;
-            }
+            // Extract payload safely
+            const payload = (msg as any).payload !== undefined ? (msg as any).payload : msg;
 
-            case 'UPDATE_TOKEN':
-            case 'UPDATE_VARIABLE': {
-                const { id, newValue } = msg as any; // Cast to allow loose access
-                // Support both msg.newValue (legacy) and msg.payload.value
-                const val = newValue !== undefined ? newValue : (msg as any).payload?.value;
+            // Execute
+            const result = await capability.execute(payload, context);
 
-                await variableManager.updateVariable(id, val);
-                await performSync();
-                break;
-            }
-
-            case 'RENAME_TOKEN': {
-                const { id, newName } = msg.payload;
-                await variableManager.renameVariable(id, newName);
-                await performSync();
-                break;
-            }
-
-            // === COLLECTIONS ===
-
-            case 'RENAME_COLLECTIONS': {
-                const { dryRun } = msg.payload || { dryRun: false };
-                const result = await collectionRenamer.renameAll(dryRun);
-                figma.notify(result.success ? `✅ Renamed ${result.renamedCount} collections` : `⚠️ Rename completed with errors`);
-                figma.ui.postMessage({ type: 'RENAME_COLLECTIONS_RESULT', payload: result });
-                break;
-            }
-
-            case 'RENAME_COLLECTION': {
-                const { oldName, newName } = msg.payload;
-                const collections = await figma.variables.getLocalVariableCollectionsAsync();
-                const target = collections.find(c => c.name === oldName);
-                if (target) {
-                    target.name = newName;
-                    figma.notify(`✅ Renamed to "${newName}"`);
-                } else {
-                    figma.notify(`❌ Collection not found`);
+            // Handle Result
+            if (result.success) {
+                // If it's a sync-related action, we might want to force a broadcast
+                // Ideally capabilities return specific events, but for now we hook into result types
+                // or just rely on the background poller.
+                // However, Create/Update usually demand instant feedback.
+                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_GRAPH'].includes(msg.type)) {
+                    await performSync();
                 }
-                break;
+
+                if (result.value && result.value.message) {
+                    figma.notify(result.value.message);
+                }
+            } else {
+                console.error(`[Dispatcher] Capability failed:`, result.error);
+                figma.notify(`❌ Action failed: ${result.error}`);
             }
+            return;
+        }
 
-            // === DOCUMENTATION ===
-
-            case 'GENERATE_DOCS': {
-                await variableManager.syncFromFigma();
-                await docsRenderer.generateDocs();
-                figma.notify('📘 Documentation Generated');
-                break;
-            }
-
-            // === UTILITIES ===
-
+        // B. System/Utility Fallpack (The "Plumbing" that isn't a capability yet)
+        switch (msg.type) {
             case 'STORAGE_GET': {
                 const value = await figma.clientStorage.getAsync(msg.key);
                 figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value: value || null });
                 break;
             }
-
             case 'STORAGE_SET': {
                 await figma.clientStorage.setAsync(msg.key, msg.value);
                 if (msg.key === 'VIBE_API_KEY') figma.notify('✅ API Key Saved');
                 break;
             }
-
             case 'RESIZE_WINDOW': {
                 figma.ui.resize(msg.width, msg.height);
                 break;
             }
-
             case 'NOTIFY': {
                 figma.notify(msg.message);
                 break;
             }
-
+            // Explicitly ignore "SYNC_VARIABLES" if it's handled by SYNC_GRAPH capability or aliased
+            // If SYNC_VARIABLES is NOT in registry (it isn't, SYNC_GRAPH is), we handle it:
+            case 'SYNC_VARIABLES': {
+                // Alias to SyncGraph
+                await registry.getByCommand('SYNC_GRAPH')?.execute({}, context);
+                await performSync();
+                break;
+            }
             default: {
                 console.warn(`[Vibe] Unknown command: ${msg.type}`);
             }
         }
+
     } catch (error: any) {
         console.error('[Vibe] Controller Error:', error);
-        figma.ui.postMessage({
-            type: 'ERROR',
-            message: error.message || 'Unknown Controller Error'
-        });
+        figma.ui.postMessage({ type: 'ERROR', message: error.message || 'Unknown Controller Error' });
     }
 };
 
-// === 6. Live Sync Logic (Phase 3) ===
+// === 7. Live Sync Logic (Background Process) ===
+// This stays outside the registry as it's an event loop, not a command.
+// TODO: Move to an "EventLoop" or "BackgroundWorker" class in future refactor.
 
 function startLiveSync() {
     if (syncInterval) return;
-
-    // Check every 1 second for snappy feel
     syncInterval = setInterval(async () => {
         try {
             const vars = await figma.variables.getLocalVariablesAsync();
             const currentHash = computeVariableHash(vars);
-
             if (currentHash !== lastVariableHash) {
-                // Change detected!
-                // console.log('[LiveSync] Change detected. Syncing...');
                 lastVariableHash = currentHash;
                 await performSync();
             }
         } catch (e) {
-            console.error('[LiveSync] Error polling:', e);
+            console.error('[LiveSync] Error:', e);
         }
     }, 1000) as unknown as number;
 }
@@ -176,14 +178,11 @@ async function performSync() {
 }
 
 function computeVariableHash(variables: Variable[]): string {
-    // Robust hash: ID + Name + ResolvedType + Values (Stringified)
-    // This ensures that if ANY value changes in ANY mode, we trigger a sync.
     return variables.map(v => {
         try {
-            const values = JSON.stringify(v.valuesByMode);
-            return `${v.id}:${v.name}:${v.resolvedType}:${values}`;
+            return `${v.id}:${v.name}:${v.resolvedType}:${JSON.stringify(v.valuesByMode)}`;
         } catch (e) {
-            return v.id; // Fallback
+            return v.id;
         }
     }).join('|');
 }

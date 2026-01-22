@@ -1,4 +1,9 @@
-import type { ILogger } from '../core/interfaces/ICapability';
+export interface ILogger {
+    info(message: string, meta?: any): void;
+    warn(message: string, meta?: any): void;
+    error(message: string, error?: Error, meta?: any): void;
+    debug(message: string, meta?: any): void;
+}
 
 /**
  * ConsoleLogger - Simple logger implementation for development
