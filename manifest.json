@@ -1,0 +1,16 @@
+{
+  "name": "Vibe Tokens",
+  "id": "vibe-tokens-plugin",
+  "api": "1.0.0",
+  "main": "dist/controller.js",
+  "ui": "dist/index.html",
+  "editorType": [
+    "figma"
+  ],
+  "capabilities": [],
+  "enableProposedApi": false,
+  "permissions": [
+    "camera",
+    "microphone"
+  ]
+}
