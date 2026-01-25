@@ -226,6 +226,60 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 await handleSyncRequest();
                 break;
             }
+            case 'CREATE_STYLE': {
+                const { name, type, value } = (msg as any).payload;
+                try {
+                    let newStyle: BaseStyle | null = null;
+
+                    if (type === 'typography') {
+                        await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+                        const style = figma.createTextStyle();
+                        style.name = name;
+                        style.fontName = { family: "Inter", style: "Regular" };
+                        style.fontSize = 16;
+                        newStyle = style;
+                    }
+                    else if (type === 'effect') {
+                        const style = figma.createEffectStyle();
+                        style.name = name;
+                        style.effects = [{
+                            type: 'DROP_SHADOW',
+                            color: { r: 0, g: 0, b: 0, a: 0.25 },
+                            offset: { x: 0, y: 4 },
+                            radius: 4,
+                            visible: true,
+                            blendMode: 'NORMAL'
+                        }];
+                        newStyle = style;
+                    }
+                    else if (type === 'grid') {
+                        const style = figma.createGridStyle();
+                        style.name = name;
+                        style.layoutGrids = [{
+                            pattern: 'ROWS',
+                            alignment: 'STRETCH',
+                            gutterSize: 20,
+                            count: 4,
+                            sectionSize: 1, // Fix: sectionSize is required for ROWS/COLUMNS? No, check types. Actually sectionSize is valid for rows.
+                            visible: true,
+                            color: { r: 1, g: 0, b: 0, a: 0.1 }
+                        }];
+                        newStyle = style;
+                    }
+
+                    if (newStyle) {
+                        newStyle.description = value || '';
+                        figma.notify(`✅ Created Style: ${name}`);
+                        await broadcastStats(); // Update UI stats
+                    } else {
+                        throw new Error(`Unsupported style type: ${type}`);
+                    }
+                } catch (e: any) {
+                    console.error('[Controller] Failed to create style:', e);
+                    figma.notify(`❌ Failed: ${e.message}`);
+                }
+                break;
+            }
             default: {
                 console.warn(`[Vibe] Unknown command: ${msg.type}`);
             }

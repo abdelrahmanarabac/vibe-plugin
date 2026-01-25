@@ -2,6 +2,7 @@ import { Zap, Download, Plus, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../core/types';
 import { NewTokenDialog } from './components/NewTokenDialog';
+import { NewStyleDialog } from './components/NewStyleDialog';
 import { useState } from 'react';
 
 interface DashboardProps {
@@ -15,6 +16,7 @@ interface DashboardProps {
  */
 export function Dashboard({ tokens = [], stats }: DashboardProps) {
     const [showNewTokenDialog, setShowNewTokenDialog] = useState(false);
+    const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
 
     const handleNewToken = () => {
         setShowNewTokenDialog(true);
@@ -24,6 +26,15 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
         parent.postMessage({
             pluginMessage: {
                 type: 'CREATE_VARIABLE',
+                payload: data
+            }
+        }, '*');
+    };
+
+    const handleCreateStyle = (data: { name: string; type: string; value: any }) => {
+        parent.postMessage({
+            pluginMessage: {
+                type: 'CREATE_STYLE',
                 payload: data
             }
         }, '*');
@@ -107,7 +118,7 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
 
                 {/* 🖌️ Quick Action: Add Style (Requested Feature) */}
                 <button
-                    onClick={() => parent.postMessage({ pluginMessage: { type: 'CREATE_STYLE' } }, '*')}
+                    onClick={() => setShowNewStyleDialog(true)}
                     className="vibe-card w-[328px] h-[80px] p-4 flex items-center justify-between hover:border-secondary/50 group"
                 >
                     <div className="flex items-center gap-4">
@@ -142,6 +153,12 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
                 isOpen={showNewTokenDialog}
                 onClose={() => setShowNewTokenDialog(false)}
                 onSubmit={handleCreateToken}
+            />
+
+            <NewStyleDialog
+                isOpen={showNewStyleDialog}
+                onClose={() => setShowNewStyleDialog(false)}
+                onSubmit={handleCreateStyle}
             />
         </div>
     );

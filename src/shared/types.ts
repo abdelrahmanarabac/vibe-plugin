@@ -21,7 +21,8 @@ export type PluginAction =
     | { type: 'CREATE_TOKENS'; payload: { name: string; tokens: any[] } }
     | { type: 'CREATE_TOKEN'; payload: { name: string; type: 'color' | 'number' | 'string'; value: any } }
     | { type: 'UPDATE_TOKEN'; id: string; newValue: any }
-    | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } };
+    | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } }
+    | { type: 'CREATE_STYLE'; payload: { name: string; type: 'typography' | 'effect' | 'grid'; value: any } };
 
 export type PluginEvent =
     | { type: 'SCAN_COMPLETE'; payload: any }
