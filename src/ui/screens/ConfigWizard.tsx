@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useConfig } from '../contexts/ConfigContext';
-import { ColorPicker } from '../components/inputs/ColorPicker';
+import { VibeColorPicker } from '../components/ColorPicker';
 import { TypeHierarchyPreview } from '../components/preview/TypeHierarchyPreview';
 
 interface ConfigWizardProps {
@@ -75,8 +75,7 @@ export const ConfigWizard = ({ onComplete }: ConfigWizardProps) => {
                         </div>
 
                         <div className="vibe-input-group" style={{ marginTop: '20px' }}>
-                            <ColorPicker
-                                label="Primary Brand Color"
+                            <VibeColorPicker
                                 value={config.brand.primaryColor}
                                 onChange={(color) => updateConfig({
                                     brand: { ...config.brand, primaryColor: color }

@@ -54,6 +54,27 @@ capabilities.forEach(cap => registry.register(cap));
 
 // === 3. Initialize Event Loop (Background Services) ===
 // Handler for when the EventLoop detects a need to sync
+// Helper to broadcast stats
+const broadcastStats = async () => {
+    try {
+        const collections = await figma.variables.getLocalVariableCollectionsAsync();
+        const variables = await figma.variables.getLocalVariablesAsync();
+        const styles = await figma.getLocalPaintStylesAsync();
+
+        figma.ui.postMessage({
+            type: 'STATS_UPDATED',
+            payload: {
+                totalVariables: variables.length,
+                collections: collections.length,
+                styles: styles.length
+            }
+        });
+    } catch (error) {
+        console.error('[Controller] Failed to broadcast stats:', error);
+    }
+};
+
+// Handler for when the EventLoop detects a need to sync
 const handleSyncRequest = async () => {
     try {
         const tokens = await variableManager.syncFromFigma();
@@ -66,6 +87,10 @@ const handleSyncRequest = async () => {
             payload: tokens,
             timestamp: Date.now()
         });
+
+        // 🟢 FIX: Broadcast stats immediately after graph update
+        await broadcastStats();
+
         console.log(`[Controller] Synced ${tokens.length} tokens to UI.`);
     } catch (e) {
         console.error('[Controller] Sync Failed:', e);

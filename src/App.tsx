@@ -6,11 +6,13 @@ import { Dashboard } from './ui/Dashboard';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
+import { OmniboxTrigger, OmniboxModal } from './features/omnibox';
 
 
 export default function App() {
     const vm = useVibeApp();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph'>('dashboard');
+    const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
 
     // Fake credits for demo (Matches Dashboard)
     const credits = 1250;
@@ -35,8 +37,6 @@ export default function App() {
             <MainLayout
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                onCommand={vm.ai.handleCommand}
-                isSearchLoading={vm.ai.isProcessing}
                 credits={credits}
             >
                 <AnimatePresence mode="wait">
@@ -73,6 +73,22 @@ export default function App() {
                     </motion.div>
                 </AnimatePresence>
             </MainLayout>
+
+            {/* Omnibox Feature */}
+            <OmniboxTrigger
+                isOpen={isOmniboxOpen}
+                onClick={() => setIsOmniboxOpen(!isOmniboxOpen)}
+            />
+
+            <OmniboxModal
+                isOpen={isOmniboxOpen}
+                onClose={() => setIsOmniboxOpen(false)}
+                onCommand={(cmd) => {
+                    vm.ai.handleCommand(cmd);
+                    // Optional: Switch to relevant tab if needed, but for now just execute
+                }}
+                isProcessing={vm.ai.isProcessing}
+            />
 
             {/* Background Vibe Overlays (Decorative) */}
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">

@@ -3,7 +3,7 @@ import { CollectionClassifier } from '../src/modules/collections/logic/Collectio
 
 // Mock types since we can't import figma types easily in node environment
 const createMockVariable = (name: string, hasAliases: boolean, scopes: string[] = ['ALL_SCOPES']) => ({
-    id: 'mock-id',
+    id: `mock-id-${name}`,
     name,
     resolvedType: 'COLOR',
     valuesByMode: { 'mode-1': hasAliases ? { type: 'VARIABLE_ALIAS' } : '#000000' },
@@ -31,8 +31,14 @@ describe('CollectionClassifier', () => {
     });
 
     // Helper to access private method for testing logic directly
-    const runLogic = (variables: any[]) => {
-        return (classifier as any).runClassificationLogic(variables);
+    const runLogic = (variables: any[], collectionName = 'Untitled Collection') => {
+        const mockCollection = {
+            id: 'collection-id',
+            name: collectionName,
+            variableIds: variables.map((_, i) => `var-${i}`),
+            modes: [{ modeId: 'mode-1', name: 'Mode 1' }]
+        } as any;
+        return (classifier as any).runClassificationLogic(mockCollection, variables);
     };
 
     it('should classify Primitives correctly based on patterns (Rule 1)', () => {

@@ -104,11 +104,39 @@ export class FigmaVariableRepository implements IVariableRepository {
     }
 
     async create(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void> {
-        let collections = await figma.variables.getLocalVariableCollectionsAsync();
-        let collection = collections[0];
 
-        if (!collection) {
-            collection = figma.variables.createVariableCollection('Vibe Tokens');
+        // Check if this is a Responsive Definition (Multi-mode)
+        const isResponsive = typeof value === 'object' && value !== null && 'mobile' in value;
+
+        let collection: VariableCollection;
+
+        if (isResponsive) {
+            // Find or Create "Responsive Tokens" collection
+            const collections = await figma.variables.getLocalVariableCollectionsAsync();
+            let respCollection = collections.find(c => c.name === 'Responsive Tokens');
+
+            if (!respCollection) {
+                console.log('[Repo] Creating Responsive Collection...');
+                respCollection = figma.variables.createVariableCollection('Responsive Tokens');
+                // Rename default mode to Mobile
+                respCollection.renameMode(respCollection.modes[0].modeId, 'Mobile');
+                // Add Tablet and Desktop
+                respCollection.addMode('Tablet');
+                respCollection.addMode('Desktop');
+            }
+
+            // Ensure modes exist (in case partially deleted)
+            // We assume standard setup "Mobile", "Tablet", "Desktop" exists if collection was just found/created.
+
+            collection = respCollection;
+        } else {
+            // Standard Single Mode
+            const collections = await figma.variables.getLocalVariableCollectionsAsync();
+            collection = collections.find(c => c.name === 'Vibe Tokens') || collections[0];
+            if (!collection || collection.name !== 'Vibe Tokens') {
+                // Prefer explicit Vibe Tokens if possible, otherwise create
+                collection = figma.variables.createVariableCollection('Vibe Tokens');
+            }
         }
 
         const variable = figma.variables.createVariable(
@@ -117,15 +145,32 @@ export class FigmaVariableRepository implements IVariableRepository {
             type === 'color' ? 'COLOR' : type === 'number' ? 'FLOAT' : 'STRING'
         );
 
-        const modeId = collection.modes[0].modeId;
+        if (isResponsive) {
+            // Set values for each mode
+            const modes = collection.modes;
+            // Expect modes: Mobile, Tablet, Desktop
+            // We map input keys (lowercase) to Mode Names (Title case)
+            const map: Record<string, string> = { 'mobile': 'Mobile', 'tablet': 'Tablet', 'desktop': 'Desktop' };
 
-        if (type === 'color') {
-            const rgb = this.hexToRgbInternal(value);
-            variable.setValueForMode(modeId, rgb);
-        } else if (type === 'number') {
-            variable.setValueForMode(modeId, parseFloat(value));
+            for (const [key, val] of Object.entries(value)) {
+                const modeName = map[key];
+                const mode = modes.find(m => m.name === modeName);
+                if (mode) {
+                    const parsed = type === 'number' ? parseFloat(val as string) : val;
+                    variable.setValueForMode(mode.modeId, parsed as VariableValue);
+                }
+            }
         } else {
-            variable.setValueForMode(modeId, value);
+            // Standard Set
+            const modeId = collection.modes[0].modeId;
+            if (type === 'color') {
+                const rgb = this.hexToRgbInternal(value);
+                variable.setValueForMode(modeId, rgb);
+            } else if (type === 'number') {
+                variable.setValueForMode(modeId, parseFloat(value));
+            } else {
+                variable.setValueForMode(modeId, value);
+            }
         }
     }
 

@@ -3,10 +3,10 @@ import type { AgentContext } from '../../core/AgentContext';
 import { Result } from '../../shared/utils/Result';
 import type { VariableManager } from '../../modules/governance/VariableManager';
 
+import { ColorPalette } from '../color/ColorPalette';
+
 export class CreateVariableCapability implements ICapability {
     readonly id = 'create-variable-v1';
-    // Mapped to both legacy and new command IDs if needed, but registry handles one-to-one.
-    // We will register multiple instances or aliases if needed, but for now strict mapping.
     readonly commandId = 'CREATE_VARIABLE';
     readonly description = 'Creates a new design token (variable) in Figma.';
 
@@ -20,8 +20,35 @@ export class CreateVariableCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { name: string; type: 'color' | 'number' | 'string'; value: any }, _context: AgentContext): Promise<Result<any>> {
+    async execute(payload: { name: string; type: 'color' | 'number' | 'string'; value: any; extensions?: any }, _context: AgentContext): Promise<Result<any>> {
         try {
+            // Handle Color Scales
+            if (payload.type === 'color' && payload.extensions?.scope && payload.extensions.scope.startsWith('scale')) {
+                const scale = ColorPalette.generateScale(payload.value);
+                const createdNames: string[] = [];
+
+                // Determine Range (Default 50-950 or Custom)
+                let min = 50;
+                let max = 950;
+
+                if (payload.extensions.scope === 'scale-custom' && payload.extensions.range) {
+                    [min, max] = payload.extensions.range;
+                }
+
+                // Create each stop
+                for (const [stop, hex] of Object.entries(scale)) {
+                    const stopNum = parseInt(stop);
+                    if (stopNum >= min && stopNum <= max) {
+                        const tokenName = `${payload.name}/${stop}`; // name/500
+                        await this.variableManager.createVariable(tokenName, 'color', hex);
+                        createdNames.push(tokenName);
+                    }
+                }
+
+                return Result.ok({ created: true, names: createdNames, count: createdNames.length });
+            }
+
+            // Default: Single Variable
             await this.variableManager.createVariable(payload.name, payload.type, payload.value);
             return Result.ok({ created: true, name: payload.name });
         } catch (e: any) {

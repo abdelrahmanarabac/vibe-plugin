@@ -1,195 +1,277 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Sparkles, Hash, Zap } from 'lucide-react';
-import { colord } from 'colord';
-import { ColorPalette } from '../../features/color/ColorPalette';
+import { X, Pipette } from 'lucide-react';
+import { VibeSelect } from './inputs/VibeSelect';
+import { colord, extend } from 'colord';
+import namesPlugin from 'colord/plugins/names';
+import a11yPlugin from 'colord/plugins/a11y';
+
+extend([namesPlugin, a11yPlugin]);
 
 interface ColorPickerProps {
     value: string;
     onChange: (hex: string) => void;
 }
 
-const PRESETS = [
-    // ⚡ Electric Accents
-    { name: 'Primary', hex: '#6E62E5' },
-    { name: 'Purple', hex: '#A855F7' },
-    { name: 'Pink', hex: '#EC4899' },
-    { name: 'Cyan', hex: '#00E5FF' },
-
-    // 🚦 Signals
-    { name: 'Success', hex: '#10B981' },
-    { name: 'Warning', hex: '#F59E0B' },
-    { name: 'Error', hex: '#F43F5E' },
-    { name: 'Info', hex: '#0EA5E9' },
-
-    // 🌑 Void Scale
-    { name: 'Void', hex: '#050505' },
-    { name: 'Surface', hex: '#18181B' },
-    { name: 'Elevated', hex: '#27272A' },
-    { name: 'Text', hex: '#E5E5E5' },
-];
-
 export function VibeColorPicker({ value, onChange }: ColorPickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [format, setFormat] = useState<'HSL' | 'HEX' | 'RGB'>('HSL');
 
-    // Generate the full scale for the currently selected color
-    const currentScale = ColorPalette.generateScale(value);
+    // Local state for smooth interaction and to avoid hex-conversion loss
+    // We initialize from prop, but separate them to avoid jitter
+    const [hsva, setHsva] = useState(() => {
+        const c = colord(value);
+        return c.isValid() ? c.toHsv() : { h: 250, s: 57, v: 90, a: 1 };
+    });
 
-    // Close on click outside
+    // Extract for render usage
+    const { h, s, v, a } = hsva;
+
+    // Sync from Props (External Change) -> Local State
+    // We only update if the incoming value resolves to a DIFFERENT color than our current local state
+    // This prevents the "lossy" loop where Hex -> HSV -> Hex changes slightly and moves sliders
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+        const incoming = colord(value);
+        if (incoming.isValid()) {
+            const incomingHsv = incoming.toHsv();
+            // Check delta to avoid loop updates (allow small float diffs)
+            const currentHex = colord(hsva).toHex();
+            if (incoming.toHex() !== currentHex) {
+                setHsva(incomingHsv);
             }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        }
+    }, [value, hsva]);
 
-    const isLight = colord(value).isLight();
-    const activeGlow = colord(value).alpha(isLight ? 0.15 : 0.3).toRgbString();
+    // Helper to close on Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsOpen(false);
+        };
+        if (isOpen) window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
+
+    // Internal Update Handler
+    const updateColor = useCallback((updates: Partial<{ h: number; s: number; v: number; a: number }>) => {
+        setHsva(prev => {
+            const next = { ...prev, ...updates };
+            // Emit upwards
+            const newColor = colord(next);
+            onChange(newColor.toHex());
+            return next;
+        });
+    }, [onChange]);
+
+    // Saturation/Value Area Logic
+    const svRef = useRef<HTMLDivElement>(null);
+    const handleSVMouse = (e: React.MouseEvent | React.TouchEvent) => {
+        if (!svRef.current) return;
+        const rect = svRef.current.getBoundingClientRect();
+
+        // Use page coordinates for better reliability during scroll/modal positions
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+        const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+
+        updateColor({ s: x * 100, v: y * 100 });
+    };
+
+    const startSVDrag = (e: React.MouseEvent | React.TouchEvent) => {
+        // Prevent default to stop scrolling on touch
+        // e.preventDefault(); 
+        handleSVMouse(e);
+
+        const onMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
+            handleSVMouse(moveEvent as any);
+        };
+        const onMouseUp = () => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            window.removeEventListener('touchmove', onMouseMove);
+            window.removeEventListener('touchend', onMouseUp);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('touchmove', onMouseMove);
+        window.addEventListener('touchend', onMouseUp);
+    };
 
     return (
-        <div className="relative" ref={containerRef}>
-            {/* Trigger Swatch: Premium Glassmorphic Swatch */}
+        <div ref={containerRef} className="relative">
+            {/* Trigger Swatch */}
             <button
                 type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="group relative w-14 h-14 rounded-2xl flex items-center justify-center p-1.5 bg-[#0A0A0A] border border-white/5 hover:border-white/10 active:scale-95 transition-all duration-300"
+                onClick={() => setIsOpen(true)}
+                className="w-12 h-12 rounded-xl border border-white/10 shadow-lg transition-transform active:scale-95 group relative overflow-hidden"
+                style={{ backgroundColor: colord(hsva).toHex() }}
             >
-                {/* Dynamic Neon Glow */}
-                <div
-                    className="absolute inset-0 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ backgroundColor: activeGlow }}
-                />
-
-                {/* Main Color Swatch */}
-                <div
-                    className="relative w-full h-full rounded-[10px] flex items-center justify-center overflow-hidden border border-black/20 shadow-inner"
-                    style={{ backgroundColor: value }}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-tr from-black/20 via-transparent to-white/10" />
-                    <ChevronDown
-                        size={16}
-                        className={`transform transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`}
-                        style={{ color: isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}
-                    />
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
 
-            {/* Popover: Ultra-Modern Glassmorphic Interface */}
             <AnimatePresence>
                 {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(10px)' }}
-                        animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 0.9, y: 10, filter: 'blur(10px)' }}
-                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                        className="absolute top-16 left-1/2 -translate-x-1/2 z-[100] w-72 p-1 rounded-[24px] bg-[#080808]/90 border border-white/10 shadow-[0_30px_90px_-20px_rgba(0,0,0,1)] backdrop-blur-3xl"
-                    >
-                        {/* 1. Header with Neon Accent */}
-                        <div className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
-                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Zap size={10} className="text-primary animate-pulse" />
-                                Color Engine v2
-                            </span>
-                            <div className="flex gap-1.5">
-                                <div className="w-1 h-1 rounded-full bg-primary/40" />
-                                <div className="w-1 h-1 rounded-full bg-primary/20" />
-                                <div className="w-1 h-1 rounded-full bg-primary/10" />
-                            </div>
-                        </div>
+                    <>
+                        {/* Global Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsOpen(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+                        />
 
-                        <div className="p-4 space-y-6">
-                            {/* 2. Atomic Scale (50-950) */}
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center px-1">
-                                    <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-widest flex items-center gap-1.5">
-                                        <Sparkles size={8} />
-                                        Spectral Distro
-                                    </h4>
-                                    <span className="text-[8px] font-mono text-white/10">PRO-SCALE</span>
-                                </div>
-                                <div className="flex gap-1 h-10">
-                                    {Object.entries(currentScale).map(([stop, hex]) => (
-                                        <button
-                                            key={stop}
-                                            type="button"
-                                            onClick={() => onChange(hex)}
-                                            className={`flex-1 rounded-lg border border-white/5 transition-all hover:scale-110 hover:z-10 relative overflow-hidden ${value.toLowerCase() === hex.toLowerCase() ? 'ring-2 ring-primary/60 ring-offset-2 ring-offset-[#080808]' : 'opacity-60 hover:opacity-100'}`}
-                                            style={{ backgroundColor: hex }}
-                                            title={`${stop}: ${hex}`}
-                                        >
-                                            {value.toLowerCase() === hex.toLowerCase() && (
-                                                <div className="absolute inset-0 bg-white/10 animate-pulse" />
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
+                        {/* Centered Modal */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] bg-[#0E0E0E] border border-white/10 rounded-[24px] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.8)] z-[9999] overflow-visible flex flex-col"
+                        >
+                            {/* Header */}
+                            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02] rounded-t-[24px]">
+                                <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                                    <Pipette size={12} className="text-white/20" />
+                                    Solid Fill
+                                </span>
+                                <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/5 rounded-full transition-colors text-white/40 hover:text-white">
+                                    <X size={14} />
+                                </button>
                             </div>
 
-                            {/* 3. Preset Matrix */}
-                            <div className="space-y-3">
-                                <h4 className="text-[9px] font-bold text-white/20 uppercase tracking-widest pl-1">Vibe Matrix</h4>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {PRESETS.map((color) => (
-                                        <button
-                                            key={color.hex}
-                                            type="button"
-                                            onClick={() => onChange(color.hex)}
-                                            className="group relative w-full aspect-square rounded-[18px] bg-[#111111] border border-white/5 flex items-center justify-center transition-all hover:border-white/20 hover:bg-[#181818] overflow-hidden"
-                                        >
-                                            <div
-                                                className="w-1/2 h-1/2 rounded-full shadow-lg transition-all duration-300 group-hover:scale-125 blur-[1px] group-hover:blur-0"
-                                                style={{ backgroundColor: color.hex }}
-                                            />
-                                            {value.toLowerCase() === color.hex.toLowerCase() && (
-                                                <>
-                                                    <motion.div
-                                                        layoutId="active-indicator"
-                                                        className="absolute inset-0 rounded-[18px] border-2 border-primary/50 pointer-events-none"
-                                                    />
-                                                    <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
-                                                </>
-                                            )}
-                                        </button>
-                                    ))}
+                            {/* Saturation/Value Area */}
+                            <div className="p-1">
+                                <div
+                                    ref={svRef}
+                                    onMouseDown={startSVDrag}
+                                    onTouchStart={startSVDrag}
+                                    className="relative w-full aspect-square cursor-crosshair select-none rounded-[20px] overflow-hidden"
+                                    style={{
+                                        backgroundColor: `hsl(${h}, 100%, 50%)`,
+                                        backgroundImage: `linear-gradient(to right, #fff, transparent), linear-gradient(to top, #000, transparent)`
+                                    }}
+                                >
+                                    <motion.div
+                                        className="absolute w-4 h-4 rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.2)] pointer-events-none"
+                                        style={{
+                                            left: `${s}%`,
+                                            top: `${100 - v}%`, // Inverted Logic: 100% Value is TOP (0%), 0% Value is BOTTOM (100%)
+                                            x: '-50%',
+                                            y: '-50%',
+                                            backgroundColor: colord(hsva).toHex()
+                                        }}
+                                    />
                                 </div>
                             </div>
 
-                            {/* 4. Manual Precision Control */}
-                            <div className="pt-2 border-t border-white/5">
-                                <label className="group relative flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-white/10 cursor-pointer transition-all active:scale-[0.98]">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-white/5 flex items-center justify-center group-hover:bg-[#222222] transition-colors">
-                                            <Hash size={12} className="text-white/30 group-hover:text-primary transition-colors" />
+                            {/* Controls Area */}
+                            <div className="p-4 space-y-5">
+                                <div className="space-y-4">
+                                    {/* Hue Slider */}
+                                    <div className="relative h-4 w-full group">
+                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full overflow-hidden border border-white/5 mx-2">
+                                            <div className="w-full h-full" style={{ background: 'linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)' }} />
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-white/20 uppercase tracking-wider">Manual Hook</span>
-                                            <span className="text-[11px] font-mono text-white/40 group-hover:text-white/80 uppercase">{value}</span>
-                                        </div>
-                                    </div>
-                                    <div className="relative w-8 h-8 rounded-full border border-white/10 overflow-hidden shadow-xl">
                                         <input
-                                            type="color"
-                                            value={value}
-                                            onChange={(e) => onChange(e.target.value)}
-                                            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                                            type="range"
+                                            min="0"
+                                            max="360"
+                                            value={h}
+                                            onChange={(e) => updateColor({ h: parseInt(e.target.value) })}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                         />
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-red-500 via-green-500 to-blue-500 opacity-20" />
                                         <div
-                                            className="absolute inset-1 rounded-full border border-white/10 shadow-inner"
-                                            style={{ backgroundColor: value }}
+                                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white bg-white shadow-md pointer-events-none transition-transform group-active:scale-110"
+                                            style={{
+                                                left: `calc(${(h / 360) * 100}% - 4px)`, // Just basic % since track is full width essentially
+                                                marginLeft: '4px',
+                                                backgroundColor: `hsl(${h}, 100%, 50%)`
+                                            }}
                                         />
                                     </div>
-                                </label>
-                            </div>
-                        </div>
 
-                        {/* Visual Floor Decor */}
-                        <div className="h-1 w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-30" />
-                    </motion.div>
+                                    {/* Alpha Slider */}
+                                    <div className="relative h-4 w-full group">
+                                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full overflow-hidden border border-white/5 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAXNSR0IArs4c6QAAACBJREFUGFdjZEADJghmYmBgYIJiYIIRmCCIEYoBAhgYAAqUAgpUvVxyAAAAAElFTkSuQmCC')] mx-2">
+                                            <div className="w-full h-full" style={{ background: `linear-gradient(to right, transparent, hsl(${h}, 100%, 50%))` }} />
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.01"
+                                            value={a}
+                                            onChange={(e) => updateColor({ a: parseFloat(e.target.value) })}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div
+                                            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white bg-white shadow-md pointer-events-none transition-transform group-active:scale-110"
+                                            style={{
+                                                left: `calc(${a * 100}% - 4px)`,
+                                                marginLeft: '4px',
+                                                backgroundColor: colord(hsva).toHex()
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Inputs Row */}
+                                <div className="flex gap-3">
+                                    <div className="w-[88px] h-[40px]">
+                                        <VibeSelect
+                                            value={format}
+                                            onChange={setFormat}
+                                            options={[
+                                                { label: 'HSL', value: 'HSL' },
+                                                { label: 'HEX', value: 'HEX' },
+                                                { label: 'RGB', value: 'RGB' },
+                                            ]}
+                                            className="h-full"
+                                        />
+                                    </div>
+
+                                    <div className="flex-1 flex gap-2">
+                                        {format === 'HSL' ? (
+                                            <>
+                                                {[Math.round(h), Math.round(s), Math.round(v), Math.round(a * 100)].map((val, i) => (
+                                                    <div key={i} className="flex-1 min-w-0 h-[40px]">
+                                                        <input
+                                                            type="text"
+                                                            value={i === 3 ? `${val}%` : val}
+                                                            readOnly
+                                                            className="w-full h-full bg-[#1A1A1A] border border-white/5 rounded-xl text-center text-[13px] font-mono text-white outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : format === 'HEX' ? (
+                                            <input
+                                                type="text"
+                                                value={colord(hsva).toHex().toUpperCase()}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (colord(val).isValid()) {
+                                                        onChange(val); // Update parent
+                                                        // Local state will update via useEffect
+                                                    }
+                                                }}
+                                                className="w-full h-[40px] bg-[#1A1A1A] border border-white/5 rounded-xl px-3 text-center text-[13px] font-mono text-white outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all uppercase"
+                                            />
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                value={colord(hsva).toRgbString()}
+                                                readOnly
+                                                className="w-full h-[40px] bg-[#1A1A1A] border border-white/5 rounded-xl px-3 text-center text-[13px] font-mono text-white outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>

@@ -90,7 +90,7 @@ export class ColorNamer {
         })).sort((a, b) => a.deltaE - b.deltaE);
 
         const weightedBest = weightedResults[0];
-        if (weightedBest.deltaE <= 15.0) {
+        if (weightedBest.deltaE <= 20.0) {
             return {
                 name: weightedBest.name,
                 confidence: Math.max(0.6, 0.9 - (weightedBest.deltaE / 50)),

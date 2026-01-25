@@ -130,7 +130,23 @@ export class CollectionClassifier {
         collection: VariableCollection,
         variables: VariableInfo[]
     ): { type: CollectionType; confidence: number; reason: string } {
+        // Defensive check for malformed inputs or test setup mismatches
+        if (!variables || !Array.isArray(variables)) {
+            return {
+                type: 'Unknown',
+                confidence: 0.0,
+                reason: 'No variables provided for analysis'
+            };
+        }
+
         const totalVars = variables.length;
+        if (totalVars === 0) {
+            return {
+                type: 'Unknown',
+                confidence: 0.0,
+                reason: 'Collection variables list is empty'
+            };
+        }
 
         // ✅ RULE 0: Collection Name Signal (Level 2 - Highest Priority)
         const collectionName = collection.name.toLowerCase();
