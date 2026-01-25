@@ -11,13 +11,14 @@ const TokenSchema = z.object({
 });
 
 export class SemanticIntelligence {
-  static buildMappingPrompt(primitives: any[], vibe: string): string {
+  static buildMappingPrompt(primitives: any[], vibe: string, history: any[] = []): string {
     return `
       SYSTEM ROLE: Design System Architect (Strict IO).
       OBJECTIVE: Generate a complete semantic token map JSON based on the provided Vibe and Primitives.
       
       INPUT_VIBE: "${vibe}"
       INPUT_PRIMITIVES_COUNT: ${primitives.length}
+      PREVIOUS_DECISIONS: ${JSON.stringify(history, null, 0)}
       PRIMITIVES_SAMPLE: ${JSON.stringify(primitives.slice(0, 30), null, 0)}
 
       CRITICAL RULES:

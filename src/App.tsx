@@ -3,10 +3,10 @@ import { useVibeApp } from './ui/hooks/useVibeApp';
 import { SettingsScreen } from './ui/screens/SettingsScreen';
 import { EditorView } from './ui/EditorView';
 import { Dashboard } from './ui/Dashboard';
-import { Omnibox } from './ui/components/Omnibox';
-import { Coins, LayoutGrid, Layers, Settings as SettingsIcon } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
-import './ui/theme.css';
+import { MainLayout } from './ui/layouts/MainLayout';
+
 
 export default function App() {
     const vm = useVibeApp();
@@ -31,51 +31,14 @@ export default function App() {
     }
 
     return (
-        <div className="vibe-root relative">
-            {/* 💎 Elite Header */}
-            <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-void/80 backdrop-blur-xl z-50">
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-primary to-secondary animate-pulse shadow-[0_0_15px_var(--primary-glow)]" />
-                        <div className="absolute inset-0 bg-white/20 blur-[2px] rounded-full" />
-                    </div>
-                    <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40 font-display">
-                        Vibe
-                    </h1>
-                </div>
-
-                {/* Navigation Pill */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full h-8">
-                        <Coins size={14} className="text-amber-400" />
-                        <span className="text-xs font-bold text-amber-200">{credits.toLocaleString()}</span>
-                    </div>
-
-                    <nav className="flex items-center bg-white/5 p-1 rounded-xl border border-white/5">
-                        <NavButton
-                            active={activeTab === 'dashboard'}
-                            onClick={() => setActiveTab('dashboard')}
-                            icon={<LayoutGrid size={16} />}
-                            label="Overview"
-                        />
-                        <NavButton
-                            active={activeTab === 'graph'}
-                            onClick={() => setActiveTab('graph')}
-                            icon={<Layers size={16} />}
-                            label="Tokens"
-                        />
-                        <NavButton
-                            active={activeTab === 'settings'}
-                            onClick={() => setActiveTab('settings')}
-                            icon={<SettingsIcon size={16} />}
-                            label="Settings"
-                        />
-                    </nav>
-                </div>
-            </header>
-
-            {/* 🌌 Main Content - Fragment Logic */}
-            <main className="vibe-content relative">
+        <div className="vibe-root relative h-full">
+            <MainLayout
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onCommand={vm.ai.handleCommand}
+                isSearchLoading={vm.ai.isProcessing}
+                credits={credits}
+            >
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={activeTab}
@@ -86,7 +49,7 @@ export default function App() {
                         className="h-full"
                     >
                         {activeTab === 'dashboard' && (
-                            <div className="fragment-dashboard">
+                            <div className="fragment-dashboard animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <Dashboard
                                     tokens={vm.tokens.tokens}
                                     stats={vm.tokens.stats}
@@ -96,7 +59,11 @@ export default function App() {
 
                         {activeTab === 'graph' && (
                             <div className="fragment-tokens h-full">
-                                <EditorView tokens={vm.tokens.tokens} />
+                                <EditorView
+                                    tokens={vm.tokens.tokens}
+                                    onTraceLineage={vm.tokens.traceLineage}
+                                    lineageData={vm.tokens.lineageData}
+                                />
                             </div>
                         )}
 
@@ -105,36 +72,13 @@ export default function App() {
                         )}
                     </motion.div>
                 </AnimatePresence>
-            </main>
-
-            {/* 🔮 Global Floating Omnibox - Centered Bottom */}
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-[440px] px-4">
-                <Omnibox
-                    onCommand={vm.ai.handleCommand}
-                    isProcessing={vm.ai.isProcessing}
-                />
-            </div>
+            </MainLayout>
 
             {/* Background Vibe Overlays (Decorative) */}
             <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
                 <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 blur-[120px] rounded-full" />
             </div>
-        </div>
-    );
-}
-
-function NavButton({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${active
-                    ? 'bg-white text-black shadow-lg shadow-white/10'
-                    : 'text-text-dim hover:text-white hover:bg-white/5'
-                }`}
-        >
-            {icon}
-            <span className={active ? 'block' : 'hidden'}>{label}</span>
-        </button>
+        </div >
     );
 }

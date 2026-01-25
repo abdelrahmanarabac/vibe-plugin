@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { TokenEntity, TokenType } from '../../core/types';
 import { clsx } from 'clsx';
-import { ChevronRight, Hash, Box } from 'lucide-react';
+import { ChevronRight, Hash, Box, Folder } from 'lucide-react';
 
 interface TokenTreeProps {
     tokens: TokenEntity[];
@@ -9,26 +9,60 @@ interface TokenTreeProps {
     onSelect: (id: string) => void;
 }
 
+interface TreeGroup {
+    name: string;
+    subGroups: Record<string, TreeGroup>;
+    tokens: TokenEntity[];
+}
+
 /**
- * 🌲 Elite Token Tree
- * Organizes tokens into expandable groups with high-contrast value display.
+ * 🌲 Figma Native Token Tree
+ * Organizes tokens strictly according to their Figma Collection and Path.
  */
 export function TokenTree({ tokens, selectedId, onSelect }: TokenTreeProps) {
-    // Grouping logic based on name hierarchy
-    const groups = tokens.reduce((acc, token) => {
-        const groupName = token.name.split(/[\/-]/)[0] || 'Uncategorized';
-        if (!acc[groupName]) acc[groupName] = [];
-        acc[groupName].push(token);
-        return acc;
-    }, {} as Record<string, TokenEntity[]>);
+    // 1. Build Recursive Tree Structure
+    // Path format: [Collection, Group1, Group2, ...]
+    const root: Record<string, TreeGroup> = {};
+
+    tokens.forEach(token => {
+        let currentLevel = root;
+        const path = token.path; // e.g. ["Brand", "Colors", "Global"]
+
+        path.forEach((segment, index) => {
+            if (!currentLevel[segment]) {
+                currentLevel[segment] = {
+                    name: segment,
+                    subGroups: {},
+                    tokens: []
+                };
+            }
+
+            // If it's the last segment of the path, we don't necessarily add tokens here
+            // because tokens are added to the leaf group that contains them.
+            if (index === path.length - 1) {
+                currentLevel[segment].tokens.push(token);
+            } else {
+                currentLevel = currentLevel[segment].subGroups;
+            }
+        });
+
+        // Corner case: If path is empty (shouldn't happen with Repo logic), add to Uncategorized
+        if (path.length === 0) {
+            const segment = 'Uncategorized';
+            if (!root[segment]) {
+                root[segment] = { name: segment, subGroups: {}, tokens: [] };
+            }
+            root[segment].tokens.push(token);
+        }
+    });
 
     return (
-        <div className="space-y-2 pb-4">
-            {Object.entries(groups).map(([groupName, groupTokens]) => (
-                <TokenGroup
-                    key={groupName}
-                    name={groupName}
-                    tokens={groupTokens}
+        <div className="space-y-1 pb-4">
+            {Object.values(root).map(group => (
+                <RecursiveGroup
+                    key={group.name}
+                    group={group}
+                    level={0}
                     selectedId={selectedId}
                     onSelect={onSelect}
                 />
@@ -45,35 +79,64 @@ export function TokenTree({ tokens, selectedId, onSelect }: TokenTreeProps) {
     );
 }
 
-function TokenGroup({ name, tokens, selectedId, onSelect }: {
-    name: string,
-    tokens: TokenEntity[],
+function RecursiveGroup({ group, level, selectedId, onSelect }: {
+    group: TreeGroup,
+    level: number,
     selectedId: string | null,
     onSelect: (id: string) => void
 }) {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(level === 0); // Auto-open collections (top level)
+
+    const hasContent = Object.keys(group.subGroups).length > 0 || group.tokens.length > 0;
+    if (!hasContent) return null;
 
     return (
-        <div className="mb-4">
+        <div className={clsx("mb-1", level > 0 && "ml-2")}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center px-1 py-2 text-[10px] font-black text-text-muted hover:text-white uppercase tracking-[0.15em] transition-all group"
+                className={clsx(
+                    "w-full flex items-center px-2 py-1.5 rounded-lg transition-all group",
+                    level === 0
+                        ? "text-[10px] font-black text-white/50 hover:text-white uppercase tracking-[0.1em]"
+                        : "text-[11px] font-bold text-text-dim hover:text-text-primary"
+                )}
             >
                 <ChevronRight
-                    size={12}
-                    className={clsx("mr-2 transition-transform duration-300", isOpen && "rotate-90 text-primary")}
+                    size={level === 0 ? 12 : 10}
+                    className={clsx("mr-1.5 transition-transform duration-300", isOpen && "rotate-90 text-primary")}
                 />
-                {name}
-                <span className="ml-auto px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-[8px] font-bold text-text-muted group-hover:text-primary transition-colors">
-                    {tokens.length}
-                </span>
+                {level === 0 ? (
+                    <span className="flex items-center gap-1.5 grayscale group-hover:grayscale-0 transition-all">
+                        <Folder size={12} className="text-secondary" />
+                        {group.name}
+                    </span>
+                ) : (
+                    group.name
+                )}
             </button>
 
             {isOpen && (
-                <div className="mt-1 space-y-1 ml-1 pl-3 border-l border-white/5">
-                    {tokens.map(token => (
+                <div className={clsx("mt-0.5 space-y-0.5", level === 0 ? "ml-1" : "ml-2 pl-2 border-l border-white/5")}>
+                    {/* Render Subgroups */}
+                    {Object.values(group.subGroups).map(sub => (
+                        <RecursiveGroup
+                            key={sub.name}
+                            group={sub}
+                            level={level + 1}
+                            selectedId={selectedId}
+                            onSelect={onSelect}
+                        />
+                    ))}
+
+                    {/* Render Tokens */}
+                    {group.tokens.map(token => (
                         <div
                             key={token.id}
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('vibe/token-id', token.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                            }}
                             onClick={() => onSelect(token.id)}
                             className={clsx(
                                 "flex items-center justify-between p-2 rounded-xl cursor-pointer text-[11px] transition-all group border",
@@ -84,16 +147,16 @@ function TokenGroup({ name, tokens, selectedId, onSelect }: {
                         >
                             <div className="flex items-center gap-2 overflow-hidden">
                                 <TokenIcon type={token.$type} value={token.$value} />
-                                <span className="truncate font-medium">{token.name}</span>
+                                <span className="truncate font-medium" title="Drag to Graph Editor">{token.name}</span>
                             </div>
 
                             <div className={clsx(
-                                "flex-none text-[9px] font-mono px-1.5 py-0.5 rounded-lg border uppercase",
+                                "flex-none text-[9px] font-mono px-1.5 py-0.5 rounded-lg border uppercase ml-2",
                                 selectedId === token.id
                                     ? "bg-primary/20 border-primary/20 text-primary"
                                     : "bg-void/40 border-white/5 text-text-muted group-hover:text-text-primary"
                             )}>
-                                {String(token.$value).length > 10 ? 'Complex' : token.$value}
+                                {String(token.$value).length > 8 ? 'Value' : token.$value}
                             </div>
                         </div>
                     ))}
@@ -105,11 +168,19 @@ function TokenGroup({ name, tokens, selectedId, onSelect }: {
 
 function TokenIcon({ type, value }: { type: TokenType, value: string | number }) {
     if (type === 'color') {
+        const bgValue = String(value).startsWith('{') ? 'transparent' : String(value);
         return (
-            <div
-                className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-inner flex-shrink-0"
-                style={{ backgroundColor: String(value) }}
-            />
+            <div className="relative flex-shrink-0">
+                <div
+                    className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-inner"
+                    style={{ backgroundColor: bgValue }}
+                />
+                {String(value).startsWith('{') && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-1 h-1 bg-white/40 rounded-full" />
+                    </div>
+                )}
+            </div>
         );
     }
 

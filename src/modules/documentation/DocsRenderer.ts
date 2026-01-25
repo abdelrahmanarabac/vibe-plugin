@@ -1,5 +1,5 @@
 import type { TokenEntity } from '../../core/types';
-import { TokenGraph } from '../../core/TokenGraph';
+import { TokenRepository } from '../../core/TokenRepository';
 
 const PAGE_NAME = '📘 Token Docs';
 const SPACING = 40;
@@ -17,10 +17,10 @@ const COLORS = {
 };
 
 export class DocsRenderer {
-    private graph: TokenGraph;
+    private repository: TokenRepository;
 
-    constructor(graph: TokenGraph) {
-        this.graph = graph;
+    constructor(repository: TokenRepository) {
+        this.repository = repository;
     }
 
     /**
@@ -59,7 +59,7 @@ export class DocsRenderer {
         grid.resize(1200, 1000); // Initial size, auto-grow
 
         // 3. Render Tokens
-        const tokens = this.graph.getTokens();
+        const tokens = this.repository.getTokens();
         // Sort: Type -> Name
         const sortedTokens = Array.from(tokens.values()).sort((a, b) => {
             const typeCompare = a.$type.localeCompare(b.$type);
@@ -264,7 +264,7 @@ export class DocsRenderer {
         // Alias
         if (token.dependencies && token.dependencies.length > 0) {
             const aliasId = token.dependencies[0]; // Assuming primary dependency is the alias target
-            const targetToken = this.graph.getNode(aliasId);
+            const targetToken = this.repository.getNode(aliasId);
 
             if (targetToken) {
                 const resolved = this.resolveColorValue(targetToken, depth + 1);

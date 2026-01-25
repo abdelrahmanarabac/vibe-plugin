@@ -11,12 +11,12 @@ import { MemoryService } from "./MemoryService";
  */
 export class AgentCore {
     private ai: IAIService;
-    // @ts-ignore
-    private _memory: MemoryService;
+    private memory: MemoryService;
 
     constructor(aiService: IAIService, memoryService?: MemoryService) {
         this.ai = aiService;
-        this._memory = memoryService || new MemoryService();
+        this.memory = memoryService || new MemoryService();
+        console.log("[AgentCore] Memory Engine Online.");
     }
 
     /**
@@ -28,10 +28,12 @@ export class AgentCore {
      * 5. Returns final tokens
      */
     async processedThinking(context: AgentContext, onProgress: (msg: string) => void): Promise<VibeToken[]> {
-
         // 1. 🧠 Perception & Planning
         onProgress("Thinking... 🧠");
-        const prompt = SemanticIntelligence.buildMappingPrompt(context.primitives, context.vibe);
+
+        // Retrieve context from memory to inform the prompt
+        const history = await this.memory.retrieveContext(context.vibe || "default");
+        const prompt = SemanticIntelligence.buildMappingPrompt(context.primitives, context.vibe, history);
 
         // 2. ⚡ Generation (System 1)
         onProgress("Drafting Design System... 📝");

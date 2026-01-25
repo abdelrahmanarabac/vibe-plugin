@@ -1,4 +1,4 @@
-import type { TokenGraph } from './TokenGraph';
+import type { TokenRepository } from './TokenRepository';
 
 /**
  * The Context Object passed to every capability.
@@ -8,7 +8,7 @@ export interface AgentContext {
     /**
      * The Single Source of Truth for Design Tokens.
      */
-    readonly graph: TokenGraph;
+    readonly repository: TokenRepository;
 
     /**
      * Access to Figma Environment (Selection, etc).

@@ -2,7 +2,7 @@ import type { PluginAction } from './shared/types';
 import type { AgentContext } from './core/AgentContext';
 
 // Core Systems
-import { TokenGraph } from './core/TokenGraph';
+import { TokenRepository } from './core/TokenRepository';
 import { VariableManager } from './modules/governance/VariableManager';
 import { DocsRenderer } from './modules/documentation/DocsRenderer';
 import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
@@ -14,22 +14,24 @@ import { FigmaVariableRepository } from './infra/repositories/FigmaVariableRepos
 
 // Capabilities
 import { ScanSelectionCapability } from './features/scanning/ScanSelectionCapability';
-import { SyncGraphCapability } from './features/sync/SyncGraphCapability';
+import { SyncTokensCapability } from './features/sync/SyncTokensCapability';
 import { CreateVariableCapability } from './features/management/CreateVariableCapability';
 import { UpdateVariableCapability } from './features/management/UpdateVariableCapability';
 import { RenameVariableCapability } from './features/management/RenameVariableCapability';
 import { GenerateDocsCapability } from './features/documentation/GenerateDocsCapability';
+import { GetAnatomyCapability } from './features/scanning/GetAnatomyCapability';
 import { RenameCollectionsCapability } from './features/collections/RenameCollectionsCapability';
 import { CreateCollectionCapability } from './features/collections/CreateCollectionCapability';
+import { TraceLineageCapability } from './features/intelligence/TraceLineageCapability';
 
 console.clear();
 console.log('[Vibe] System Booting (Architecture v2.1)...');
 
 // === 1. Initialize Core Engines ===
-const graph = new TokenGraph();
+const repository = new TokenRepository();
 const variableRepository = new FigmaVariableRepository(); // Repo
-const variableManager = new VariableManager(graph, variableRepository); // Injection
-const docsRenderer = new DocsRenderer(graph);
+const variableManager = new VariableManager(repository, variableRepository); // Injection
+const docsRenderer = new DocsRenderer(repository);
 const collectionRenamer = new CollectionRenamer();
 
 // === 2. Initialize Registry & Capabilities ===
@@ -37,13 +39,15 @@ const registry = new CapabilityRegistry();
 
 const capabilities = [
     new ScanSelectionCapability(),
-    new SyncGraphCapability(variableManager),
+    new SyncTokensCapability(variableManager),
     new CreateVariableCapability(variableManager),
     new UpdateVariableCapability(variableManager),
     new RenameVariableCapability(variableManager),
     new GenerateDocsCapability(docsRenderer, variableManager),
     new RenameCollectionsCapability(collectionRenamer),
-    new CreateCollectionCapability()
+    new CreateCollectionCapability(),
+    new GetAnatomyCapability(),
+    new TraceLineageCapability()
 ];
 
 capabilities.forEach(cap => registry.register(cap));
@@ -54,8 +58,8 @@ const handleSyncRequest = async () => {
     try {
         const tokens = await variableManager.syncFromFigma();
         // Force the graph to ingest the new tokens
-        graph.reset();
-        tokens.forEach(t => graph.addNode(t));
+        repository.reset();
+        tokens.forEach(t => repository.addNode(t));
 
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
@@ -90,7 +94,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
     try {
         // Build Context on-the-fly
         const context: AgentContext = {
-            graph,
+            repository,
             selection: figma.currentPage.selection,
             page: figma.currentPage,
             session: { timestamp: Date.now() }
@@ -115,8 +119,15 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 
             // Handle Result
             if (result.success) {
+                // 🚀 Send success message back to UI with payload
+                figma.ui.postMessage({
+                    type: `${msg.type}_SUCCESS`,
+                    payload: result.value,
+                    timestamp: Date.now()
+                });
+
                 // If it's a sync-related action, force a broadcast
-                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_GRAPH', 'CREATE_COLLECTION'].includes(msg.type)) {
+                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION'].includes(msg.type)) {
                     await handleSyncRequest();
                 }
 
@@ -133,7 +144,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // B. System/Utility Fallback
         switch (msg.type) {
             case 'REQUEST_GRAPH': {
-                console.log('[Controller] UI Requested Graph. Triggering deep sync...');
+                console.log('[Controller] UI Requested Data. Triggering deep sync...');
                 // 🔴 FIX: Always trigger a fresh sync when UI asks, avoiding Race Conditions
                 await handleSyncRequest();
                 break;
@@ -185,8 +196,8 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 break;
             }
             case 'SYNC_VARIABLES': {
-                // Alias to SyncGraph
-                await registry.getByCommand('SYNC_GRAPH')?.execute({}, context);
+                // Alias to SyncTokens
+                await registry.getByCommand('SYNC_TOKENS')?.execute({}, context);
                 await handleSyncRequest();
                 break;
             }

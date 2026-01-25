@@ -3,10 +3,10 @@ import type { AgentContext } from '../../core/AgentContext';
 import { Result } from '../../shared/utils/Result';
 import type { VariableManager } from '../../modules/governance/VariableManager';
 
-export class SyncGraphCapability implements ICapability {
-    readonly id = 'sync-graph-v1';
-    readonly commandId = 'SYNC_GRAPH';
-    readonly description = 'Synchronizes all local variables from Figma to the Token Graph.';
+export class SyncTokensCapability implements ICapability {
+    readonly id = 'sync-tokens-v1';
+    readonly commandId = 'SYNC_TOKENS';
+    readonly description = 'Synchronizes all local variables from Figma to the Token Repository.';
 
     private variableManager: VariableManager;
 

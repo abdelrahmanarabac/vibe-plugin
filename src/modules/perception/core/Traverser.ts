@@ -30,16 +30,15 @@ export class Traverser {
 
         // 2. Recurse if applicable (DFS)
         if ('children' in node) {
-            // "children" property exists on Frame, Group, Component, Instance, etc.
-            // but Typescript needs explicit check or type guard.
-            const children = (node as ChildrenMixin).children;
-
-            for (const child of children) {
-                this.walk(child, visitor, {
-                    depth: context.depth + 1,
-                    parentId: node.id,
-                    path: `${context.path} > ${child.name}`
-                });
+            const children = (node as any).children;
+            if (children && Array.isArray(children)) {
+                for (const child of children) {
+                    this.walk(child, visitor, {
+                        depth: context.depth + 1,
+                        parentId: node.id,
+                        path: `${context.path} > ${child.name}`
+                    });
+                }
             }
         }
     }

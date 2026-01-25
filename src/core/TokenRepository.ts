@@ -1,6 +1,6 @@
 import type { TokenEntity } from './types';
 
-export class TokenGraph {
+export class TokenRepository {
     private nodes: Map<string, TokenEntity>;
     private adjacencyList: Map<string, Set<string>>;  // Directed edges: Key depends on Value(s)
     private reverseAdjacencyList: Map<string, Set<string>>; // Directed edges: Key defines who depends on it
@@ -41,6 +41,36 @@ export class TokenGraph {
     }
 
     /**
+     * DFS-based ancestry analysis
+     * Returns all tokens that `tokenId` depends on (directly or indirectly)
+     */
+    getAncestry(tokenId: string): TokenEntity[] {
+        const visited = new Set<string>();
+        const ancestors: TokenEntity[] = [];
+
+        const dfs = (currentId: string) => {
+            if (visited.has(currentId)) {
+                return;
+            }
+            visited.add(currentId);
+
+            const token = this.nodes.get(currentId);
+            if (token && currentId !== tokenId) {
+                ancestors.push(token);
+            }
+
+            // Read from adjacency list to find what currentId depends on
+            const dependencies = this.adjacencyList.get(currentId) || new Set();
+            for (const depId of dependencies) {
+                dfs(depId);
+            }
+        };
+
+        dfs(tokenId);
+        return ancestors;
+    }
+
+    /**
      * DFS-based impact analysis
      * Returns all tokens that depend on `tokenId` (directly or indirectly)
      * Time Complexity: O(V+E)
@@ -50,7 +80,11 @@ export class TokenGraph {
         const impacted: TokenEntity[] = [];
 
         const dfs = (currentId: string) => {
-            if (visited.has(currentId)) return;
+            if (visited.has(currentId)) {
+                // 🛑 Cycle Detected - Break Recursion
+                console.warn(`⚠️ Cycle detected at token: ${currentId} while analyzing impact of ${tokenId}`);
+                return;
+            }
             visited.add(currentId);
 
             const token = this.nodes.get(currentId);
@@ -63,6 +97,9 @@ export class TokenGraph {
             for (const dependentId of dependents) {
                 dfs(dependentId);
             }
+
+            // Backtrack (optional, but for impact analysis we generally want to avoid re-visiting regardless of path)
+            // visited.delete(currentId); 
         };
 
         dfs(tokenId);

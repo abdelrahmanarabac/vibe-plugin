@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type TokenEntity } from '../../core/types';
+import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
 
 interface TokenStats {
     totalVariables: number;
@@ -10,10 +11,14 @@ interface TokenStats {
 
 export interface TokensViewModel {
     tokens: TokenEntity[];
+    anatomy: SceneNodeAnatomy[];
     stats: TokenStats;
     isSynced: boolean;
     liveIndicator: boolean;
     updateToken: (id: string, value: string) => void;
+    scanAnatomy: () => void;
+    traceLineage: (tokenId: string) => void;
+    lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
 
 /**
@@ -22,6 +27,7 @@ export interface TokensViewModel {
  */
 export function useTokens(): TokensViewModel {
     const [tokens, setTokens] = useState<TokenEntity[]>([]);
+    const [anatomy, setAnatomy] = useState<SceneNodeAnatomy[]>([]);
     const [stats, setStats] = useState<TokenStats>({
         totalVariables: 0,
         collections: 0,
@@ -31,20 +37,24 @@ export function useTokens(): TokensViewModel {
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
 
+    const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
+
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const { type, payload } = event.data.pluginMessage || {};
 
             if (type === 'GRAPH_UPDATED') {
-                // 🔴 FIX: Robustly check if payload exists and is an array
                 if (Array.isArray(payload)) {
-                    console.log(`[UI] Received ${payload.length} tokens from Controller.`);
                     setTokens(payload);
                     setIsSynced(true);
-
-                    // Trigger "LIVE" flash
                     setLiveIndicator(true);
                     setTimeout(() => setLiveIndicator(false), 2000);
+                }
+            }
+
+            if (type === 'ANATOMY_UPDATED' || (type === 'GET_ANATOMY_SUCCESS')) {
+                if (payload && Array.isArray(payload.anatomy)) {
+                    setAnatomy(payload.anatomy);
                 }
             }
 
@@ -58,10 +68,8 @@ export function useTokens(): TokensViewModel {
             }
 
             if (type === 'SCAN_COMPLETE') {
-                // Handle scan completion - update tokens and stats
-                if (payload.tokens) {
-                    setTokens(payload.tokens);
-                }
+                if (payload.tokens) setTokens(payload.tokens);
+                if (payload.anatomy) setAnatomy(payload.anatomy);
                 if (payload.stats) {
                     setStats({
                         totalVariables: payload.stats.totalVariables ?? 0,
@@ -74,11 +82,16 @@ export function useTokens(): TokensViewModel {
                 setLiveIndicator(true);
                 setTimeout(() => setLiveIndicator(false), 2000);
             }
+
+            if (type === 'TRACE_LINEAGE_SUCCESS') {
+                if (payload && payload.target) {
+                    setLineageData(payload);
+                }
+            }
         };
 
         window.addEventListener('message', handleMessage);
 
-        // 🔴 FIX: Added slight delay to ensure Figma is ready to receive the message
         setTimeout(() => {
             parent.postMessage({ pluginMessage: { type: 'REQUEST_GRAPH' } }, '*');
             parent.postMessage({ pluginMessage: { type: 'REQUEST_STATS' } }, '*');
@@ -89,20 +102,31 @@ export function useTokens(): TokensViewModel {
         };
     }, []);
 
-    // Optimistic update for UI, would send message to controller in real app
+    const scanAnatomy = useCallback(() => {
+        parent.postMessage({ pluginMessage: { type: 'GET_ANATOMY' } }, '*');
+    }, []);
+
     const updateToken = useCallback((id: string, value: string) => {
         setTokens(current =>
-            current.map(t => t.id === id ? { ...t, value } : t)
+            current.map(t => t.id === id ? { ...t, $value: value } : t)
         );
-        // In a full implementation, this would sync back to Figma
         parent.postMessage({ pluginMessage: { type: 'UPDATE_TOKEN', id, value } }, '*');
+    }, []);
+
+    const traceLineage = useCallback((tokenId: string) => {
+        parent.postMessage({ pluginMessage: { type: 'TRACE_LINEAGE', payload: { tokenId } } }, '*');
     }, []);
 
     return {
         tokens,
+        anatomy,
         stats,
         isSynced,
         liveIndicator,
-        updateToken
+        lineageData,
+        updateToken,
+        scanAnatomy,
+        traceLineage
     };
 }
+

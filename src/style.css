@@ -1,47 +1,81 @@
 @import "tailwindcss";
 
 @theme {
-  /* Vibe Cosmic Nebula Tokens */
-  --color-surface-0: #030407;
-  --color-surface-1: #090B12;
-  --color-surface-2: #121726;
-  --color-surface-active: #1A1F30;
-  --color-surface-glass: rgba(18, 23, 38, 0.7);
+  /* 🌌 Vibe Palette: Dark Bento (Reference Match) */
+  --color-void: #080808;
+  /* Matte Black Base */
+  --color-nebula: #0C0C0C;
+  /* Secondary Background */
+  --color-card: #141414;
+  /* Card Surface */
+  --color-elevated: #1F1F1F;
+  /* Hover/Active States */
 
-  --color-primary: #00F0FF;
-  --color-primary-glow: rgba(0, 240, 255, 0.4);
-  --color-secondary: #FF2EE0;
-  --color-secondary-glow: rgba(255, 46, 224, 0.4);
+  /* 🔮 Accents */
+  --color-primary: #6E62E5;
+  /* Reference Blurple/Indigo */
+  --color-primary-glow: rgba(110, 98, 229, 0.4);
+  --color-secondary: #E0E0E0;
+  /* High Contrast Text/Icon */
+  --color-secondary-glow: rgba(224, 224, 224, 0.2);
 
-  --color-success: #00FF94;
-  --color-warning: #FFAD0E;
-  --color-error: #FF3D71;
+  /* Semantic Alias */
+  --color-bg-void: var(--color-void);
+  --color-bg-nebula: var(--color-nebula);
 
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: rgba(255, 255, 255, 0.6);
-  --color-text-dim: rgba(255, 255, 255, 0.4);
-  --color-text-on-brand: #030407;
+  --color-success: #27C966;
+  --color-warning: #FFBC2E;
+  --color-error: #FF4757;
+  --color-info: #00B2FF;
 
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --color-text-bright: #FFFFFF;
+  --color-text-primary: #EDEDED;
+  --color-text-dim: #8F8F8F;
+  --color-text-muted: #525252;
+
   --font-display: "Outfit", sans-serif;
+  --font-body: "Inter", sans-serif;
 
-  --shadow-glow-primary: 0 0 24px -5px rgba(0, 240, 255, 0.5);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  /* Bento Radius */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  /* Standard Card Radius */
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+
+  --ease-vibe: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Shadows (Soft & Deep) */
+  --shadow-glow-primary: 0 0 32px -8px rgba(110, 98, 229, 0.4);
+  --shadow-glass: 0 4px 24px -2px rgba(0, 0, 0, 0.6);
+  --shadow-card-hover: 0 20px 40px -12px rgba(0, 0, 0, 0.8);
+  --shadow-bento: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+
+  /* Animations */
+  @keyframes vibeFadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer base {
   :root {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     line-height: 1.5;
     font-weight: 400;
-
     color-scheme: dark;
+    background-color: var(--color-void);
     color: var(--color-text-primary);
-    background-color: var(--color-surface-0);
-
-    text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-placeholder: grayscale;
   }
 
   body {
@@ -50,38 +84,63 @@
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: var(--color-surface-0);
-    color: var(--color-text-primary);
   }
 
-  #root {
-    width: 100%;
-    height: 100%;
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-text-bright);
   }
 
-  /* Custom selection style */
-  ::selection {
-    background-color: var(--color-primary-dim);
-    color: white;
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 
-/* Scrollbar Hardening */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* 🧬 Utility Components */
+@layer components {
+  .vibe-card {
+    background: rgba(18, 23, 38, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    transition: all 0.4s var(--ease-vibe);
+  }
 
-::-webkit-scrollbar-track {
-  background: var(--color-surface-0);
-}
+  .vibe-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-surface-active);
-  border-radius: 3px;
-}
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #A855F7 50%, var(--color-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-surface-active);
+  .border-gradient {
+    border: 1px solid transparent;
+    background: linear-gradient(var(--color-card), var(--color-card)) padding-box,
+      linear-gradient(135deg, var(--color-primary), #A855F7, var(--color-secondary)) border-box;
+  }
 }

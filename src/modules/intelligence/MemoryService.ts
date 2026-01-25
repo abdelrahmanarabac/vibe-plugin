@@ -54,7 +54,6 @@ export class MemoryService {
         if (!this.cache) await this.init();
 
         // Naive Semantic Search (Exact Match on Name or Type for now)
-        // In Phase 4, we will add real Vector Dot Product here.
         return this.cache?.approvedTokens.filter(t =>
             t.name.toLowerCase().includes(query.toLowerCase()) ||
             t.$type.toLowerCase().includes(query.toLowerCase())

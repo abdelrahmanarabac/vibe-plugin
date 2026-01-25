@@ -25,7 +25,6 @@ export class FigmaVariableRepository implements IVariableRepository {
     async sync(): Promise<TokenEntity[]> {
         const tokens: TokenEntity[] = [];
         try {
-            // 🔴 ARCHITECTURAL FIX: Fetch ALL variables at once. No more N+1 loops.
             const allVariables = await figma.variables.getLocalVariablesAsync();
             const collections = await figma.variables.getLocalVariableCollectionsAsync();
 
@@ -54,23 +53,34 @@ export class FigmaVariableRepository implements IVariableRepository {
 
                 // Extract dependencies (aliases) and value resolution
                 const dependencies: string[] = [];
-                let stringValue = '';
 
-                if (typeof value === 'object' && value !== null && 'type' in value && value.type === 'VARIABLE_ALIAS') {
-                    dependencies.push(value.id);
-                    // Resolve alias to the name of the target variable if possible
-                    const targetVar = allVariables.find(v => v.id === value.id);
-                    stringValue = targetVar ? `{${targetVar.name}}` : 'ALIAS';
-                } else {
-                    // Use HEX for colors if needed, or CSS-like RGB
-                    stringValue = variable.resolvedType === 'COLOR' ? (rgbToHex(value) || '#000000') : String(value);
-                }
+                const resolveValue = (val: any): string | number => {
+                    if (val && typeof val === 'object' && 'type' in val && val.type === 'VARIABLE_ALIAS') {
+                        dependencies.push(val.id);
+                        const target = allVariables.find(v => v.id === val.id);
+                        if (target) {
+                            const targetCollection = collectionMap.get(target.variableCollectionId);
+                            const targetModeId = targetCollection?.defaultModeId || (targetCollection?.modes[0]?.modeId);
+                            if (targetModeId) {
+                                return resolveValue(target.valuesByMode[targetModeId]);
+                            }
+                        }
+                        return 'ALIAS_ERROR';
+                    }
+
+                    if (variable.resolvedType === 'COLOR') {
+                        return rgbToHex(val) || '#000000';
+                    }
+                    return val;
+                };
+
+                const resolvedValue = resolveValue(value);
 
                 const token: TokenEntity = {
                     id: variable.id,
                     name: pathParts[pathParts.length - 1],
                     path: pathParts.slice(0, -1),
-                    $value: stringValue,
+                    $value: resolvedValue,
                     $type: w3cType,
                     $description: variable.description,
                     $extensions: {

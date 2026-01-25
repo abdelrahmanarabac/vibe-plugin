@@ -46,48 +46,93 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
     };
 
     return (
-        <div className="flex flex-col gap-6 max-w-4xl mx-auto py-4">
-            {/* 📈 Stats Dashboard Fragment: Anti-Gravity Blueprint */}
-            <div className="grid grid-cols-2 gap-4">
-                <StatFragment
-                    label="Tokens in Graph"
-                    value={String(stats?.totalVariables ?? 0)}
-                    icon={<Zap size={22} className="text-primary" style={{ filter: 'drop-shadow(0 0 8px rgba(0, 240, 255, 0.5))' }} />}
-                    subtext={`${stats?.collections ?? 0} Collections Synced`}
-                    color="primary"
-                />
-                <StatFragment
-                    label="Figma Styles"
-                    value={String(stats?.styles ?? 0)}
-                    icon={<Layers size={22} className="text-secondary" style={{ filter: 'drop-shadow(0 0 8px rgba(255, 46, 224, 0.5))' }} />}
-                    subtext="Visual Definitions"
-                    color="secondary"
-                />
-            </div>
+        <div className="flex flex-col items-center py-8 gap-8">
 
-            {/* 🕹️ Action Surface: Glassmorphism Card */}
-            <div className="vibe-card bg-[#121726]/40 border-white/[0.05] p-6 space-y-5 shadow-2xl">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-base font-bold tracking-tight text-white mb-1 font-display uppercase italic">Quick Workspace</h2>
-                        <p className="text-[11px] text-text-dim">Build and export your token systems at light speed.</p>
+            {/* 🍱 Bento Grid - Fixed 328px Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 w-fit">
+
+                {/* 📊 Stat Card: Total Tokens */}
+                <div className="vibe-card w-[328px] h-[180px] p-6 flex flex-col justify-between relative overflow-hidden group">
+                    {/* Background Gradient */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
+
+                    <div className="flex justify-between items-start z-10">
+                        <div className="p-2 rounded-lg bg-white/5 text-primary border border-white/5">
+                            <Zap size={20} />
+                        </div>
+                        <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">Active</span>
+                    </div>
+
+                    <div className="z-10">
+                        <div className="text-4xl font-display font-bold text-white mb-1">{stats?.totalVariables ?? 0}</div>
+                        <div className="text-sm text-text-dim font-medium">Total Tokens</div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <ActionButton
-                        title="Create New Token"
-                        description="Add color, spacing, or radius"
-                        icon={<Plus size={20} />}
-                        onClick={handleNewToken}
-                    />
-                    <ActionButton
-                        title="Export System"
-                        description="W3C JSON Compatible"
-                        icon={<Download size={20} />}
-                        onClick={handleExport}
-                    />
+                {/* 🎨 Stat Card: Styles */}
+                <div className="vibe-card w-[328px] h-[180px] p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary/10 blur-[60px] rounded-full group-hover:bg-secondary/20 transition-all duration-500" />
+
+                    <div className="flex justify-between items-start z-10">
+                        <div className="p-2 rounded-lg bg-white/5 text-secondary border border-white/5">
+                            <Layers size={20} />
+                        </div>
+                        <span className="px-2 py-1 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider">Styles</span>
+                    </div>
+
+                    <div className="z-10">
+                        <div className="text-4xl font-display font-bold text-white mb-1">{stats?.styles ?? 0}</div>
+                        <div className="text-sm text-text-dim font-medium">Figma Styles</div>
+                    </div>
                 </div>
+
+                {/* 🚀 Quick Action: New Token */}
+                <button
+                    onClick={handleNewToken}
+                    className="vibe-card w-[328px] h-[80px] p-4 flex items-center justify-between hover:border-primary/50 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
+                            <Plus size={18} className="text-white group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">New Token</div>
+                            <div className="text-[10px] text-text-dim">Create a variable</div>
+                        </div>
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                        <Plus size={12} className="text-text-dim" />
+                    </div>
+                </button>
+
+                {/* 🖌️ Quick Action: Add Style (Requested Feature) */}
+                <button
+                    onClick={() => parent.postMessage({ pluginMessage: { type: 'CREATE_STYLE' } }, '*')}
+                    className="vibe-card w-[328px] h-[80px] p-4 flex items-center justify-between hover:border-secondary/50 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors">
+                            <Layers size={18} className="text-white group-hover:text-secondary transition-colors" />
+                        </div>
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white group-hover:text-secondary transition-colors">Add Style</div>
+                            <div className="text-[10px] text-text-dim">Create a style</div>
+                        </div>
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                        <Plus size={12} className="text-text-dim" />
+                    </div>
+                </button>
+
+                {/* 💾 Quick Action: Export */}
+                <button
+                    onClick={handleExport}
+                    className="vibe-card w-[328px] h-[60px] p-4 flex items-center justify-center gap-2 hover:bg-white/5"
+                >
+                    <Download size={14} className="text-text-dim" />
+                    <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Export System</span>
+                </button>
+
             </div>
 
             {/* 🧩 Empty State Fragment */}
@@ -102,70 +147,9 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
     );
 }
 
-function StatFragment({ label, value, icon, subtext, color }: { label: string, value: string, icon: React.ReactNode, subtext: string, color: 'primary' | 'secondary' }) {
-    const accents = {
-        primary: 'border-primary/10 bg-primary/2',
-        secondary: 'border-secondary/10 bg-secondary/2'
-    };
+// Removed StatFragment & ActionButton helper components as they are now inlined for Bento Grid control
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{
-                y: -6,
-                boxShadow: color === 'primary'
-                    ? "0 20px 40px rgba(0, 240, 255, 0.15)"
-                    : "0 20px 40px rgba(255, 46, 224, 0.15)",
-                borderColor: 'rgba(255,255,255,0.15)'
-            }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className={`p-6 rounded-[32px] border border-white/[0.05] bg-[#121726]/60 backdrop-blur-2xl transition-all ${accents[color]}`}
-        >
-            <div className="flex items-center justify-between mb-5">
-                <div className="p-3 rounded-2xl bg-black/40 border border-white/[0.08] shadow-2xl">
-                    {icon}
-                </div>
-                <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${color === 'primary' ? 'text-primary' : 'text-secondary'}`}>
-                    Live
-                </div>
-            </div>
-            <div className="text-4xl font-black text-white mb-1 font-display tracking-tight leading-none">{value}</div>
-            <div className="text-[11px] font-bold text-text-dim uppercase tracking-wider">{label}</div>
-            <div className="mt-5 pt-4 border-t border-white/[0.05] text-[10px] text-text-muted flex items-center gap-2">
-                <motion.div
-                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className={`w-1.5 h-1.5 rounded-full ${color === 'primary' ? 'bg-primary' : 'bg-secondary'}`}
-                />
-                {subtext}
-            </div>
-        </motion.div>
-    );
-}
 
-function ActionButton({ title, description, icon, onClick }: { title: string, description: string, icon: React.ReactNode, onClick: () => void }) {
-    return (
-        <motion.button
-            whileHover={{
-                scale: 1.05,
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                borderColor: 'rgba(255,255,255,0.2)'
-            }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
-            className="flex flex-col gap-4 p-5 rounded-[28px] bg-white/[0.04] border border-white/[0.04] text-left transition-all"
-        >
-            <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-[#030407] border border-white/[0.08] text-primary shadow-2xl">
-                {icon}
-            </div>
-            <div>
-                <div className="text-sm font-black text-white mb-0.5 font-display uppercase tracking-tight">{title}</div>
-                <div className="text-[10px] text-text-dim line-clamp-1">{description}</div>
-            </div>
-        </motion.button>
-    );
-}
 
 function EmptyStateFragment() {
     return (

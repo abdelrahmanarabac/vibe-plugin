@@ -1,4 +1,4 @@
-import { TokenGraph } from '../../core/TokenGraph';
+import { TokenRepository } from '../../core/TokenRepository';
 import type { TokenEntity } from '../../core/types';
 
 export interface ImpactReport {
@@ -9,9 +9,9 @@ export interface ImpactReport {
 }
 
 export class ImpactAnalyzer {
-    private graph: TokenGraph;
+    private graph: TokenRepository;
 
-    constructor(graph: TokenGraph) {
+    constructor(graph: TokenRepository) {
         this.graph = graph;
     }
 
