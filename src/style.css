@@ -1,31 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* Vibe Design System Tokens */
-  --color-surface-0: #1E1E1E;
-  --color-surface-1: #2C2C2C;
-  --color-surface-active: #383838;
-  --color-surface-glass: rgba(30, 30, 30, 0.6); /* #1E1E1E with opacity included in utility */
+  /* Vibe Cosmic Nebula Tokens */
+  --color-surface-0: #030407;
+  --color-surface-1: #090B12;
+  --color-surface-2: #121726;
+  --color-surface-active: #1A1F30;
+  --color-surface-glass: rgba(18, 23, 38, 0.7);
 
-  --color-primary: #A855F7;
-  --color-primary-hover: #9333EA;
-  --color-primary-accent: #7C3AED; /* For gradients */
-  --color-primary-dim: rgba(168, 85, 247, 0.5);
+  --color-primary: #00F0FF;
+  --color-primary-glow: rgba(0, 240, 255, 0.4);
+  --color-secondary: #FF2EE0;
+  --color-secondary-glow: rgba(255, 46, 224, 0.4);
 
-  --color-success: #22C55E;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
+  --color-success: #00FF94;
+  --color-warning: #FFAD0E;
+  --color-error: #FF3D71;
 
   --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #52525B;
-  --color-text-on-brand: #FFFFFF;
+  --color-text-secondary: rgba(255, 255, 255, 0.6);
+  --color-text-dim: rgba(255, 255, 255, 0.4);
+  --color-text-on-brand: #030407;
 
-  --font-sans: "Inter Tight", "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "monospace";
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Outfit", sans-serif;
 
-  --shadow-glow-primary: 0 0 20px -5px rgba(168, 85, 247, 0.5);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-glow-primary: 0 0 24px -5px rgba(0, 240, 255, 0.5);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 }
 
 @layer base {

@@ -14,32 +14,32 @@ import type { CollectionClassification, CollectionType, VariableInfo } from '../
 export class CollectionClassifier {
     // Pattern definitions for each collection type
     private readonly primitivePatterns = [
-        /^primitives\//i,
-        /^color-/i,
-        /^spacing-/i,
-        /^radius-/i,
-        /^font-/i,
-        /^size-/i
+        /primitives\//i,
+        /color-/i,
+        /spacing-/i,
+        /radius-/i,
+        /font-/i,
+        /size-/i
     ];
 
     private readonly semanticPatterns = [
-        /^brand\//i,
-        /^surface\//i,
-        /^content\//i,
-        /^feedback\//i,
-        /^border\//i,
-        /^text\//i,
-        /^bg\//i,
-        /^background\//i
+        /brand\//i,
+        /surface\//i,
+        /content\//i,
+        /feedback\//i,
+        /border\//i,
+        /text\//i,
+        /bg\//i,
+        /background\//i
     ];
 
     private readonly componentPatterns = [
-        /^component\//i,
-        /^button-/i,
-        /^card-/i,
-        /^input-/i,
-        /^modal-/i,
-        /^nav-/i
+        /component\//i,
+        /button-/i,
+        /card-/i,
+        /input-/i,
+        /modal-/i,
+        /nav-/i
     ];
 
     // Confidence threshold for classification
@@ -66,7 +66,7 @@ export class CollectionClassifier {
             };
         }
 
-        const classification = this.runClassificationLogic(variables);
+        const classification = this.runClassificationLogic(collection, variables);
 
         return {
             collectionId: collection.id,
@@ -91,18 +91,18 @@ export class CollectionClassifier {
             const variable = await figma.variables.getVariableByIdAsync(varId);
             if (!variable) continue;
 
-            // Check if variable uses aliases (VARIABLE_ALIAS type)
-            const modeId = collection.modes[0]?.modeId;
-            if (!modeId) continue;
-
-            const value = variable.valuesByMode[modeId];
-            const hasAliases = typeof value === 'object' &&
+            // ✅ ARCHITECTURAL FIX (Level 1): Check ALL modes for aliases.
+            const hasAliases = Object.values(variable.valuesByMode).some(value =>
+                typeof value === 'object' &&
                 value !== null &&
                 'type' in value &&
-                value.type === 'VARIABLE_ALIAS';
+                value.type === 'VARIABLE_ALIAS'
+            );
 
             variableInfos.push({
                 id: variable.id,
+                // ✅ ARCHITECTURAL FIX (Level 2): Use standard name (leaf). 
+                // Context is now handled via Collection Name Signal (Rule 0).
                 name: variable.name,
                 type: variable.resolvedType,
                 hasAliases,
@@ -114,23 +114,44 @@ export class CollectionClassifier {
     }
 
     /**
-     * Core classification algorithm using a 3-tier decision tree.
+     * Core classification algorithm using a 4-tier decision tree.
      * 
      * Decision Tree:
-     * 1. Pattern Matching (70%+ match threshold)
+     * 0. Collection Name Signal (Explicit keywords)
+     * 1. Pattern Matching (Match threshold)
      * 2. Dependency Analysis (alias ratio analysis)
      * 3. Scope Analysis (component scope detection)
-     * 4. Fallback to Unknown if no clear classification
      * 
+     * @param collection - The target VariableCollection
      * @param variables - Array of VariableInfo to analyze
      * @returns Classification result with type, confidence, and reasoning
      */
     private runClassificationLogic(
+        collection: VariableCollection,
         variables: VariableInfo[]
     ): { type: CollectionType; confidence: number; reason: string } {
         const totalVars = variables.length;
 
-        // RULE 1: Pattern Matching (Highest Priority)
+        // ✅ RULE 0: Collection Name Signal (Level 2 - Highest Priority)
+        const collectionName = collection.name.toLowerCase();
+
+        if (collectionName.includes('primitive') || collectionName.includes('base') || collectionName.includes('core')) {
+            return {
+                type: 'Primitives',
+                confidence: 0.95,
+                reason: `Collection name "${collection.name}" explicitly indicates Primitives`
+            };
+        }
+
+        if (collectionName.includes('semantic') || collectionName.includes('theme') || collectionName.includes('token')) {
+            return {
+                type: 'Semantic',
+                confidence: 0.95,
+                reason: `Collection name "${collection.name}" explicitly indicates Semantic Tokens`
+            };
+        }
+
+        // RULE 1: Pattern Matching
         const primitiveMatches = this.countPatternMatches(variables, this.primitivePatterns);
         const semanticMatches = this.countPatternMatches(variables, this.semanticPatterns);
         const componentMatches = this.countPatternMatches(variables, this.componentPatterns);
@@ -148,7 +169,7 @@ export class CollectionClassifier {
             };
         }
 
-        // Semantic: 50%+ match (lower threshold because semantic tokens are more diverse)
+        // Semantic: 50%+ match
         if (semanticRatio > 0.5) {
             return {
                 type: 'Semantic',
@@ -166,11 +187,11 @@ export class CollectionClassifier {
             };
         }
 
-        // RULE 2: Dependency Analysis (Secondary)
+        // RULE 2: Dependency Analysis
         const aliasCount = variables.filter(v => v.hasAliases).length;
         const aliasRatio = aliasCount / totalVars;
 
-        // High alias ratio suggests Semantic (tokens that reference primitives)
+        // High alias ratio suggests Semantic
         if (aliasRatio > 0.8) {
             return {
                 type: 'Semantic',
@@ -179,7 +200,7 @@ export class CollectionClassifier {
             };
         }
 
-        // Low alias ratio suggests Primitives (raw values)
+        // Low alias ratio suggests Primitives
         if (aliasRatio < 0.2) {
             return {
                 type: 'Primitives',
@@ -188,8 +209,7 @@ export class CollectionClassifier {
             };
         }
 
-        // RULE 3: Scope Analysis (Tertiary Fallback)
-        // We check for restricted scopes (like TEXT_FILL) as a proxy for specific usage
+        // RULE 3: Scope Analysis
         const hasTextScopes = variables.some(v =>
             v.scopes.includes('TEXT_FILL')
         );
