@@ -1,87 +1,140 @@
-import { ColorScience } from './ColorScience';
-import { ColorDB } from './ColorDB';
+import { ColorScience, type LAB } from './ColorScience';
+import { ColorRepository } from '../../infrastructure/supabase/ColorRepository';
+import { HueAnalyzer } from './HueBuckets';
 
-type MatchResult = { name: string; deltaE: number; hex: string };
+export type NamedColor = { name: string; hex: string; lab: LAB };
+
+export interface NamingResult {
+    name: string;
+    confidence: number; // 0 to 1
+    source: 'exact' | 'db_perfect' | 'db_approx' | 'algo_fallback';
+    deltaE?: number;
+}
 
 export class ColorNamer {
-    findClosest(hex: string, limit = 5): MatchResult[] {
-        const inputLab = ColorScience.hexToLab(hex);
-        const results = ColorDB.get().getAll().map(c => ({
-            name: c.name,
-            deltaE: ColorScience.deltaE2000(inputLab, c.lab),
-            hex: c.hex
-        }));
+    private static instance: ColorNamer;
+    private colors: NamedColor[] = [];
+    private isInitialized = false;
 
-        return results.sort((a, b) => a.deltaE - b.deltaE).slice(0, limit);
+    private constructor() { }
+
+    public static get(): ColorNamer {
+        if (!ColorNamer.instance) {
+            ColorNamer.instance = new ColorNamer();
+        }
+        return ColorNamer.instance;
     }
 
-    name(hex: string): string {
-        const match = this.findClosest(hex, 1)[0];
-        if (!match) return "unknown";
+    public async init() {
+        if (this.isInitialized) return true;
 
-        if (match.deltaE <= 2.3) return match.name;      // Perfect
-        if (match.deltaE <= 10) return match.name;       // Good
-        return `~${match.name}`;                         // Approximate
+        try {
+            const remotes = await ColorRepository.fetchAll();
+            if (remotes && remotes.length > 0) {
+                this.colors = remotes.map(r => ({
+                    name: r.name,
+                    hex: r.hex,
+                    lab: ColorScience.hexToLab(r.hex)
+                }));
+                this.isInitialized = true;
+                console.log(`🎨 Vibe Architect: Intelligent Engine active with ${this.colors.length} nodes.`);
+                return true;
+            }
+        } catch (e) {
+            console.error("[ColorNamer] Initialization failed:", e);
+        }
+        return false;
     }
 
-    analyze(hex: string) {
-        const lab = ColorScience.hexToLab(hex);
-        const name = this.name(hex);
-        const closest = this.findClosest(hex, 5);
-
-        return {
-            hex,
-            name,
-            lab,
-            closest,
-            dbSize: ColorDB.get().count(),
-            colorFamily: name.split('-')[0],
-            shade: name.split('-')[1]
-        };
+    public isReady(): boolean {
+        return this.isInitialized;
     }
 
     /**
-     * توليد ألوان متناغمة (Harmony)
+     * The Multi-Stage Naming Pipeline
+     * Goal: 99%+ Semantic Accuracy
      */
-    harmony(hex: string): string[] {
-        const baseName = this.name(hex).replace('~', '');
-        const [family, shade] = baseName.split('-');
+    public name(hex: string): NamingResult {
+        const inputHex = hex.toLowerCase().trim();
+        const inputLab = ColorScience.hexToLab(inputHex);
 
-        if (!family || !shade) return [];
-
-        const harmonies: string[] = [];
-        const shadeNum = parseInt(shade);
-
-        // Same family, different shades
-        [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].forEach(s => {
-            if (s !== shadeNum) {
-                harmonies.push(`${family}-${s}`);
-            }
-        });
-
-        // Complementary colors
-        const complements: Record<string, string[]> = {
-            'red': ['green', 'teal'],
-            'blue': ['orange', 'amber'],
-            'green': ['red', 'pink'],
-            'purple': ['yellow', 'lime'],
-            'pink': ['green', 'teal']
-        };
-
-        if (complements[family]) {
-            complements[family].forEach(comp => {
-                harmonies.push(`${comp}-${shade}`);
-            });
+        // STAGE 1: Exact Match (100% Accuracy)
+        const exact = this.colors.find(c => c.hex.toLowerCase() === inputHex);
+        if (exact) {
+            return { name: exact.name, confidence: 1.0, source: 'exact' };
         }
 
-        return harmonies.slice(0, 8);
+        if (!this.isInitialized || this.colors.length === 0) {
+            return this.algorithmicFallback(inputHex, inputLab);
+        }
+
+        // STAGE 2: High Confidence CIEDE2000 (95%+ accuracy)
+        const results = this.colors.map(c => ({
+            name: c.name,
+            deltaE: ColorScience.deltaE2000(inputLab, c.lab),
+            hex: c.hex
+        })).sort((a, b) => a.deltaE - b.deltaE);
+
+        const best = results[0];
+        if (best.deltaE <= 2.3) {
+            return { name: best.name, confidence: 0.95, source: 'db_perfect', deltaE: best.deltaE };
+        }
+
+        // STAGE 3: Weighted Hue Priority (For "good enough" naming)
+        // We prioritize Hue over Lightness for naming because people care more about "Blue" vs "Purple"
+        // than "Light Blue" vs "Mid Blue" when assigning a base name.
+        const weightedResults = this.colors.map(c => ({
+            name: c.name,
+            deltaE: ColorScience.weightedDeltaE(inputLab, c.lab, { L: 1.0, C: 1.0, H: 2.5 }),
+            hex: c.hex
+        })).sort((a, b) => a.deltaE - b.deltaE);
+
+        const weightedBest = weightedResults[0];
+        if (weightedBest.deltaE <= 15.0) {
+            return {
+                name: weightedBest.name,
+                confidence: Math.max(0.6, 0.9 - (weightedBest.deltaE / 50)),
+                source: 'db_approx',
+                deltaE: weightedBest.deltaE
+            };
+        }
+
+        // STAGE 4: Algorithmic Fallback (Safety Net)
+        return this.algorithmicFallback(inputHex, inputLab);
+    }
+
+    private algorithmicFallback(hex: string, lab: LAB): NamingResult {
+        const family = HueAnalyzer.getFamily(hex);
+        const shade = HueAnalyzer.getShade(lab.L);
+        return {
+            name: `${family}-${shade}`,
+            confidence: 0.5,
+            source: 'algo_fallback'
+        };
+    }
+
+    public analyze(hex: string) {
+        const result = this.name(hex);
+        const lab = ColorScience.hexToLab(hex);
+
+        return {
+            hex,
+            ...result,
+            lab,
+            family: HueAnalyzer.getFamily(hex),
+            shade: HueAnalyzer.getShade(lab.L),
+            dbSize: this.colors.length
+        };
     }
 }
 
-// Singleton Public API
+/**
+ * Public Singleton API
+ */
 export const vibeColor = {
-    name: (hex: string) => new ColorNamer().name(hex),
-    closest: (hex: string, n = 5) => new ColorNamer().findClosest(hex, n),
-    info: (hex: string) => new ColorNamer().analyze(hex),
-    harmony: (hex: string) => new ColorNamer().harmony(hex)
+    name: (hex: string) => ColorNamer.get().name(hex).name,
+    fullResult: (hex: string) => ColorNamer.get().name(hex),
+    info: (hex: string) => ColorNamer.get().analyze(hex),
+    isReady: () => ColorNamer.get().isReady(),
+    init: () => ColorNamer.get().init()
 };

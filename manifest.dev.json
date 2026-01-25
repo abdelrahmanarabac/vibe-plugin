@@ -3,10 +3,15 @@
     "id": "vibe-tokens-plugin",
     "api": "1.0.0",
     "main": "dist/controller.js",
-    "ui": "http://localhost:5174",
+    "ui": "http://localhost:5173",
     "editorType": [
         "figma"
     ],
     "capabilities": [],
-    "enableProposedApi": false
+    "enableProposedApi": false,
+    "networkAccess": {
+        "allowedDomains": [
+            "https://*.supabase.co"
+        ]
+    }
 }

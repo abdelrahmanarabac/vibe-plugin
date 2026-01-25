@@ -9,8 +9,10 @@
   ],
   "capabilities": [],
   "enableProposedApi": false,
-  "permissions": [
-    "camera",
-    "microphone"
-  ]
+  "permissions": [],
+  "networkAccess": {
+    "allowedDomains": [
+      "https://*.supabase.co"
+    ]
+  }
 }

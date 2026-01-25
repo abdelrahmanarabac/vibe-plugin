@@ -36,13 +36,53 @@ export class ColorRepository {
         if (!client) return false;
 
         const { error } = await client
-            .from('vibe_colors')
+            .from('vibe_colors_lab') // Updated to new table
             .upsert({
                 hex: hex.toLowerCase(),
                 name: name.toLowerCase(),
                 dataset_source: 'user_contribution'
+                // trigger will handle lab_l/a/b autocalc
             });
 
         return !error;
+    }
+
+    /**
+     * Fetches ALL colors for client-side caching/analysis (from new LAB table)
+     */
+    static async fetchAll(): Promise<RemoteColor[]> {
+        const client = VibeSupabase.get();
+        if (!client) return [];
+
+        const { data, error } = await client
+            .from('vibe_colors_lab') // Updated to new table
+            .select('*');
+
+        if (error) {
+            console.error("Vibe DB Error:", error);
+            return [];
+        }
+        return data as RemoteColor[];
+    }
+
+    /**
+     * Server-Side Nearest Match (Uses Database Delta E Logic)
+     * Extremely fast for on-demand queries.
+     */
+    static async findClosestRemote(hex: string, limit = 5): Promise<any[]> {
+        const client = VibeSupabase.get();
+        if (!client) return [];
+
+        const { data, error } = await client
+            .rpc('find_closest_color', {
+                input_hex: hex,
+                limit_count: limit
+            });
+
+        if (error) {
+            console.error("RPC Error:", error);
+            return [];
+        }
+        return data; // Returns { name, hex, delta_e, confidence, ... }
     }
 }

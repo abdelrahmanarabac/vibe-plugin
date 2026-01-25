@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Palette, Wand2, ArrowLeftRight, Paintbrush } from 'lucide-react';
-import { vibeColor } from '../../features/naming/ColorNamer';
+import { vibeColor, type NamingResult } from '../../features/naming/ColorNamer';
 import { VibeColorPicker } from './ColorPicker';
 
 interface NewTokenDialogProps {
@@ -21,6 +21,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
 
     // Namer State
     const [isAutoNaming, setIsAutoNaming] = useState(false);
+    const [namingResult, setNamingResult] = useState<NamingResult | null>(null);
 
     // Color Context
     const [colorScope, setColorScope] = useState<ColorScope>('single');
@@ -28,18 +29,30 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
     // Spacing Context
     const [spacingRatio, setSpacingRatio] = useState<number | 'custom'>('custom');
 
+    // Lifecycle
+    React.useEffect(() => {
+        if (isOpen) vibeColor.init();
+    }, [isOpen]);
+
     // Naming Logic
-    const handleAutoName = () => {
+    const handleAutoName = async () => {
         setIsAutoNaming(true);
+
+        // Ensure color engine is ready
+        if (type === 'color' && !vibeColor.isReady()) {
+            await vibeColor.init();
+        }
+
         setTimeout(() => {
             if (type === 'color') {
-                const generatedName = vibeColor.name(value);
-                setName(generatedName === 'unknown' ? 'custom-color' : generatedName.replace('~', ''));
+                const result = vibeColor.fullResult(value);
+                setName(result.name === 'unknown' ? 'custom-color' : result.name.replace('~', ''));
+                setNamingResult(result);
             } else if (type === 'spacing') {
                 setName(`space-${String(value).replace('.', '-')}`);
             }
             setIsAutoNaming(false);
-        }, 600); // Fake delay for UX "Thinking" feel
+        }, 300); // Shorter delay since we might have awaited init
     };
 
     const handleTypeChange = (newType: string) => {
@@ -98,12 +111,22 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
 
                     {/* 2. Magic Name Input */}
                     <div className="space-y-2">
-                        <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider">Token Name</label>
+                        <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider flex items-center justify-between">
+                            Token Name
+                            {namingResult && namingResult.source !== 'algo_fallback' && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-1 ${namingResult.confidence > 0.9 ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    {namingResult.source === 'exact' ? 'Exact Match' : `${Math.round(namingResult.confidence * 100)}% Match`}
+                                </span>
+                            )}
+                        </label>
                         <div className="relative group">
                             <input
                                 type="text"
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                onChange={(e) => {
+                                    setName(e.target.value);
+                                    setNamingResult(null); // Clear confidence if user edits
+                                }}
                                 placeholder="e.g. primary-500"
                                 className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all placeholder:text-white/20 font-mono"
                                 autoFocus
