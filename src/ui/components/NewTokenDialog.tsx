@@ -92,7 +92,7 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="bg-[#080808] border border-white/5 rounded-2xl w-[440px] shadow-2xl overflow-hidden"
+                className="bg-[#080808] border border-white/5 rounded-2xl w-[440px] shadow-2xl"
             >
                 {/* 1. Header */}
                 <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
