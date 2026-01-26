@@ -24,9 +24,6 @@ import { RenameCollectionsCapability } from './modules/collections/capabilities/
 import { CreateCollectionCapability } from './modules/collections/capabilities/CreateCollectionCapability';
 import { TraceLineageCapability } from './modules/intelligence/capabilities/TraceLineageCapability';
 
-console.clear();
-console.log('[Vibe] System Booting (Architecture v2.1)...');
-
 // === 1. Initialize Core Engines ===
 const repository = new TokenRepository();
 const variableRepository = new FigmaVariableRepository();
@@ -90,8 +87,6 @@ const handleSyncRequest = async () => {
 
         // Broadcast stats immediately after graph update
         await broadcastStats();
-
-        console.log(`[Controller] Synced ${tokens.length} tokens to UI.`);
     } catch (e) {
         console.error('[Controller] Sync Failed:', e);
     }
@@ -105,9 +100,7 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 // === 5. Bootstrap ===
 (async () => {
     try {
-        console.log('[Vibe] Initializing Architecture v2.1...');
         eventLoop.start();
-        console.log('[Vibe] System Ready. Waiting for UI signal.');
     } catch (e) {
         console.error('[Vibe] Bootstrap failed:', e);
     }
@@ -127,8 +120,6 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // A. Capability Dispatch
         const capability = registry.getByCommand(msg.type);
         if (capability) {
-            console.log(`[Dispatcher] Routing ${msg.type} -> ${capability.id}`);
-
             if (!capability.canExecute(context)) {
                 console.warn(`[Dispatcher] Capability ${capability.id} declined execution.`);
                 figma.notify(`⚠️ Cannot execute ${msg.type} in current context.`);
@@ -167,7 +158,6 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // B. System/Utility Fallback
         switch (msg.type) {
             case 'REQUEST_GRAPH': {
-                console.log('[Controller] UI Requested Data. Triggering deep sync...');
                 await handleSyncRequest();
                 break;
             }

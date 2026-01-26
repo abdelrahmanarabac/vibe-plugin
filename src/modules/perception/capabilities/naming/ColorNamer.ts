@@ -38,7 +38,6 @@ export class ColorNamer {
                     lab: ColorScience.hexToLab(r.hex)
                 }));
                 this.isInitialized = true;
-                console.log(`🎨 Vibe Architect: Intelligent Engine active with ${this.colors.length} nodes.`);
                 return true;
             }
         } catch (e) {

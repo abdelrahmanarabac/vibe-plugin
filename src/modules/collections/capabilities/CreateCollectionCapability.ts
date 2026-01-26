@@ -24,8 +24,6 @@ export class CreateCollectionCapability implements ICapability {
                 collection.addMode("Default");
             }
 
-            console.log(`[Vibe] Created Collection: ${collection.name} (ID: ${collection.id})`);
-
             return Result.ok({
                 message: `✅ Collection '${name}' Created`,
                 collectionId: collection.id

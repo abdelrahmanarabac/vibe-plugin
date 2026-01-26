@@ -61,7 +61,6 @@ export class QualityGate {
             for (const error of tokenErrors) {
                 // Heuristic: Fix Low Contrast
                 if (error.message.includes('Low contrast') && typeof healedValue === 'string') {
-                    console.log(`🚑 Healing ${token.name}: Darkening to improve contrast...`);
                     // Darken by 10% steps until it might pass or max 3 times
                     healedValue = colord(healedValue).darken(0.15).toHex();
                 }

@@ -1,7 +1,6 @@
 import { colord, extend } from 'colord';
 import a11yPlugin from 'colord/plugins/a11y';
 import { type TokenEntity } from '../../core/types';
-import { ColorScience } from '../perception/capabilities/naming/ColorScience';
 
 extend([a11yPlugin]);
 

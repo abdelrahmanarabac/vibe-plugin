@@ -116,7 +116,6 @@ export class FigmaVariableRepository implements IVariableRepository {
             let respCollection = collections.find(c => c.name === 'Responsive Tokens');
 
             if (!respCollection) {
-                console.log('[Repo] Creating Responsive Collection...');
                 respCollection = figma.variables.createVariableCollection('Responsive Tokens');
                 // Rename default mode to Mobile
                 respCollection.renameMode(respCollection.modes[0].modeId, 'Mobile');

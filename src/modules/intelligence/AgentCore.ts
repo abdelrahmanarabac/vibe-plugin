@@ -16,7 +16,6 @@ export class AgentCore {
     constructor(aiService: IAIService, memoryService?: MemoryService) {
         this.ai = aiService;
         this.memory = memoryService || new MemoryService();
-        console.log("[AgentCore] Memory Engine Online.");
     }
 
     /**

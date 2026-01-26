@@ -77,9 +77,6 @@ export class CollectionRenamer {
                     // Skip if already has correct name
                     if (collection.name === classification.proposedName) {
                         result.skippedCount++;
-                        console.log(
-                            `Skipped '${collection.name}': Already has correct name`
-                        );
                         continue;
                     }
 
@@ -108,15 +105,9 @@ export class CollectionRenamer {
                             // No collision: apply clean rename
                             collection.name = classification.proposedName;
                             result.renamedCount++;
-                            console.log(
-                                `✅ Renamed '${classification.currentName}' → '${classification.proposedName}' (${classification.reason})`
-                            );
                         }
                     } else {
                         // Dry run: just log what would happen
-                        console.log(
-                            `[DRY RUN] Would rename '${classification.currentName}' → '${classification.proposedName}' (confidence: ${classification.confidence.toFixed(2)})`
-                        );
                         result.renamedCount++;
                     }
 
