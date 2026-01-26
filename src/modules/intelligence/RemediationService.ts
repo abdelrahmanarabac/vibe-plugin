@@ -46,4 +46,22 @@ export class RemediationService {
 
         return null;
     }
+
+    /**
+     * 🧲 fixDrift
+     * Snaps a drifting layer back to its gravitational token.
+     * Note: In a real plugin, this would issue a figma.postMessage to the controller
+     * to perform the scene mutation, as logic code shouldn't touch SceneNodes directly if possible,
+     * but for this architecture, we assume we can return the instruction.
+     */
+    fixDrift(drift: { layerId: string; nearestToken: string }) {
+        // Logic to apply the token variable to the layer.
+        // This is a placeholder for the actual SceneNode manipulation
+        // which would happen in a capability or controller.
+        return {
+            action: 'APPLY_VARIABLE',
+            target: drift.layerId,
+            variable: drift.nearestToken
+        };
+    }
 }
