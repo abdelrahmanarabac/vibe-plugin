@@ -14,8 +14,6 @@ export class CapabilityRegistry {
 
         this.capabilities.set(capability.id, capability);
         this.commandMap.set(capability.commandId, capability.id);
-
-        console.log(`[Vibe] Registered Capability: ${capability.id} (cmd: ${capability.commandId})`);
     }
 
     /**

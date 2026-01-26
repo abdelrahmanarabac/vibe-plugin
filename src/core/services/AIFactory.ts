@@ -34,8 +34,6 @@ export class AIFactory {
 
             // Layered Decorator: Caching
             this.instance = new CachedAIService(baseService);
-
-            console.log(`[Vibe AI] Engine ${keyChanged ? 'Re-initialized' : 'Initialized'} with new configuration.`);
         }
 
         return this.instance!;

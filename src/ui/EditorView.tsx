@@ -143,8 +143,7 @@ export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageDa
                                 <div className="max-w-3xl mx-auto">
                                     <SmartInspector
                                         tokens={[selectedToken]}
-                                        onUpdate={(id, value) => {
-                                            console.log('Token update:', id, value);
+                                        onUpdate={(id) => {
                                             parent.postMessage({
                                                 pluginMessage: { type: 'NOTIFY', message: `Token ${id} updated` }
                                             }, '*');

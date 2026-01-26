@@ -16,9 +16,8 @@ export function SmartInspector({ tokens, onUpdate }: SmartInspectorProps) {
 
     const handleJsonSave = () => {
         try {
-            const parsed = JSON.parse(jsonContent);
+            JSON.parse(jsonContent);
             // In a real implementation, we'd diff and apply partial updates
-            console.log("Saving JSON Surgery:", parsed);
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "JSON Surgery Applied (Simulation)" } }, '*');
         } catch (e) {
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "Invalid JSON Syntax" } }, '*');

@@ -23,8 +23,6 @@ export class EventLoop {
     public start(): void {
         if (this.syncIntervalId !== null) return;
 
-        console.log('[EventLoop] Starting background sync...');
-
         this.syncIntervalId = setInterval(async () => {
             await this.tick();
         }, this.INTERVAL_MS) as unknown as number;
@@ -37,7 +35,6 @@ export class EventLoop {
         if (this.syncIntervalId !== null) {
             clearInterval(this.syncIntervalId);
             this.syncIntervalId = null;
-            console.log('[EventLoop] Background sync stopped.');
         }
     }
 
@@ -53,10 +50,6 @@ export class EventLoop {
 
             if (currentHash !== this.lastVariableHash) {
                 // Change detected
-                if (this.lastVariableHash !== '') {
-                    // Log only if it's not the initial load check
-                    console.log('[EventLoop] Change detected in variables. Triggering sync.');
-                }
                 this.lastVariableHash = currentHash;
                 await this.onSyncNeeded();
             }

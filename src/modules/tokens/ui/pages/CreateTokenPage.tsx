@@ -37,7 +37,6 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
             name: fullName
         };
 
-        console.log('[CreatePage] Submitting:', finalData);
         onSubmit(finalData);
     };
 
