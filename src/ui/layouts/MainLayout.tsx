@@ -1,7 +1,7 @@
 import React from 'react';
 import { Settings } from 'lucide-react';
 
-export type ViewType = 'dashboard' | 'graph' | 'settings';
+export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -16,9 +16,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     children,
     activeTab,
     onTabChange,
-    credits,
-    theme,
-    onThemeToggle
+    credits
 }) => {
     return (
         <div className="h-full w-full flex flex-col bg-nebula text-text-primary overflow-hidden font-sans transition-colors duration-300">
@@ -50,12 +48,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     </button>
                 </div>
 
-                {/* 3. Right: Tools (Theme -> Settings -> Credits) */}
+                {/* 3. Right: Tools (Settings -> Credits) */}
                 <div className="flex items-center justify-end gap-6 min-w-[240px]">
-                    {/* Theme Toggle */}
-                    <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} />
-
-                    <div className="h-6 w-[1px] bg-white/10" /> {/* Divider */}
 
                     {/* Settings */}
                     <button
@@ -87,35 +81,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 // Step 552 showed `import { Omnibox } from '../components/Omnibox';` at line 3.
 // And usage at line 72.
 // So I will include it.
-
-interface ThemeToggleProps {
-    theme: 'dark' | 'light';
-    onThemeToggle: () => void;
-}
-
-const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onThemeToggle }) => {
-    return (
-        <div className="flex items-center gap-1 bg-surface-2 p-1 rounded-full border border-white/5">
-            {/* Light Mode */}
-            <button
-                onClick={() => theme === 'dark' && onThemeToggle()}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'light' ? 'bg-text-bright text-void shadow-sm' : 'text-text-dim hover:text-text-primary hover:bg-white/5'}`}
-                title="Light Mode"
-            >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
-            </button>
-
-            {/* Dark Mode */}
-            <button
-                onClick={() => theme === 'light' && onThemeToggle()}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-surface-3 text-text-bright shadow-sm border border-white/5' : 'text-text-dim hover:text-text-primary hover:bg-white/5'}`}
-                title="Dark Mode"
-            >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-            </button>
-        </div>
-    );
-};
 
 /**
  * 🧬 System Pulse Animation

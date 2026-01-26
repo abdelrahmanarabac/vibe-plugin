@@ -16,6 +16,7 @@ export interface TokensViewModel {
     isSynced: boolean;
     liveIndicator: boolean;
     updateToken: (id: string, value: string) => void;
+    createToken: (data: any) => void;
     scanAnatomy: () => void;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
@@ -113,6 +114,15 @@ export function useTokens(): TokensViewModel {
         parent.postMessage({ pluginMessage: { type: 'UPDATE_TOKEN', id, value } }, '*');
     }, []);
 
+    const createToken = useCallback((data: any) => {
+        parent.postMessage({
+            pluginMessage: {
+                type: 'CREATE_VARIABLE',
+                payload: data
+            }
+        }, '*');
+    }, []);
+
     const traceLineage = useCallback((tokenId: string) => {
         parent.postMessage({ pluginMessage: { type: 'TRACE_LINEAGE', payload: { tokenId } } }, '*');
     }, []);
@@ -125,6 +135,7 @@ export function useTokens(): TokensViewModel {
         liveIndicator,
         lineageData,
         updateToken,
+        createToken,
         scanAnatomy,
         traceLineage
     };

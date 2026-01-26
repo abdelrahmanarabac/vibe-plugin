@@ -18,30 +18,69 @@ interface EditorViewProps {
  * A dual-identity view with a persistent sidebar and a spatial graph/inspector workspace.
  */
 export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageData }: EditorViewProps) {
+    const [searchQuery, setSearchQuery] = useState(searchFocus || '');
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
-    const filteredTokens = searchFocus
-        ? tokens.filter(t => t.name.toLowerCase().includes(searchFocus.toLowerCase()))
-        : tokens;
+    // allow external control but keep local state sync
+    if (searchFocus && searchFocus !== searchQuery) {
+        setSearchQuery(searchFocus);
+    }
+
+    const clearSearch = () => setSearchQuery('');
 
     const selectedToken = selectedTokenId
         ? tokens.find(t => t.id === selectedTokenId)
         : null;
 
+
     return (
         <div className="flex w-full h-full overflow-hidden bg-void/20 p-2 gap-2">
             {/* 🌲 Left Fragment: Sidebar (Token Tree) */}
             <aside className="w-[280px] bg-nebula/40 backdrop-blur-3xl border border-white/10 rounded-[28px] flex flex-col shrink-0 overflow-hidden transition-all duration-500 shadow-2xl mr-1">
-                {/* Collections Identity */}
-                <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-                    <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_var(--secondary-glow)]" />
-                        <span className="text-[10px] font-extrabold text-white uppercase tracking-[0.1em]">Collections</span>
+                {/* Collections Identity & Search */}
+                <div className="p-4 border-b border-white/5 flex flex-col gap-3 bg-white/[0.01]">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-secondary shadow-[0_0_8px_var(--secondary-glow)]" />
+                            <span className="text-[10px] font-extrabold text-white uppercase tracking-[0.1em]">Collections</span>
+                        </div>
+                        <div className="text-[9px] text-white/30 font-mono">{tokens.length}</div>
+                    </div>
+
+                    {/* 🔍 Search Line */}
+                    <div className="relative group">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Find..."
+                            className="w-full bg-black/20 text-[11px] text-white placeholder-white/20 border border-white/10 rounded-lg py-1.5 pl-3 pr-8 focus:outline-none focus:border-secondary/50 focus:bg-black/40 transition-all font-medium"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={clearSearch}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+                            >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        )}
+                        {!searchQuery && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-0 custom-scrollbar">
                     <TokenTree
-                        tokens={filteredTokens}
+                        tokens={tokens}
+                        searchQuery={searchQuery}
                         selectedId={selectedTokenId}
                         onSelect={setSelectedTokenId}
                     />

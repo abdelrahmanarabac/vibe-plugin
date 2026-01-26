@@ -124,19 +124,34 @@ export class FigmaVariableRepository implements IVariableRepository {
                 respCollection.addMode('Tablet');
                 respCollection.addMode('Desktop');
             }
-
-            // Ensure modes exist (in case partially deleted)
-            // We assume standard setup "Mobile", "Tablet", "Desktop" exists if collection was just found/created.
-
             collection = respCollection;
         } else {
             // Standard Single Mode
             const collections = await figma.variables.getLocalVariableCollectionsAsync();
-            collection = collections.find(c => c.name === 'Vibe Tokens') || collections[0];
-            if (!collection || collection.name !== 'Vibe Tokens') {
-                // Prefer explicit Vibe Tokens if possible, otherwise create
-                collection = figma.variables.createVariableCollection('Vibe Tokens');
+
+            // 🧠 INTELLIGENT PATH PARSING
+            // Format: "CollectionName/Group/TokenName"
+            const parts = name.split('/');
+
+            // If we have at least "Collection/Token", we treat the first part as Collection Name
+            // If just "Token", we default to "Vibe Tokens"
+            let targetCollectionName = 'Vibe Tokens';
+            let finalTokenName = name;
+
+            if (parts.length > 1) {
+                targetCollectionName = parts[0];
+                // The Figma API uses "/" for grouping WITHIN a collection.
+                // So if we have "Brand/Colors/Primary", 
+                // Collection = "Brand"
+                // Valid Variable Name = "Colors/Primary"
+                finalTokenName = parts.slice(1).join('/');
             }
+
+            collection = collections.find(c => c.name === targetCollectionName)
+                || await figma.variables.createVariableCollection(targetCollectionName);
+
+            // Update the name to be relative to the collection
+            name = finalTokenName;
         }
 
         const variable = figma.variables.createVariable(

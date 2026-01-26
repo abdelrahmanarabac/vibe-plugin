@@ -92,7 +92,7 @@ export function NewStyleDialog({ isOpen, onClose, onSubmit }: NewStyleDialogProp
                                     { label: 'Effect', value: 'effect' },
                                     { label: 'Layout Grid', value: 'grid' },
                                 ]}
-                                className="w-full h-[46px]"
+                                className="w-full"
                             />
                         </div>
                     </div>
