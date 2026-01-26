@@ -3,7 +3,7 @@
  * Handles conversions and naming logic.
  */
 
-// تحويل RGB إلى HSV
+// Convert RGB to HSV
 export function rgbToHsv(r: number, g: number, b: number) {
     r /= 255; g /= 255; b /= 255;
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
@@ -23,7 +23,7 @@ export function rgbToHsv(r: number, g: number, b: number) {
     return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(v * 100) };
 }
 
-// تحويل HSV إلى RGB
+// Convert HSV to RGB
 export function hsvToRgb(h: number, s: number, v: number) {
     s /= 100; v /= 100;
     let r = 0, g = 0, b = 0;
@@ -43,7 +43,7 @@ export function hsvToRgb(h: number, s: number, v: number) {
     return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
 }
 
-// دالة تحويل من HSL لـ RGB
+// Convert HSL to RGB
 export function hslToRgb(h: number, s: number, l: number) {
     s /= 100;
     l /= 100;
@@ -58,7 +58,7 @@ export function hslToRgb(h: number, s: number, l: number) {
     };
 }
 
-// دالة تنظيف الـ Hex عشان ترجع 6 حروف بس
+// Sanitize Hex to ensure 6 characters
 export function toHex6(color: { r: number; g: number; b: number }): string {
     const toHex = (n: number) => {
         const hex = Math.round(n).toString(16);

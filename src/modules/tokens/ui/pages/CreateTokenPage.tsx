@@ -4,7 +4,8 @@ import { ArrowLeft, Paintbrush, Settings } from 'lucide-react';
 
 import { useTokenCreation } from '../hooks/useTokenCreation';
 import { TokenNameInput } from '../components/TokenNameInput';
-import { TokenScopeSelect } from '../components/TokenScopeSelect';
+import { TokenTypeSelect } from '../components/TokenTypeSelect';
+import { TokenScopeConfig } from '../components/TokenScopeConfig';
 import { TokenValueInput } from '../components/TokenValueInput';
 import { VibePathPicker } from '../../../../ui/components/base/VibePathPicker';
 import { useTokens } from '../../../../ui/hooks/useTokens';
@@ -98,27 +99,45 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                                 </div>
                             </div>
 
-                            <TokenScopeSelect
-                                type={formState.type}
-                                onTypeChange={setters.setType}
-                                colorScope={formState.colorScope}
-                                onColorScopeChange={setters.setColorScope}
-                                customRange={formState.customRange}
-                                onCustomRangeChange={setters.setCustomRange}
-                                activeModes={formState.activeModes}
-                                onActiveModesChange={setters.setActiveModes}
-                                ratio={formState.ratio}
-                                onRatioChange={setters.setRatio}
-                            />
+                            {/* 3. Classification, Scope & Value (Auto Layout) */}
+                            {/* 3. Classification, Scope & Value (2 Rows) */}
+                            <div className="space-y-4">
+                                {/* Row 1: Type & Scope */}
+                                <div className="flex flex-col md:flex-row gap-4 items-start">
+                                    <TokenTypeSelect
+                                        type={formState.type}
+                                        onTypeChange={setters.setType}
+                                        className="w-full md:w-[140px] flex-shrink-0"
+                                    />
 
-                            <TokenValueInput
-                                type={formState.type}
-                                value={formState.value}
-                                onValueChange={setters.setValue}
-                                colorScope={formState.colorScope}
-                                customRange={formState.customRange}
-                                activeModes={formState.activeModes}
-                            />
+                                    {!['number', 'string'].includes(formState.type) && (
+                                        <TokenScopeConfig
+                                            type={formState.type}
+                                            colorScope={formState.colorScope}
+                                            onColorScopeChange={setters.setColorScope}
+                                            customRange={formState.customRange}
+                                            onCustomRangeChange={setters.setCustomRange}
+                                            activeModes={formState.activeModes}
+                                            onActiveModesChange={setters.setActiveModes}
+                                            ratio={formState.ratio}
+                                            onRatioChange={setters.setRatio}
+                                            className="flex-1 w-full"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Row 2: Value */}
+                                <div className="w-full">
+                                    <TokenValueInput
+                                        type={formState.type}
+                                        value={formState.value}
+                                        onValueChange={setters.setValue}
+                                        colorScope={formState.colorScope}
+                                        customRange={formState.customRange}
+                                        activeModes={formState.activeModes}
+                                    />
+                                </div>
+                            </div>
                         </form>
                     </motion.div>
                 </div>

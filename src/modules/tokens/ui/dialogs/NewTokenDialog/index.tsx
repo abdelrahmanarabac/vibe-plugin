@@ -4,7 +4,8 @@ import { X, Palette, Paintbrush } from 'lucide-react';
 
 import { useTokenCreation } from '../../hooks/useTokenCreation';
 import { TokenNameInput } from '../../components/TokenNameInput';
-import { TokenScopeSelect } from '../../components/TokenScopeSelect';
+import { TokenTypeSelect } from '../../components/TokenTypeSelect';
+import { TokenScopeConfig } from '../../components/TokenScopeConfig';
 import { TokenValueInput } from '../../components/TokenValueInput';
 import type { NewTokenDialogProps } from '../../../domain/ui-types';
 
@@ -57,28 +58,44 @@ export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProp
                     />
 
                     {/* 3. Classification & Scope */}
-                    <TokenScopeSelect
-                        type={formState.type}
-                        onTypeChange={setters.setType}
-                        colorScope={formState.colorScope}
-                        onColorScopeChange={setters.setColorScope}
-                        customRange={formState.customRange}
-                        onCustomRangeChange={setters.setCustomRange}
-                        activeModes={formState.activeModes}
-                        onActiveModesChange={setters.setActiveModes}
-                        ratio={formState.ratio}
-                        onRatioChange={setters.setRatio}
-                    />
+                    {/* 3. Classification, Scope & Value (2 Rows) */}
+                    <div className="space-y-4">
+                        {/* Row 1: Type & Scope */}
+                        <div className="flex gap-4 items-start">
+                            <TokenTypeSelect
+                                type={formState.type}
+                                onTypeChange={setters.setType}
+                                className="w-[120px] flex-shrink-0"
+                            />
 
-                    {/* 4. Value Input */}
-                    <TokenValueInput
-                        type={formState.type}
-                        value={formState.value}
-                        onValueChange={setters.setValue}
-                        colorScope={formState.colorScope}
-                        customRange={formState.customRange}
-                        activeModes={formState.activeModes}
-                    />
+                            {!['number', 'string'].includes(formState.type) && (
+                                <TokenScopeConfig
+                                    type={formState.type}
+                                    colorScope={formState.colorScope}
+                                    onColorScopeChange={setters.setColorScope}
+                                    customRange={formState.customRange}
+                                    onCustomRangeChange={setters.setCustomRange}
+                                    activeModes={formState.activeModes}
+                                    onActiveModesChange={setters.setActiveModes}
+                                    ratio={formState.ratio}
+                                    onRatioChange={setters.setRatio}
+                                    className="flex-1"
+                                />
+                            )}
+                        </div>
+
+                        {/* Row 2: Value */}
+                        <div className="w-full">
+                            <TokenValueInput
+                                type={formState.type}
+                                value={formState.value}
+                                onValueChange={setters.setValue}
+                                colorScope={formState.colorScope}
+                                customRange={formState.customRange}
+                                activeModes={formState.activeModes}
+                            />
+                        </div>
+                    </div>
 
                     {/* 5. Footer Actions */}
                     <div className="pt-4 flex gap-3">

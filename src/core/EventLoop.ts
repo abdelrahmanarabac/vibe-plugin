@@ -6,6 +6,7 @@
 export class EventLoop {
     private syncIntervalId: number | null = null;
     private lastVariableHash: string = '';
+    private lastCollectionHash: string = '';
     private readonly INTERVAL_MS = 1000;
 
     // Explicitly declare property to satisfy erasableSyntaxOnly
@@ -46,20 +47,36 @@ export class EventLoop {
      */
     private async tick(): Promise<void> {
         try {
-            // Check for potential changes in Figma variables
-            // Note: This relies on the global 'figma' object, which is acceptable for this Plugin-specific core component.
+            // Check for potential changes in Figma variables and Collections
             const vars = await figma.variables.getLocalVariablesAsync();
+            const collections = await figma.variables.getLocalVariableCollectionsAsync();
+
             const currentHash = this.computeVariableHash(vars);
+            const currentCollectionHash = this.computeCollectionHash(collections);
+
+            let hasChanges = false;
 
             if (currentHash !== this.lastVariableHash) {
-                // Change detected
                 if (this.lastVariableHash !== '') {
-                    // Log only if it's not the initial load check
-                    console.log('[EventLoop] Change detected in variables. Triggering sync.');
+                    console.log('[EventLoop] Change detected in variables.');
+                    hasChanges = true;
                 }
                 this.lastVariableHash = currentHash;
+            }
+
+            if (currentCollectionHash !== this.lastCollectionHash) {
+                if (this.lastCollectionHash !== '') {
+                    console.log('[EventLoop] Change detected in collections.');
+                    hasChanges = true;
+                }
+                this.lastCollectionHash = currentCollectionHash;
+            }
+
+            if (hasChanges) {
+                console.log('[EventLoop] Triggering sync due to external changes.');
                 await this.onSyncNeeded();
             }
+
         } catch (error) {
             console.error('[EventLoop] Error in tick:', error);
         }
@@ -76,6 +93,20 @@ export class EventLoop {
             } catch (e) {
                 // Fallback for safety
                 return v.id;
+            }
+        }).join('|');
+    }
+
+    /**
+     * Computes a fingerprint of the current collections to detect renames or creations.
+     */
+    private computeCollectionHash(collections: VariableCollection[]): string {
+        return collections.map(c => {
+            try {
+                // ID + Name + Modes check
+                return `${c.id}:${c.name}:${c.modes.length}`;
+            } catch (e) {
+                return c.id;
             }
         }).join('|');
     }

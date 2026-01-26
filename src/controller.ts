@@ -150,7 +150,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 });
 
                 // If it's a sync-related action, force a broadcast
-                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION'].includes(msg.type)) {
+                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTIONS'].includes(msg.type)) {
                     await handleSyncRequest();
                 }
 
