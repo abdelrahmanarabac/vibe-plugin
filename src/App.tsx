@@ -41,9 +41,7 @@ export default function App() {
         );
     }
 
-    if (!vm.settings.apiKey) {
-        return <SettingsPage apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />;
-    }
+
 
     return (
         <div className="vibe-root relative h-full">

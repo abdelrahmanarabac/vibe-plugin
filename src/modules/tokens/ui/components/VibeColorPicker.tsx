@@ -5,6 +5,7 @@ import { VibeSelect } from '../../../../ui/components/base/VibeSelect';
 import { colord, extend } from 'colord';
 import namesPlugin from 'colord/plugins/names';
 import a11yPlugin from 'colord/plugins/a11y';
+import { toHex6 } from '../../../../shared/utils/ColorUtils';
 
 extend([namesPlugin, a11yPlugin]);
 
@@ -42,8 +43,8 @@ export function VibeColorPicker({ value, onChange }: ColorPickerProps) {
     const updateColor = useCallback((updates: Partial<{ h: number; s: number; v: number; a: number }>) => {
         setHsva(prev => {
             const next = { ...prev, ...updates };
-            const newColor = colord(next);
-            onChange(newColor.toHex());
+            const rgb = colord(next).toRgb();
+            onChange(toHex6(rgb)); // Use professional 6-char Hex
             return next;
         });
     }, [onChange]);
@@ -87,22 +88,23 @@ export function VibeColorPicker({ value, onChange }: ColorPickerProps) {
             const newRgb = { ...current, [channel]: num };
             if (colord(newRgb).isValid()) {
                 setHsva(colord(newRgb).toHsv());
-                onChange(colord(newRgb).toHex());
+                onChange(toHex6(newRgb));
             }
         } else if (mode === 'HSL') {
             const current = colord(hsva).toHsl();
             const newHsl = { ...current, [channel]: num };
             if (colord(newHsl).isValid()) {
                 setHsva(colord(newHsl).toHsv());
-                onChange(colord(newHsl).toHex());
+                onChange(toHex6(colord(newHsl).toRgb()));
             }
         }
     };
 
     const handleHexChange = (val: string) => {
-        if (colord(val).isValid()) {
-            setHsva(colord(val).toHsv());
-            onChange(colord(val).toHex());
+        const c = colord(val);
+        if (c.isValid()) {
+            setHsva(c.toHsv());
+            onChange(toHex6(c.toRgb()));
         }
     };
 
@@ -117,7 +119,7 @@ export function VibeColorPicker({ value, onChange }: ColorPickerProps) {
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim text-[11px] font-bold select-none">#</span>
                             <input
                                 type="text"
-                                value={c.toHex().replace('#', '').toUpperCase()}
+                                value={toHex6(c.toRgb()).replace('#', '')}
                                 onChange={(e) => handleHexChange('#' + e.target.value)}
                                 className="w-full h-10 bg-[#1A1A1A] border border-white/10 rounded-xl text-center text-[12px] font-mono text-white outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all uppercase pl-6 shadow-inner"
                             />

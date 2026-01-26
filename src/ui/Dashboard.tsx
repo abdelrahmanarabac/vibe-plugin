@@ -38,10 +38,10 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
     };
 
     return (
-        <div className="flex flex-col items-center py-8 gap-8 w-full max-w-5xl mx-auto">
+        <div className="flex flex-col items-center py-8 px-4 gap-8 w-full max-w-[1008px] mx-auto">
 
             {/* 🍱 Bento Grid - Responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-4 md:px-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
                 {/* 📊 Stat Card: Total Tokens (Large) */}
                 <div className="vibe-card h-[180px] p-6 flex flex-col justify-between relative overflow-hidden group">

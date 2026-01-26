@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ColorNamer, vibeColor } from '../src/modules/perception/capabilities/naming/ColorNamer';
 import { ColorScience } from '../src/modules/perception/capabilities/naming/ColorScience';
-import { ColorRepository } from '../src/infra/adapters/supabase/ColorRepository';
+import { ColorRepository } from '../src/infrastructure/supabase/ColorRepository';
 
 // Mock Repository
-vi.mock('../src/infra/adapters/supabase/ColorRepository', () => ({
+vi.mock('../src/infrastructure/supabase/ColorRepository', () => ({
     ColorRepository: {
         fetchAll: vi.fn()
     }
