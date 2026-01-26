@@ -13,6 +13,7 @@ import { EventLoop } from './core/EventLoop';
 import { FigmaVariableRepository } from './infra/repositories/FigmaVariableRepository';
 
 // Capabilities
+<<<<<<< HEAD
 import { ScanSelectionCapability } from './modules/perception/capabilities/scanning/ScanSelectionCapability';
 import { SyncTokensCapability } from './modules/tokens/capabilities/sync/SyncTokensCapability';
 import { CreateVariableCapability } from './modules/tokens/capabilities/management/CreateVariableCapability';
@@ -23,6 +24,18 @@ import { GetAnatomyCapability } from './modules/perception/capabilities/scanning
 import { RenameCollectionsCapability } from './modules/collections/capabilities/RenameCollectionsCapability';
 import { CreateCollectionCapability } from './modules/collections/capabilities/CreateCollectionCapability';
 import { TraceLineageCapability } from './modules/intelligence/capabilities/TraceLineageCapability';
+=======
+import { ScanSelectionCapability } from './features/scanning/ScanSelectionCapability';
+import { SyncTokensCapability } from './features/sync/SyncTokensCapability';
+import { CreateVariableCapability } from './features/management/CreateVariableCapability';
+import { UpdateVariableCapability } from './features/management/UpdateVariableCapability';
+import { RenameVariableCapability } from './features/management/RenameVariableCapability';
+import { GenerateDocsCapability } from './features/documentation/GenerateDocsCapability';
+import { GetAnatomyCapability } from './features/scanning/GetAnatomyCapability';
+import { RenameCollectionsCapability } from './features/collections/RenameCollectionsCapability';
+import { CreateCollectionCapability } from './features/collections/CreateCollectionCapability';
+import { TraceLineageCapability } from './features/intelligence/TraceLineageCapability';
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
 console.clear();
 console.log('[Vibe] System Booting (Architecture v2.1)...');

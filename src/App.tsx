@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
+=======
+import { useState } from 'react';
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 import { useVibeApp } from './ui/hooks/useVibeApp';
 import { SettingsScreen } from './ui/screens/SettingsScreen';
 import { EditorView } from './ui/EditorView';
@@ -6,13 +10,18 @@ import { Dashboard } from './ui/Dashboard';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
+<<<<<<< HEAD
 import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
+=======
+import { OmniboxTrigger, OmniboxModal } from './features/omnibox';
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
 
 export default function App() {
     const vm = useVibeApp();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph'>('dashboard');
     const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
+<<<<<<< HEAD
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
     // Sync theme class to root
@@ -24,13 +33,19 @@ export default function App() {
             root.classList.remove('vibe-light');
         }
     }, [theme]);
+=======
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
     // Fake credits for demo (Matches Dashboard)
     const credits = 1250;
 
     if (vm.settings.isLoading) {
         return (
+<<<<<<< HEAD
             <div className="flex items-center justify-center h-screen bg-void text-white">
+=======
+            <div className="flex items-center justify-center h-screen bg-[#030407] text-white">
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     <div className="text-xs font-bold tracking-widest text-primary animate-pulse uppercase">Booting Vibe...</div>
@@ -49,8 +64,11 @@ export default function App() {
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 credits={credits}
+<<<<<<< HEAD
                 theme={theme}
                 onThemeToggle={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+=======
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
             >
                 <AnimatePresence mode="wait">
                     <motion.div
@@ -66,8 +84,11 @@ export default function App() {
                                 <Dashboard
                                     tokens={vm.tokens.tokens}
                                     stats={vm.tokens.stats}
+<<<<<<< HEAD
                                     theme={theme}
                                     onThemeToggle={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+=======
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                                 />
                             </div>
                         )}
