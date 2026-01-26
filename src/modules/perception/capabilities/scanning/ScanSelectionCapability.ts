@@ -18,11 +18,22 @@ export class ScanSelectionCapability implements ICapability {
     async execute(_payload: any, context: AgentContext): Promise<Result<any>> {
         console.log('[ScanCapability] Initializing Perception Engine v2...');
 
+        // 0. Hydrate Knowledge (Get existing tokens for Drift Detection)
+        // We convert the graph to a simple Hex Map for the visitor
+        const existingTokens: Record<string, string> = {};
+        const graph = context.repository.getGraph();
+        for (const [id, token] of graph.entries()) {
+            if (token.$type === 'color' && typeof token.$value === 'string') {
+                existingTokens[token.name] = token.$value;
+            }
+        }
+
         // 1. Setup Visitors
         const traverser = new Traverser();
         const composite = new CompositeVisitor();
 
-        const discovery = new TokenDiscoveryVisitor();
+        // Inject existing tokens into Discovery Visitor
+        const discovery = new TokenDiscoveryVisitor(existingTokens);
         const stats = new StatsVisitor();
 
         composite.add(discovery);
@@ -37,6 +48,10 @@ export class ScanSelectionCapability implements ICapability {
         const findings = discovery.getFindings();
         const report = stats.getReport();
 
+        if (findings.drifts.length > 0) {
+            console.warn(`[Design Gravity] Detected ${findings.drifts.length} color drifts.`);
+        }
+
         console.log('[ScanCapability] Stats:', report);
 
         return Result.ok({
@@ -44,6 +59,7 @@ export class ScanSelectionCapability implements ICapability {
             findings: {
                 colors: findings.colors,
                 fonts: findings.fonts,
+                drifts: findings.drifts,
                 scannedCount: findings.stats.scanned
             }
         });
