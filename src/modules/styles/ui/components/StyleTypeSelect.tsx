@@ -8,7 +8,7 @@ interface StyleTypeSelectProps {
 
 export const StyleTypeSelect: React.FC<StyleTypeSelectProps> = ({ type, onTypeChange }) => {
     return (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 my-4">
             <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider h-4 flex items-center">Type</label>
             <div className="">
                 <VibeSelect

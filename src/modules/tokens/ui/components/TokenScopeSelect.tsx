@@ -32,7 +32,7 @@ export const TokenScopeSelect: React.FC<TokenScopeSelectProps> = ({
     return (
         <div className={['number', 'string'].includes(type) ? "space-y-4" : "grid grid-cols-2 gap-4"}>
             {/* Type Selection */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 my-4">
                 <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider h-4 flex items-center">Type</label>
                 <div className="">
                     <VibeSelect
