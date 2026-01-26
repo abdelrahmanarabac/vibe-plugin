@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Palette, Wand2, ArrowLeftRight, Paintbrush, Smartphone, Tablet, Monitor, Scaling } from 'lucide-react';
-<<<<<<< HEAD
 import { vibeColor, type NamingResult } from '../../modules/perception/capabilities/naming/ColorNamer';
-=======
-import { vibeColor, type NamingResult } from '../../features/naming/ColorNamer';
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 import { VibeColorPicker } from './ColorPicker';
 import { VibeSelect } from './inputs/VibeSelect';
 

@@ -8,18 +8,14 @@ interface MainLayoutProps {
     activeTab: ViewType;
     onTabChange: (tab: ViewType) => void;
     credits?: number;
-<<<<<<< HEAD
     theme: 'dark' | 'light';
     onThemeToggle: () => void;
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
     children,
     activeTab,
     onTabChange,
-<<<<<<< HEAD
     credits,
     theme,
     onThemeToggle
@@ -28,14 +24,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="h-full w-full flex flex-col bg-nebula text-text-primary overflow-hidden font-sans transition-colors duration-300">
             {/* 🛸 Bento Header */}
             <header className="flex-none px-6 py-4 flex items-center justify-between z-40 bg-surface-0 border-b border-white/5 h-[80px]">
-=======
-    credits
-}) => {
-    return (
-        <div className="h-full w-full flex flex-col bg-nebula text-white overflow-hidden font-sans">
-            {/* 🛸 Bento Header */}
-            <header className="flex-none px-6 py-4 flex items-center justify-between z-40 bg-void border-b border-white/5 h-[80px]">
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
                 {/* 1. Left: System Identity (Animation + Title) */}
                 <div className="flex items-center gap-4 min-w-[240px]">
@@ -47,27 +35,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 </div>
 
                 {/* 2. Center: Navigation Tabs */}
-<<<<<<< HEAD
                 <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1.5 bg-surface-0 rounded-full border border-white/5 shadow-2xl">
                     <button
                         onClick={() => onTabChange('dashboard')}
                         className={`px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-surface-2 text-text-bright shadow-lg' : 'text-text-dim hover:text-text-primary'}`}
-=======
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1.5 bg-[#121212] rounded-full border border-white/5 shadow-2xl">
-                    <button
-                        onClick={() => onTabChange('dashboard')}
-                        className={`px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'dashboard' ? 'bg-[#27272A] text-white shadow-lg' : 'text-text-dim hover:text-white'}`}
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                     >
                         Overview
                     </button>
                     <button
                         onClick={() => onTabChange('graph')}
-<<<<<<< HEAD
                         className={`px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'graph' ? 'bg-surface-2 text-text-bright shadow-lg' : 'text-text-dim hover:text-text-primary'}`}
-=======
-                        className={`px-6 py-2 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'graph' ? 'bg-[#27272A] text-white shadow-lg' : 'text-text-dim hover:text-white'}`}
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                     >
                         Tokens
                     </button>
@@ -76,32 +53,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 {/* 3. Right: Tools (Theme -> Settings -> Credits) */}
                 <div className="flex items-center justify-end gap-6 min-w-[240px]">
                     {/* Theme Toggle */}
-<<<<<<< HEAD
                     <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} />
-=======
-                    <ThemeToggle />
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
                     <div className="h-6 w-[1px] bg-white/10" /> {/* Divider */}
 
                     {/* Settings */}
                     <button
                         onClick={() => onTabChange('settings')}
-<<<<<<< HEAD
                         className={`w-10 h-10 rounded-full flex items-center justify-center transition-all bg-surface-1 border border-white/5 text-text-dim hover:text-text-primary hover:bg-white/10 ${activeTab === 'settings' ? 'bg-white/10 text-text-primary' : ''}`}
-=======
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all bg-[#121212] border border-white/5 text-text-dim hover:text-white hover:bg-white/10 ${activeTab === 'settings' ? 'bg-white/10 text-white' : ''}`}
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                     >
                         <Settings size={18} />
                     </button>
 
                     {/* Credits Identifier */}
-<<<<<<< HEAD
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border border-white/5 rounded-full">
-=======
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-[#121212] border border-white/5 rounded-full">
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse" />
                         <span className="text-xs font-bold text-white font-mono">{(credits || 0).toLocaleString()}</span>
                     </div>
@@ -116,14 +81,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     );
 };
 
-// Re-add Import
-// Re-add Omnibox component usage or removal?
-// Use the original file reference to ensure I don't break Omnibox.
-// Step 552 showed `import { Omnibox } from '../components/Omnibox';` at line 3.
-// And usage at line 72.
-// So I will include it.
-
-<<<<<<< HEAD
 interface ThemeToggleProps {
     theme: 'dark' | 'light';
     onThemeToggle: () => void;
@@ -136,28 +93,6 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onThemeToggle }) => {
             <button
                 onClick={() => theme === 'dark' && onThemeToggle()}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'light' ? 'bg-text-bright text-void shadow-sm' : 'text-text-dim hover:text-text-primary hover:bg-white/5'}`}
-=======
-const ThemeToggle = () => {
-    const [theme, setTheme] = React.useState<'dark' | 'light'>('dark');
-
-    React.useEffect(() => {
-        const root = document.documentElement;
-        if (theme === 'light') {
-            root.classList.add('light-mode');
-            root.style.colorScheme = 'light';
-        } else {
-            root.classList.remove('light-mode');
-            root.style.colorScheme = 'dark';
-        }
-    }, [theme]);
-
-    return (
-        <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-full border border-white/5">
-            {/* Light Mode */}
-            <button
-                onClick={() => setTheme('light')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-text-dim hover:text-white hover:bg-white/5'}`}
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                 title="Light Mode"
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
@@ -165,13 +100,8 @@ const ThemeToggle = () => {
 
             {/* Dark Mode */}
             <button
-<<<<<<< HEAD
                 onClick={() => theme === 'light' && onThemeToggle()}
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-surface-3 text-text-bright shadow-sm border border-white/5' : 'text-text-dim hover:text-text-primary hover:bg-white/5'}`}
-=======
-                onClick={() => setTheme('dark')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-[#27272A] text-white shadow-sm border border-white/5' : 'text-text-dim hover:text-white hover:bg-white/5'}`}
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                 title="Dark Mode"
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>

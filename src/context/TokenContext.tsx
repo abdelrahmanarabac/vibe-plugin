@@ -2,8 +2,6 @@ import { createContext, useContext, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { VibeToken } from '../core/schema/TokenSchema';
 import { SemanticMapper } from '../modules/tokens/logic/SemanticMapper';
-// import { LayoutGenerator } from '../features/layout/LayoutGenerator';
-// import { TypeGenerator } from '../features/typography/TypeGenerator';
 
 // 1. Valid Interface Separation
 interface TokenState {

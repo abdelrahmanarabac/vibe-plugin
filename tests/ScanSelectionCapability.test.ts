@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { ScanSelectionCapability } from '../src/features/scanning/ScanSelectionCapability';
+import { ScanSelectionCapability } from '../src/modules/perception/capabilities/scanning/ScanSelectionCapability';
 import type { AgentContext } from '../src/core/AgentContext';
 
 describe('ScanSelectionCapability', () => {
     // Mock Context
     const mockContext: AgentContext = {
-        graph: {} as any,
+        repository: {} as any, // Updated from 'graph' to 'repository' to match AgentContext definition in controller.ts
         selection: [{
             id: '1',
             name: 'Rect',

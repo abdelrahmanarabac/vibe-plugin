@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { Zap, Download, Plus, Layers, Sun, Moon } from 'lucide-react';
-=======
-import { Zap, Download, Plus, Layers } from 'lucide-react';
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../core/types';
 import { NewTokenDialog } from './components/NewTokenDialog';
@@ -12,22 +8,15 @@ import { useState } from 'react';
 interface DashboardProps {
     tokens?: TokenEntity[];
     stats?: { totalVariables: number; collections: number; styles: number; lastSync: number };
-<<<<<<< HEAD
     theme?: 'dark' | 'light';
     onThemeToggle?: () => void;
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 }
 
 /**
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-<<<<<<< HEAD
 export function Dashboard({ tokens = [], stats, theme, onThemeToggle }: DashboardProps) {
-=======
-export function Dashboard({ tokens = [], stats }: DashboardProps) {
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     const [showNewTokenDialog, setShowNewTokenDialog] = useState(false);
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
 
@@ -69,10 +58,7 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
         URL.revokeObjectURL(url);
     };
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     return (
         <div className="flex flex-col items-center py-8 gap-8">
 
@@ -152,7 +138,6 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
                     </div>
                 </button>
 
-<<<<<<< HEAD
                 {/* 🌓 Quick Action: Toggle Theme (Redesigned) */}
                 <button
                     onClick={onThemeToggle}
@@ -197,15 +182,6 @@ export function Dashboard({ tokens = [], stats }: DashboardProps) {
                     <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
                         <Plus size={12} className="text-text-dim" />
                     </div>
-=======
-                {/* 💾 Quick Action: Export */}
-                <button
-                    onClick={handleExport}
-                    className="vibe-card w-[328px] h-[60px] p-4 flex items-center justify-center gap-2 hover:bg-white/5"
-                >
-                    <Download size={14} className="text-text-dim" />
-                    <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Export System</span>
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
                 </button>
 
             </div>

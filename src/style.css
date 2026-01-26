@@ -3,7 +3,6 @@
 @theme {
   /* 🌌 Vibe Palette: Neo-Bento (2026 Edition) */
 
-<<<<<<< HEAD
   /* 🌓 Theme-Aware Variables */
   --color-void: var(--vibe-void);
   --color-nebula: var(--vibe-nebula);
@@ -38,64 +37,6 @@
   --color-text-primary: var(--vibe-text-primary);
   --color-text-dim: var(--vibe-text-dim);
   --color-text-muted: var(--vibe-text-muted);
-=======
-  /* 🌑 Core Surfaces (The Void Scale) */
-  --color-void: #050505;
-  /* Deepest Black (App BG) */
-  --color-nebula: #0A0A0A;
-  /* Sidebar / Header BG */
-  --color-surface-0: #121212;
-  /* Base Card */
-  --color-surface-1: #18181B;
-  /* Elevated Card (Hover) */
-  --color-surface-2: #27272A;
-  /* Modal / Dropdown */
-  --color-surface-3: #3F3F46;
-  /* Input BG */
-
-  /* ⚡ Electric Accents */
-  --color-primary: #6E62E5;
-  /* Electric Indigo (Brand) */
-  --color-primary-hover: #5B50D6;
-  /* Deep Indigo */
-  --color-primary-glow: rgba(110, 98, 229, 0.5);
-
-  --color-secondary: #CFFAFE;
-  /* Cyan Tint (Text Emphasis) */
-  --color-secondary-glow: rgba(207, 250, 254, 0.2);
-
-  --color-accent-purple: #A855F7;
-  /* Neon Purple */
-  --color-accent-pink: #EC4899;
-  /* Neon Pink */
-
-  /* 🚦 Semantic Signals (Modern) */
-  /* Success: Emerald */
-  --color-success: #10B981;
-  --color-success-bg: rgba(16, 185, 129, 0.1);
-
-  /* Warning: Amber */
-  --color-warning: #F59E0B;
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-
-  /* Error: Rose */
-  --color-error: #F43F5E;
-  --color-error-bg: rgba(244, 63, 94, 0.1);
-
-  /* Info: Sky */
-  --color-info: #0EA5E9;
-  --color-info-bg: rgba(14, 165, 233, 0.1);
-
-  /* ✒️ Typography (Inter + Outfit) */
-  --color-text-bright: #FFFFFF;
-  /* Headings */
-  --color-text-primary: #E5E5E5;
-  /* Body */
-  --color-text-dim: #A1A1AA;
-  /* Captions (Zinc-400) */
-  --color-text-muted: #52525B;
-  /* Disabled (Zinc-600) */
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
   --font-display: "Outfit", sans-serif;
   --font-body: "Inter", sans-serif;
@@ -105,39 +46,22 @@
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
-<<<<<<< HEAD
   --radius-xl: 32px;
   --radius-pill: 9999px;
-=======
-  /* Standard Card */
-  --radius-xl: 32px;
-  /* Large Panels */
-  --radius-pill: 9999px;
-  /* Buttons */
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 
   /* 🏎️ Motion */
   --ease-vibe: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-<<<<<<< HEAD
   /* 🌑 Shadows */
   --shadow-glow: 0 0 40px -10px var(--color-primary-glow);
   --shadow-glass: var(--vibe-shadow-glass);
   --shadow-card: var(--vibe-shadow-card);
   --shadow-card-hover: var(--vibe-shadow-card-hover);
-=======
-  /* 🌑 Shadows (Glass & Depth) */
-  --shadow-glow: 0 0 40px -10px var(--color-primary-glow);
-  --shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 }
 
 @layer base {
   :root {
-<<<<<<< HEAD
     /* 🌑 Default: Dark Theme */
     --vibe-void: #050505;
     --vibe-nebula: #0A0A0A;
@@ -156,8 +80,6 @@
     --vibe-shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
     /* 🎨 Base Properties */
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     font-family: var(--font-body);
     line-height: 1.5;
     font-weight: 400;
@@ -167,7 +89,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-<<<<<<< HEAD
   :root.vibe-light {
     /* ☀️ Light Theme overrides */
     --vibe-void: #FAFAFA;
@@ -189,18 +110,13 @@
     color-scheme: light;
   }
 
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
   body {
     margin: 0;
     padding: 0;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-<<<<<<< HEAD
     background-color: var(--color-void);
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
   }
 
   h1,
@@ -224,37 +140,22 @@
   }
 
   ::-webkit-scrollbar-thumb {
-<<<<<<< HEAD
     background: rgba(128, 128, 128, 0.2);
-=======
-    background: rgba(255, 255, 255, 0.1);
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-<<<<<<< HEAD
     background: rgba(128, 128, 128, 0.3);
   }
 }
 
 
-=======
-    background: rgba(255, 255, 255, 0.2);
-  }
-}
-
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
 /* 🧬 Utility Components */
 @layer components {
 
   /* The "Vibe" Card - Glassmorphism Base */
   .vibe-card {
-<<<<<<< HEAD
     background: var(--vibe-surface-1);
-=======
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-lg);
@@ -262,14 +163,11 @@
     box-shadow: var(--shadow-card);
   }
 
-<<<<<<< HEAD
   :root.vibe-light .vibe-card {
     background: rgba(255, 255, 255, 0.7);
     border-color: rgba(0, 0, 0, 0.05);
   }
 
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
   .vibe-card:hover {
     border-color: rgba(255, 255, 255, 0.1);
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
@@ -279,24 +177,16 @@
 
   /* Text Gradients */
   .text-gradient-primary {
-<<<<<<< HEAD
     background: linear-gradient(135deg, var(--color-text-bright) 0%, var(--color-primary-hover) 100%);
     -webkit-background-clip: text;
     background-clip: text;
-=======
-    background: linear-gradient(135deg, #FFFFFF 0%, var(--color-primary-hover) 100%);
-    -webkit-background-clip: text;
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     -webkit-text-fill-color: transparent;
   }
 
   .text-gradient-brand {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-purple) 100%);
     -webkit-background-clip: text;
-<<<<<<< HEAD
     background-clip: text;
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
     -webkit-text-fill-color: transparent;
   }
 }
