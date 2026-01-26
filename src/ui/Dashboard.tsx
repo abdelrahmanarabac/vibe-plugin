@@ -1,9 +1,8 @@
 import { Download, Plus, Layers, Zap, Sun, Moon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../core/types';
-import { NewStyleDialog } from './components/NewStyleDialog';
+import { NewStyleDialog } from '../modules/styles/ui/dialogs/NewStyleDialog';
 import { useState } from 'react';
-
 import type { ViewType } from './layouts/MainLayout';
 
 interface DashboardProps {
@@ -12,18 +11,15 @@ interface DashboardProps {
     theme?: 'dark' | 'light';
     onThemeToggle?: () => void;
     onTabChange?: (tab: ViewType) => void;
+    onCreateStyle?: (data: { name: string; type: string; value: any }) => void;
 }
 
 /**
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChange }: DashboardProps) {
+export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChange, onCreateStyle }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
-
-    // TODO: Re-verify if we need to post message here or if NewStyleDialog handles it
-    // For now, keeping the logic inside the dialog's onSubmit as planned.
-
 
     const handleExport = () => {
         const exportData = {
@@ -41,12 +37,11 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
         URL.revokeObjectURL(url);
     };
 
-
     return (
         <div className="flex flex-col items-center py-8 gap-8 w-full max-w-5xl mx-auto">
 
             {/* 🍱 Bento Grid - Responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-4 md:px-0">
 
                 {/* 📊 Stat Card: Total Tokens (Large) */}
                 <div className="vibe-card h-[180px] p-6 flex flex-col justify-between relative overflow-hidden group">
@@ -95,7 +90,6 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     {/* 🚀 Quick Action: New Token */}
                     <button
                         onClick={() => {
-                            // @ts-ignore - Temporary until we update Dashboard props interface
                             onTabChange && onTabChange('create-token');
                         }}
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
@@ -132,10 +126,10 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     {/* 🌓 Quick Action: Toggle Theme */}
                     <button
                         onClick={onThemeToggle}
-                        className="vibe-card h-[80px] p-4 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
+                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
                                 <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
                                 {theme === 'dark' ? (
                                     <Sun size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
@@ -157,10 +151,10 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     {/* 💾 Quick Action: Export */}
                     <button
                         onClick={handleExport}
-                        className="vibe-card h-[80px] p-4 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
+                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
                                 <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <Download size={20} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
                             </div>
@@ -180,19 +174,14 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
             <NewStyleDialog
                 isOpen={showNewStyleDialog}
                 onClose={() => setShowNewStyleDialog(false)}
-                onSubmit={(styleName) => {
-                    console.log('Creating style:', styleName);
-                    // Implement logic
+                onSubmit={(data) => {
+                    onCreateStyle?.(data);
                     setShowNewStyleDialog(false);
                 }}
             />
         </div>
     );
 }
-
-// Removed StatFragment & ActionButton helper components as they are now inlined for Bento Grid control
-
-
 
 function EmptyStateFragment() {
     return (

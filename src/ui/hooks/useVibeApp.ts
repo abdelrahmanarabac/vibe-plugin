@@ -1,12 +1,14 @@
-import { useSettings, type SettingsViewModel } from './useSettings';
+import { useSettings, type SettingsViewModel } from '../../modules/security/hooks/useSettings';
 import { useTokens, type TokensViewModel } from './useTokens';
 import { useAI, type AIViewModel } from './useAI';
+import { useStyles, type StylesViewModel } from './useStyles';
 
 export interface VibeAppViewModel {
     settings: SettingsViewModel;
     tokens: TokensViewModel;
+    styles: StylesViewModel;
     ai: AIViewModel;
-    currentView: 'dashboard' | 'settings' | 'graph'; // could be state managed here or derived
+    currentView: 'dashboard' | 'settings' | 'graph';
 }
 
 /**
@@ -16,14 +18,13 @@ export interface VibeAppViewModel {
 export function useVibeApp() {
     const settings = useSettings();
     const tokens = useTokens();
+    const styles = useStyles();
     const ai = useAI(settings.apiKey);
-
-    // We can also manage global UI state here like active tabs if we want to extract that from App.tsx
-    // For now, we'll keep it simple and just return the composed modules.
 
     return {
         settings,
         tokens,
+        styles,
         ai
     };
 }

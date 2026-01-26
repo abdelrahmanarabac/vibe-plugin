@@ -1,12 +1,19 @@
-import type { TokenEntity } from '../domain/entities/Token';
+import type { TokenEntity } from '../../../core/types';
 
+/**
+ * ⚙️ TokenCompiler
+ * Resolves aliases and computes final values for the token graph.
+ * Strictly adheres to the purified TokenEntity schema.
+ */
 export class TokenCompiler {
 
     /**
      * Resolves a single token's value against a registry of tokens.
      */
     static compile(token: TokenEntity, tokenMap: Map<string, TokenEntity>, visited = new Set<string>()): TokenEntity {
-        if (!token.isAlias || typeof token.value !== 'string') {
+        const value = token.$value;
+
+        if (typeof value !== 'string' || !value.startsWith('{')) {
             return token;
         }
 
@@ -16,27 +23,26 @@ export class TokenCompiler {
         }
         visited.add(token.id);
 
-        const rawValue = token.value as string;
-        // Regex to find {alias}
-        // const aliasRegex = /{([^}]+)}/g;
-
-        // Single Alias Replacement (Optimization: Direct lookup)
-        const match = rawValue.match(/^{([^}]+)}$/);
+        // Regex to find {segment/segment/name}
+        const match = value.match(/^{([^}]+)}$/);
         if (match) {
-            const aliasId = match[1];
-            const target = tokenMap.get(aliasId);
+            const aliasPath = match[1];
+            // In a real system, we'd lookup by full path or ID.
+            // For this implementation, we assume the tokenMap is keyed by ID.
+            const target = Array.from(tokenMap.values()).find(t => {
+                const fullPath = [...t.path, t.name].join('/');
+                return fullPath === aliasPath;
+            });
+
             if (target) {
-                // Recursive resolution
                 const resolvedTarget = this.compile(target, tokenMap, new Set(visited));
                 return {
                     ...token,
-                    resolvedValue: resolvedTarget.resolvedValue ?? resolvedTarget.value
+                    $value: resolvedTarget.$value
                 };
             }
         }
 
-        // String Interpolation (e.g. "1px solid {colors.red}")
-        // For now, simpler implementation:
         return token;
     }
 

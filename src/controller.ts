@@ -9,10 +9,10 @@ import { CollectionRenamer } from './modules/collections/adapters/CollectionRena
 import { CapabilityRegistry } from './core/CapabilityRegistry';
 import { EventLoop } from './core/EventLoop';
 
-// Infra
-import { FigmaVariableRepository } from './infra/repositories/FigmaVariableRepository';
+// Infra (Purified)
+import { FigmaVariableRepository } from './infrastructure/repositories/FigmaVariableRepository';
 
-// Capabilities
+// Capabilities (Unified Module Structure)
 import { ScanSelectionCapability } from './modules/perception/capabilities/scanning/ScanSelectionCapability';
 import { SyncTokensCapability } from './modules/tokens/capabilities/sync/SyncTokensCapability';
 import { CreateVariableCapability } from './modules/tokens/capabilities/management/CreateVariableCapability';
@@ -29,8 +29,8 @@ console.log('[Vibe] System Booting (Architecture v2.1)...');
 
 // === 1. Initialize Core Engines ===
 const repository = new TokenRepository();
-const variableRepository = new FigmaVariableRepository(); // Repo
-const variableManager = new VariableManager(repository, variableRepository); // Injection
+const variableRepository = new FigmaVariableRepository();
+const variableManager = new VariableManager(repository, variableRepository);
 const docsRenderer = new DocsRenderer(repository);
 const collectionRenamer = new CollectionRenamer();
 
@@ -53,7 +53,7 @@ const capabilities = [
 capabilities.forEach(cap => registry.register(cap));
 
 // === 3. Initialize Event Loop (Background Services) ===
-// Handler for when the EventLoop detects a need to sync
+
 // Helper to broadcast stats
 const broadcastStats = async () => {
     try {
@@ -88,7 +88,7 @@ const handleSyncRequest = async () => {
             timestamp: Date.now()
         });
 
-        // 🟢 FIX: Broadcast stats immediately after graph update
+        // Broadcast stats immediately after graph update
         await broadcastStats();
 
         console.log(`[Controller] Synced ${tokens.length} tokens to UI.`);
@@ -106,7 +106,6 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 (async () => {
     try {
         console.log('[Vibe] Initializing Architecture v2.1...');
-        // We do NOT send data here, we wait for UI to send 'REQUEST_GRAPH'
         eventLoop.start();
         console.log('[Vibe] System Ready. Waiting for UI signal.');
     } catch (e) {
@@ -144,7 +143,6 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 
             // Handle Result
             if (result.success) {
-                // 🚀 Send success message back to UI with payload
                 figma.ui.postMessage({
                     type: `${msg.type}_SUCCESS`,
                     payload: result.value,
@@ -170,36 +168,11 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         switch (msg.type) {
             case 'REQUEST_GRAPH': {
                 console.log('[Controller] UI Requested Data. Triggering deep sync...');
-                // 🔴 FIX: Always trigger a fresh sync when UI asks, avoiding Race Conditions
                 await handleSyncRequest();
                 break;
             }
             case 'REQUEST_STATS': {
-                // UI requests statistics (collections, variables count)
-                try {
-                    const collections = await figma.variables.getLocalVariableCollectionsAsync();
-                    const variables = await figma.variables.getLocalVariablesAsync();
-                    const styles = await figma.getLocalPaintStylesAsync();
-
-                    figma.ui.postMessage({
-                        type: 'STATS_UPDATED',
-                        payload: {
-                            totalVariables: variables.length,
-                            collections: collections.length,
-                            styles: styles.length
-                        }
-                    });
-                } catch (error: any) {
-                    console.error('[Controller] Failed to retrieve stats:', error);
-                    figma.ui.postMessage({
-                        type: 'STATS_UPDATED',
-                        payload: {
-                            totalVariables: 0,
-                            collections: 0,
-                            styles: 0
-                        }
-                    });
-                }
+                await broadcastStats();
                 break;
             }
             case 'STORAGE_GET': {
@@ -221,8 +194,6 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 break;
             }
             case 'SYNC_VARIABLES': {
-                // Alias to SyncTokens
-                await registry.getByCommand('SYNC_TOKENS')?.execute({}, context);
                 await handleSyncRequest();
                 break;
             }
@@ -260,7 +231,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                             alignment: 'STRETCH',
                             gutterSize: 20,
                             count: 4,
-                            sectionSize: 1, // Fix: sectionSize is required for ROWS/COLUMNS? No, check types. Actually sectionSize is valid for rows.
+                            sectionSize: 1,
                             visible: true,
                             color: { r: 1, g: 0, b: 0, a: 0.1 }
                         }];
@@ -270,7 +241,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                     if (newStyle) {
                         newStyle.description = value || '';
                         figma.notify(`✅ Created Style: ${name}`);
-                        await broadcastStats(); // Update UI stats
+                        await broadcastStats();
                     } else {
                         throw new Error(`Unsupported style type: ${type}`);
                     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { TokenTree } from './components/TokenTree';
-import { LineageExplorer } from './components/LineageExplorer';
-import { SmartInspector } from './components/SmartInspector';
+import { TokenTree } from '../modules/tokens/ui/components/TokenTree';
+import { LineageExplorer } from '../modules/intelligence/ui/components/LineageExplorer';
+import { SmartInspector } from '../modules/intelligence/ui/components/SmartInspector';
 import { type TokenEntity } from '../core/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';

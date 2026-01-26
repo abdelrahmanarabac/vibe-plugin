@@ -24,4 +24,7 @@ dist-ssr
 *.sw?
 
 /.agent
+<<<<<<< HEAD
 .env
+=======
+>>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47

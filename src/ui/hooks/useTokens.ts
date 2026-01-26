@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
+import type { TokenFormData } from '../../modules/tokens/domain/ui-types';
 
 interface TokenStats {
     totalVariables: number;
@@ -16,7 +17,7 @@ export interface TokensViewModel {
     isSynced: boolean;
     liveIndicator: boolean;
     updateToken: (id: string, value: string) => void;
-    createToken: (data: any) => void;
+    createToken: (data: TokenFormData) => void;
     scanAnatomy: () => void;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
@@ -114,7 +115,7 @@ export function useTokens(): TokensViewModel {
         parent.postMessage({ pluginMessage: { type: 'UPDATE_TOKEN', id, value } }, '*');
     }, []);
 
-    const createToken = useCallback((data: any) => {
+    const createToken = useCallback((data: TokenFormData) => {
         parent.postMessage({
             pluginMessage: {
                 type: 'CREATE_VARIABLE',

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useVibeApp } from './ui/hooks/useVibeApp';
-import { SettingsScreen } from './ui/screens/SettingsScreen';
+import { SettingsPage } from './modules/security/ui/pages/SettingsPage';
 import { EditorView } from './ui/EditorView';
 import { Dashboard } from './ui/Dashboard';
-import { CreateTokenPage } from './ui/pages/CreateTokenPage';
+import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
 import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
+import type { TokenFormData } from './modules/tokens/domain/ui-types';
 
 
 export default function App() {
@@ -41,7 +42,7 @@ export default function App() {
     }
 
     if (!vm.settings.apiKey) {
-        return <SettingsScreen apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />;
+        return <SettingsPage apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />;
     }
 
     return (
@@ -57,7 +58,7 @@ export default function App() {
                 >
                     <CreateTokenPage
                         onBack={() => setActiveTab('dashboard')}
-                        onSubmit={(data) => {
+                        onSubmit={(data: TokenFormData) => {
                             vm.tokens.createToken(data);
                             setActiveTab('dashboard');
                         }}
@@ -89,6 +90,7 @@ export default function App() {
                                         theme={theme}
                                         onThemeToggle={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
                                         onTabChange={setActiveTab}
+                                        onCreateStyle={vm.styles.createStyle}
                                     />
                                 </div>
                             )}
@@ -104,7 +106,7 @@ export default function App() {
                             )}
 
                             {activeTab === 'settings' && (
-                                <SettingsScreen apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />
+                                <SettingsPage apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />
                             )}
                         </motion.div>
                     </AnimatePresence>

@@ -6,7 +6,7 @@ import { useTokenCreation } from '../../hooks/useTokenCreation';
 import { TokenNameInput } from '../../components/TokenNameInput';
 import { TokenScopeSelect } from '../../components/TokenScopeSelect';
 import { TokenValueInput } from '../../components/TokenValueInput';
-import { NewTokenDialogProps } from '../../../domain/ui-types';
+import type { NewTokenDialogProps } from '../../../domain/ui-types';
 
 export function NewTokenDialog({ isOpen, onClose, onSubmit }: NewTokenDialogProps) {
     const { formState, setters, actions } = useTokenCreation(isOpen);

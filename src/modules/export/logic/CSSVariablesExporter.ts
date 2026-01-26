@@ -1,17 +1,20 @@
 import { TokenExporter } from './TokenExporter';
 import type { ExportResult } from './TokenExporter';
-import type { TokenEntity } from '../../tokens/domain/entities/Token';
+import type { TokenEntity } from '../../../core/types';
 
+/**
+ * 🎨 CSSVariablesExporter
+ * Generates standard CSS Custom Properties from the token graph.
+ * Strictly adheres to the purified TokenEntity schema.
+ */
 export class CSSVariablesExporter extends TokenExporter {
     execute(tokens: TokenEntity[]): ExportResult {
         const lines = [':root {'];
 
         tokens.forEach(token => {
-            if (token.type === 'color' || token.type === 'number' || token.type === 'string') {
-                const name = `--${this.formatName(token.name)}`;
-                const value = token.resolvedValue ?? token.value;
-                lines.push(`  ${name}: ${value};`);
-            }
+            const name = `--${this.formatName(token.name)}`;
+            const value = token.$value;
+            lines.push(`  ${name}: ${value};`);
         });
 
         lines.push('}');

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Smartphone, Tablet, Monitor } from 'lucide-react';
-import { VibeColorPicker } from '../../../../ui/components/ColorPicker';
-import type { TokenType, ColorScope } from '../../domain/ui-types';
+import { VibeColorPicker } from './VibeColorPicker';
+import type { TokenType, ColorScope, TokenModeValue } from '../../domain/ui-types';
 
 interface TokenValueInputProps {
     type: TokenType;
-    value: string | { mobile: string; tablet: string; desktop: string };
-    onValueChange: (val: any) => void;
+    value: string | TokenModeValue;
+    onValueChange: (val: string | TokenModeValue) => void;
     colorScope: ColorScope;
     customRange: [number, number];
     activeModes: ('mobile' | 'tablet' | 'desktop')[];
@@ -52,10 +52,10 @@ export const TokenValueInput: React.FC<TokenValueInputProps> = ({
                             <div key={mode} className="flex-1 relative group">
                                 <input
                                     type="number"
-                                    value={typeof value === 'object' ? (value as any)[mode] : value}
+                                    value={typeof value === 'object' ? (value as TokenModeValue)[mode] : value}
                                     onChange={(e) => {
                                         const current = typeof value === 'object' ? value : { mobile: value, tablet: value, desktop: value };
-                                        onValueChange({ ...(current as any), [mode]: e.target.value });
+                                        onValueChange({ ...current, [mode]: e.target.value });
                                     }}
                                     className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl pl-4 pr-9 py-3 text-sm text-white font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                                     placeholder={mode === 'mobile' ? "4" : mode === 'tablet' ? "8" : "12"}

@@ -1,6 +1,6 @@
 import { ColorScience, type LAB } from './ColorScience';
-import { ColorRepository } from '../../../../infra/adapters/supabase/ColorRepository';
-import type { RemoteColor } from '../../../../infra/adapters/supabase/ColorRepository';
+import { ColorRepository } from '../../../../infrastructure/supabase/ColorRepository';
+import type { RemoteColor } from '../../../../infrastructure/supabase/ColorRepository';
 import { HueAnalyzer } from './HueBuckets';
 
 export type NamedColor = { name: string; hex: string; lab: LAB };
@@ -82,8 +82,6 @@ export class ColorNamer {
         }
 
         // STAGE 3: Weighted Hue Priority (For "good enough" naming)
-        // We prioritize Hue over Lightness for naming because people care more about "Blue" vs "Purple"
-        // than "Light Blue" vs "Mid Blue" when assigning a base name.
         const weightedResults = this.colors.map(c => ({
             name: c.name,
             deltaE: ColorScience.weightedDeltaE(inputLab, c.lab, { L: 1.0, C: 1.0, H: 2.5 }),

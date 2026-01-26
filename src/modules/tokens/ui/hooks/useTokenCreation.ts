@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { vibeColor, type NamingResult } from '../../../perception/capabilities/naming/ColorNamer';
-import type { TokenType, ColorScope, TokenFormData } from '../../domain/ui-types';
+import type { TokenType, ColorScope } from '../../domain/ui-types';
 
 export function useTokenCreation(isOpen: boolean) {
     // Core State

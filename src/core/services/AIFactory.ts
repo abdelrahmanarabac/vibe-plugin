@@ -1,5 +1,5 @@
-import { GeminiService } from '../../infra/api/GeminiService';
-import { CachedAIService } from '../../infra/api/CachedAIService';
+import { GeminiService } from '../../infrastructure/api/GeminiService';
+import { CachedAIService } from '../../infrastructure/api/CachedAIService';
 import type { IAIService } from '../../core/interfaces/IAIService';
 
 /**

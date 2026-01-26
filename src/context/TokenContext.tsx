@@ -1,20 +1,18 @@
 import { createContext, useContext, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import type { VibeToken } from '../core/schema/TokenSchema';
+import type { TokenEntity } from '../core/types';
 import { SemanticMapper } from '../modules/tokens/logic/SemanticMapper';
-// import { LayoutGenerator } from '../features/layout/LayoutGenerator';
-// import { TypeGenerator } from '../features/typography/TypeGenerator';
 
 // 1. Valid Interface Separation
 interface TokenState {
     collectionName: string;
-    tokens: VibeToken[];
+    tokens: TokenEntity[];
     isGenerating: boolean;
 }
 
 interface TokenActions {
     setCollectionName: (name: string) => void;
-    addToken: (token: VibeToken) => void;
+    addToken: (token: TokenEntity) => void;
     clearTokens: () => void;
     generateCollection: () => void;
 }
@@ -24,7 +22,7 @@ const TokenDataCtx = createContext<TokenState | undefined>(undefined);
 const TokenActionsCtx = createContext<TokenActions | undefined>(undefined);
 
 export const TokenProvider = ({ children }: { children: ReactNode }) => {
-    const [tokens, setTokens] = useState<VibeToken[]>([]);
+    const [tokens, setTokens] = useState<TokenEntity[]>([]);
     const [collectionName, setCollectionName] = useState("Vibe System");
     const [isGenerating, setIsGenerating] = useState(false);
 
@@ -32,7 +30,7 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
     const actions = useMemo<TokenActions>(() => ({
         setCollectionName: (name: string) => setCollectionName(name),
 
-        addToken: (token: VibeToken) => {
+        addToken: (token: TokenEntity) => {
             setTokens(prev => [...prev, token]);
         },
 
@@ -44,11 +42,7 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
             setIsGenerating(true);
             const seedColor = "#0080FF";
 
-            const colorTokens = SemanticMapper.generateSystem({ primary: seedColor });
-            // Archived Generators removed
-            const systemTokens = [
-                ...colorTokens
-            ];
+            const systemTokens = SemanticMapper.generateSystem({ primary: seedColor });
 
             setTokens(systemTokens);
 
@@ -56,7 +50,7 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
                 pluginMessage: {
                     type: 'CREATE_TOKENS',
                     payload: {
-                        name: collectionName, // Closure capture warning: check dependency
+                        name: collectionName,
                         tokens: systemTokens
                     }
                 }
@@ -64,10 +58,7 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
 
             setTimeout(() => setIsGenerating(false), 2000);
         }
-    }), [collectionName]); // Re-create actions only if collectionName changes (needed for generateCollection payload)
-
-    // Optimization: If generateCollection depends on collectionName, we must include it in deps.
-    // Ideally we pass name as arg to avoid re-creating the function, but for now this is better than 'everything'.
+    }), [collectionName]);
 
     const state = useMemo(() => ({
         tokens,
@@ -97,8 +88,8 @@ export const useTokenActions = () => {
     return context;
 };
 
-// Legacy support (optional, but good for backward compat if needed temporarily)
-export const useTokens = () => {
+// Legacy support
+export const useTokensLegacy = () => {
     const state = useTokenState();
     const actions = useTokenActions();
     return { ...state, ...actions };

@@ -1,4 +1,4 @@
-import { supabase } from '../../infra/supabase';
+import { VibeSupabase } from '../../infrastructure/supabase/SupabaseClient';
 import { ColorScience } from './ColorScience';
 
 export interface ClosestColor {
@@ -17,11 +17,14 @@ export class CloudColorNamer {
      * Path: Local Input -> DB Search (Euclidean) -> Local Refinement (CIEDE2000)
      */
     static async findColor(hex: string): Promise<string> {
+        const client = VibeSupabase.get();
+        if (!client) return "Unknown (Offline)";
+
         const lab = ColorScience.hexToLab(hex);
 
         // 1. Database Search (SQL Pruning)
         // We fetch the top 10 candidates using fast spatial Euclidean distance
-        const { data: candidates, error } = await supabase.rpc('find_closest_color', {
+        const { data: candidates, error } = await client.rpc('find_closest_color', {
             input_l: lab.L,
             input_a: lab.a,
             input_b: lab.b,

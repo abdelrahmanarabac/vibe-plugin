@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Tablet, Monitor, Scaling, ArrowLeftRight } from 'lucide-react';
-import { VibeSelect } from '../../../../ui/components/inputs/VibeSelect';
+import { VibeSelect } from '../../../../ui/components/base/VibeSelect';
 import type { TokenType, ColorScope } from '../../domain/ui-types';
 
 interface TokenScopeSelectProps {
