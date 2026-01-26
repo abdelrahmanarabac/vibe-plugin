@@ -49,4 +49,5 @@ export interface AgentContext {
     vibe: string;
     primitives: ScannedPrimitive[];
     history: string[];
+    namingConvention?: 'semantic' | 'literal';
 }

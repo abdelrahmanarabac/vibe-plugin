@@ -33,7 +33,12 @@ export class AgentCore {
 
         // Retrieve context from memory to inform the prompt
         const history = await this.memory.retrieveContext(context.vibe || "default");
-        const prompt = SemanticIntelligence.buildMappingPrompt(context.primitives, context.vibe, history);
+        const prompt = SemanticIntelligence.buildMappingPrompt(
+            context.primitives,
+            context.vibe,
+            history,
+            context.namingConvention || "semantic"
+        );
 
         // 2. ⚡ Generation (System 1)
         onProgress("Drafting Design System... 📝");
