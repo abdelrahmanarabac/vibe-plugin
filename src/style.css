@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+@theme {
+  /* 🌌 Vibe Palette: Neo-Bento (2026 Edition) */
+
+  /* 🌓 Theme-Aware Variables */
+  --color-void: var(--vibe-void);
+  --color-nebula: var(--vibe-nebula);
+  --color-surface-0: var(--vibe-surface-0);
+  --color-surface-1: var(--vibe-surface-1);
+  --color-surface-2: var(--vibe-surface-2);
+  --color-surface-3: var(--vibe-surface-3);
+
+  /* ⚡ Electric Accents */
+  --color-primary: #6E62E5;
+  --color-primary-hover: #5B50D6;
+  --color-primary-glow: rgba(110, 98, 229, 0.5);
+
+  --color-secondary: #CFFAFE;
+  --color-secondary-glow: rgba(207, 250, 254, 0.2);
+
+  --color-accent-purple: #A855F7;
+  --color-accent-pink: #EC4899;
+
+  /* 🚦 Semantic Signals */
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-error: #F43F5E;
+  --color-error-bg: rgba(244, 63, 94, 0.1);
+  --color-info: #0EA5E9;
+  --color-info-bg: rgba(14, 165, 233, 0.1);
+
+  /* ✒️ Typography */
+  --color-text-bright: var(--vibe-text-bright);
+  --color-text-primary: var(--vibe-text-primary);
+  --color-text-dim: var(--vibe-text-dim);
+  --color-text-muted: var(--vibe-text-muted);
+
+  --font-display: "Outfit", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* 📐 Bento Radius System */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+
+  /* 🏎️ Motion */
+  --ease-vibe: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 🌑 Shadows */
+  --shadow-glow: 0 0 40px -10px var(--color-primary-glow);
+  --shadow-glass: var(--vibe-shadow-glass);
+  --shadow-card: var(--vibe-shadow-card);
+  --shadow-card-hover: var(--vibe-shadow-card-hover);
+}
+
+@layer base {
+  :root {
+    /* 🌑 Default: Dark Theme */
+    --vibe-void: #050505;
+    --vibe-nebula: #0A0A0A;
+    --vibe-surface-0: #121212;
+    --vibe-surface-1: #18181B;
+    --vibe-surface-2: #27272A;
+    --vibe-surface-3: #3F3F46;
+
+    --vibe-text-bright: #FFFFFF;
+    --vibe-text-primary: #E5E5E5;
+    --vibe-text-dim: #A1A1AA;
+    --vibe-text-muted: #52525B;
+
+    --vibe-shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
+    --vibe-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --vibe-shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+    /* 🎨 Base Properties */
+    font-family: var(--font-body);
+    line-height: 1.5;
+    font-weight: 400;
+    color-scheme: dark;
+    background-color: var(--color-void);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :root.vibe-light {
+    /* ☀️ Light Theme overrides */
+    --vibe-void: #FAFAFA;
+    --vibe-nebula: #F4F4F5;
+    --vibe-surface-0: #FFFFFF;
+    --vibe-surface-1: rgba(255, 255, 255, 0.8);
+    --vibe-surface-2: #E4E4E7;
+    --vibe-surface-3: #D4D4D8;
+
+    --vibe-text-bright: #09090B;
+    --vibe-text-primary: #27272A;
+    --vibe-text-dim: #52525B;
+    --vibe-text-muted: #71717A;
+
+    --vibe-shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.1);
+    --vibe-shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --vibe-shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--color-void);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--color-text-bright);
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom Scrollbar (Slim) */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.2);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(128, 128, 128, 0.3);
+  }
+}
+
+
+/* 🧬 Utility Components */
+@layer components {
+
+  /* The "Vibe" Card - Glassmorphism Base */
+  .vibe-card {
+    background: var(--vibe-surface-1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    transition: all 0.3s var(--ease-vibe);
+    box-shadow: var(--shadow-card);
+  }
+
+  :root.vibe-light .vibe-card {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .vibe-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Text Gradients */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, var(--color-text-bright) 0%, var(--color-primary-hover) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-brand {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent-purple) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
