@@ -3,7 +3,11 @@
 @theme {
   /* 🌌 Vibe Palette: Neo-Bento (2026 Edition) */
 
+<<<<<<< HEAD
   /* 🌑 Core Surfaces (Theme-Aware) */
+=======
+  /* 🌓 Theme-Aware Variables */
+>>>>>>> pr-1
   --color-void: var(--vibe-void);
   --color-nebula: var(--vibe-nebula);
   --color-surface-0: var(--vibe-surface-0);
@@ -79,6 +83,10 @@
     --vibe-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --vibe-shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
+<<<<<<< HEAD
+=======
+    /* 🎨 Base Properties */
+>>>>>>> pr-1
     font-family: var(--font-body);
     line-height: 1.5;
     font-weight: 400;
@@ -88,7 +96,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
+<<<<<<< HEAD
   :root.light-mode {
+=======
+  :root.vibe-light {
+>>>>>>> pr-1
     /* ☀️ Light Theme overrides */
     --vibe-void: #FAFAFA;
     --vibe-nebula: #F4F4F5;
@@ -145,6 +157,11 @@
   }
 }
 
+<<<<<<< HEAD
+=======
+
+/* 🧬 Utility Components */
+>>>>>>> pr-1
 @layer components {
   .vibe-card {
     background: var(--vibe-surface-1);
@@ -155,7 +172,11 @@
     box-shadow: var(--shadow-card);
   }
 
+<<<<<<< HEAD
   .light-mode .vibe-card {
+=======
+  :root.vibe-light .vibe-card {
+>>>>>>> pr-1
     background: rgba(255, 255, 255, 0.7);
     border-color: rgba(0, 0, 0, 0.05);
   }

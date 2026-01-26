@@ -37,6 +37,10 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
         URL.revokeObjectURL(url);
     };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> pr-1
     return (
         <div className="flex flex-col items-center py-8 gap-8 w-full max-w-5xl mx-auto">
 
@@ -87,99 +91,149 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                 {/* 🚀 Quick Actions Grid (Nested) */}
                 <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                    {/* 🚀 Quick Action: New Token */}
-                    <button
-                        onClick={() => {
-                            onTabChange && onTabChange('create-token');
-                        }}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
-                    >
-                        <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
-                                <div className="absolute inset-0 bg-primary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Plus size={24} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+<<<<<<< HEAD
+    {/* 🚀 Quick Action: New Token */ }
+    <button
+        onClick={() => {
+            onTabChange && onTabChange('create-token');
+        }}
+        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
+    >
+        <div className="flex items-center gap-5">
+            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                <div className="absolute inset-0 bg-primary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Plus size={24} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+=======
+                {/* 🖌️ Quick Action: Add Style (Requested Feature) */}
+                <button
+                    onClick={() => setShowNewStyleDialog(true)}
+                    className="vibe-card w-[328px] h-[80px] p-4 flex items-center justify-between hover:border-secondary/50 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors">
+                            <Layers size={18} className="text-white group-hover:text-secondary transition-colors" />
+                        </div>
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white group-hover:text-secondary transition-colors">Add Style</div>
+                            <div className="text-[10px] text-text-dim">Create a style</div>
+                        </div>
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                        <Plus size={12} className="text-text-dim" />
+                    </div>
+                </button>
+
+                {/* 🌓 Quick Action: Toggle Theme (Redesigned) */}
+                <button
+                    onClick={onThemeToggle}
+                    className="vibe-card w-[328px] h-[80px] p-4 flex items-center justify-between hover:border-primary/50 group"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
+                            {theme === 'dark' ? (
+                                <Sun size={18} className="text-white group-hover:text-primary transition-colors" />
+                            ) : (
+                                <Moon size={18} className="text-white group-hover:text-primary transition-colors" />
+                            )}
+                        </div>
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                                Add Mode
+>>>>>>> pr-1
                             </div>
                             <div className="text-left">
                                 <div className="text-base font-bold text-text-bright group-hover:text-primary transition-colors">New Token</div>
                                 <div className="text-xs text-text-dim group-hover:text-text-primary transition-colors">Create a primitive</div>
                             </div>
                         </div>
-                    </button>
+                </button>
 
-                    {/* 🖌️ Quick Action: Add Style */}
-                    <button
-                        onClick={() => setShowNewStyleDialog(true)}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
-                    >
-                        <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
-                                <div className="absolute inset-0 bg-secondary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Layers size={24} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
-                            </div>
-                            <div className="text-left">
-                                <div className="text-base font-bold text-text-bright group-hover:text-secondary transition-colors">Add Style</div>
-                                <div className="text-xs text-text-dim group-hover:text-text-primary transition-colors">Map to Figma Style</div>
-                            </div>
+                {/* 🖌️ Quick Action: Add Style */}
+                <button
+                    onClick={() => setShowNewStyleDialog(true)}
+                    className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
+                >
+                    <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                            <div className="absolute inset-0 bg-secondary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Layers size={24} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
                         </div>
-                    </button>
+                        <div className="text-left">
+                            <div className="text-base font-bold text-text-bright group-hover:text-secondary transition-colors">Add Style</div>
+                            <div className="text-xs text-text-dim group-hover:text-text-primary transition-colors">Map to Figma Style</div>
+                        </div>
+                    </div>
+<<<<<<< HEAD
+                    </button >
+=======
+                        <div className="text-left">
+                            <div className="text-sm font-bold text-white group-hover:text-secondary transition-colors">Export System</div>
+                            <div className="text-[10px] text-text-dim">Download JSON package</div>
+                        </div>
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                        <Plus size={12} className="text-text-dim" />
+                    </div>
+                </button>
+>>>>>>> pr-1
 
-                    {/* 🌓 Quick Action: Toggle Theme */}
-                    <button
-                        onClick={onThemeToggle}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
-                                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                {theme === 'dark' ? (
-                                    <Sun size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                ) : (
-                                    <Moon size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                )}
-                            </div>
-                            <div className="text-left">
-                                <div className="text-sm font-bold text-text-bright group-hover:text-primary transition-colors">
-                                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                                </div>
-                                <div className="text-[10px] text-text-dim">
-                                    Switch Theme
-                                </div>
-                            </div>
-                        </div>
-                    </button>
-
-                    {/* 💾 Quick Action: Export */}
-                    <button
-                        onClick={handleExport}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
-                                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Download size={20} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
-                            </div>
-                            <div className="text-left">
-                                <div className="text-sm font-bold text-text-bright group-hover:text-secondary transition-colors">Export JSON</div>
-                                <div className="text-[10px] text-text-dim">Download Token Map</div>
-                            </div>
-                        </div>
-                    </button>
+        {/* 🌓 Quick Action: Toggle Theme */ }
+        < button
+    onClick = { onThemeToggle }
+    className = "vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
+        >
+        <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                {theme === 'dark' ? (
+                    <Sun size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+                ) : (
+                    <Moon size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+                )}
+            </div>
+            <div className="text-left">
+                <div className="text-sm font-bold text-text-bright group-hover:text-primary transition-colors">
+                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </div>
+                <div className="text-[10px] text-text-dim">
+                    Switch Theme
                 </div>
             </div>
-
-            {/* 🧩 Empty State Fragment */}
-            {tokens.length === 0 && <EmptyStateFragment />}
-
-            {/* 🆕 New Style Dialog */}
-            <NewStyleDialog
-                isOpen={showNewStyleDialog}
-                onClose={() => setShowNewStyleDialog(false)}
-                onSubmit={(data) => {
-                    onCreateStyle?.(data);
-                    setShowNewStyleDialog(false);
-                }}
-            />
         </div>
+                    </button >
+
+        {/* 💾 Quick Action: Export */ }
+        < button
+    onClick = { handleExport }
+    className = "vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
+        >
+        <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
+                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Download size={20} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
+            </div>
+            <div className="text-left">
+                <div className="text-sm font-bold text-text-bright group-hover:text-secondary transition-colors">Export JSON</div>
+                <div className="text-[10px] text-text-dim">Download Token Map</div>
+            </div>
+        </div>
+                    </button >
+                </div >
+            </div >
+
+        {/* 🧩 Empty State Fragment */ }
+    { tokens.length === 0 && <EmptyStateFragment /> }
+
+    {/* 🆕 New Style Dialog */ }
+    <NewStyleDialog
+        isOpen={showNewStyleDialog}
+        onClose={() => setShowNewStyleDialog(false)}
+        onSubmit={(data) => {
+            onCreateStyle?.(data);
+            setShowNewStyleDialog(false);
+        }}
+    />
+        </div >
     );
 }
 
