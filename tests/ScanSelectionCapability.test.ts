@@ -5,7 +5,9 @@ import type { AgentContext } from '../src/core/AgentContext';
 describe('ScanSelectionCapability', () => {
     // Mock Context
     const mockContext: AgentContext = {
-        repository: {} as any, // Updated from 'graph' to 'repository' to match AgentContext definition in controller.ts
+        repository: {
+            getGraph: () => new Map()
+        } as any,
         selection: [{
             id: '1',
             name: 'Rect',
