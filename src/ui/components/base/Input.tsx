@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
@@ -15,14 +15,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
     error,
     hint,
     className = '',
+    id,
     ...props
 }, ref) => {
+    const generatedId = useId();
+    const inputId = id || generatedId;
+
     return (
         <div className="figma-input-group">
             {label && (
-                <label className="figma-label">{label}</label>
+                <label htmlFor={inputId} className="figma-label">{label}</label>
             )}
             <input
+                id={inputId}
                 ref={ref}
                 className={`figma-input ${error ? 'figma-input-error' : ''} ${className}`}
                 {...props}

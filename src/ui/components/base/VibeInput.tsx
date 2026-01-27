@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 export interface VibeInputProps {
     value: string | number;
@@ -13,6 +13,7 @@ export interface VibeInputProps {
     className?: string;
     autoFocus?: boolean;
     action?: React.ReactNode;
+    id?: string;
 }
 
 /**
@@ -37,7 +38,11 @@ export function VibeInput({
     className = '',
     autoFocus = false,
     action,
+    id,
 }: VibeInputProps) {
+    const generatedId = useId();
+    const inputId = id || generatedId;
+
     // Size classes
     const sizeClasses = {
         sm: 'px-3 py-2 text-xs',
@@ -55,7 +60,7 @@ export function VibeInput({
     return (
         <div className={`space-y-2 ${className}`}>
             {label && (
-                <label className="text-[11px] font-bold text-text-dim uppercase tracking-wider pl-1">
+                <label htmlFor={inputId} className="text-[11px] font-bold text-text-dim uppercase tracking-wider pl-1">
                     {label}
                 </label>
             )}
@@ -75,6 +80,7 @@ export function VibeInput({
                     </div>
                 )}
                 <input
+                    id={inputId}
                     type={type}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}

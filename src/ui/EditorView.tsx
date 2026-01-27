@@ -54,11 +54,13 @@ export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageDa
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Find..."
+                            aria-label="Search tokens"
                             className="w-full bg-black/20 text-[11px] text-white placeholder-white/20 border border-white/10 rounded-lg py-1.5 pl-3 pr-8 focus:outline-none focus:border-secondary/50 focus:bg-black/40 transition-all font-medium"
                         />
                         {searchQuery && (
                             <button
                                 onClick={clearSearch}
+                                aria-label="Clear search"
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
                             >
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -68,7 +70,7 @@ export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageDa
                             </button>
                         )}
                         {!searchQuery && (
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none">
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" aria-hidden="true">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                     <circle cx="11" cy="11" r="8"></circle>
                                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
