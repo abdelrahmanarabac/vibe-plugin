@@ -25,3 +25,9 @@
 - **Gemini Model Naming (2026)**: User environment strictly follows 2026 identifiers (`gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3-flash`). Older 1.5 or 2.0 models may trigger 404 errors.
 - **Manifest Permissions**: Permissions like `clipboard-write` and `display-capture` are invalid in the Figma manifest array and must be excluded to pass validation.
 
+### Phase 5 Intelligence (The Ghost Architect)
+- **Visitor Pattern V2**: Use `CompositeVisitor` + `Traverser` for all scene graph operations. Separation of traversal logic from business logic (Discovery, Stats) is mandatory for performance.
+- **Design Gravity**: All scanning capabilities must implement drift detection (CIEDE2000 < 2.5 DeltaE) to bridge the gap between "Loose Styles" and "Strict Tokens".
+- **Harmony Healer**: Any color mutation MUST undergo `HarmonyValidator.validateContrast` to prevent WCAG regressions in dependent layers.
+
+

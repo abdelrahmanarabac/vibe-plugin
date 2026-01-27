@@ -6,7 +6,7 @@ describe('ScanSelectionCapability', () => {
     // Mock Context
     const mockContext: AgentContext = {
         repository: {
-            getGraph: () => new Map()
+            getTokens: () => new Map()
         } as any,
         selection: [{
             id: '1',

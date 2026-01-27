@@ -10,12 +10,16 @@ export class EventLoop {
     private readonly INTERVAL_MS = 1000;
 
     // Explicitly declare property to satisfy erasableSyntaxOnly
-    private readonly onSyncNeeded: () => Promise<void>;
+    private onSyncNeeded: () => Promise<void>;
 
     constructor(
         onSyncNeeded: () => Promise<void>
     ) {
         this.onSyncNeeded = onSyncNeeded;
+    }
+
+    public setCallback(callback: () => Promise<void>) {
+        this.onSyncNeeded = callback;
     }
 
     /**

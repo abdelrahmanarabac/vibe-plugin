@@ -1,86 +1,28 @@
 import type { PluginAction } from './shared/types';
 import type { AgentContext } from './core/AgentContext';
-
-// Core Systems
-import { TokenRepository } from './core/TokenRepository';
-import { VariableManager } from './modules/governance/VariableManager';
-import { DocsRenderer } from './modules/documentation/DocsRenderer';
-import { CollectionRenamer } from './modules/collections/adapters/CollectionRenamer';
-import { CapabilityRegistry } from './core/CapabilityRegistry';
-import { EventLoop } from './core/EventLoop';
-
-// Infra (Purified)
-import { FigmaVariableRepository } from './infrastructure/repositories/FigmaVariableRepository';
-
-// Capabilities (Unified Module Structure)
-import { ScanSelectionCapability } from './modules/perception/capabilities/scanning/ScanSelectionCapability';
-import { SyncTokensCapability } from './modules/tokens/capabilities/sync/SyncTokensCapability';
-import { CreateVariableCapability } from './modules/tokens/capabilities/management/CreateVariableCapability';
-import { UpdateVariableCapability } from './modules/tokens/capabilities/management/UpdateVariableCapability';
-import { RenameVariableCapability } from './modules/tokens/capabilities/management/RenameVariableCapability';
-import { GenerateDocsCapability } from './modules/documentation/capabilities/GenerateDocsCapability';
-import { GetAnatomyCapability } from './modules/perception/capabilities/scanning/GetAnatomyCapability';
-import { RenameCollectionsCapability } from './modules/collections/capabilities/RenameCollectionsCapability';
-import { CreateCollectionCapability } from './modules/collections/capabilities/CreateCollectionCapability';
-import { TraceLineageCapability } from './modules/intelligence/capabilities/TraceLineageCapability';
+import { CompositionRoot } from './core/CompositionRoot';
 
 console.clear();
-console.log('[Vibe] System Booting (Architecture v2.1)...');
+console.log('[Vibe] System Booting (Architecture v2.2)...');
 
-// === 1. Initialize Core Engines ===
-const repository = new TokenRepository();
-const variableRepository = new FigmaVariableRepository();
-const variableManager = new VariableManager(repository, variableRepository);
-const docsRenderer = new DocsRenderer(repository);
-const collectionRenamer = new CollectionRenamer();
+// === 1. Bootstrap System ===
+const system = new CompositionRoot();
 
-// === 2. Initialize Registry & Capabilities ===
-const registry = new CapabilityRegistry();
+// === 2. Bind UI Messaging to Sync Service ===
+// The Controller acts as the "Presenter" here, bridging Core Logic <-> Figma UI
 
-const capabilities = [
-    new ScanSelectionCapability(),
-    new SyncTokensCapability(variableManager),
-    new CreateVariableCapability(variableManager),
-    new UpdateVariableCapability(variableManager),
-    new RenameVariableCapability(variableManager),
-    new GenerateDocsCapability(docsRenderer, variableManager),
-    new RenameCollectionsCapability(collectionRenamer),
-    new CreateCollectionCapability(),
-    new GetAnatomyCapability(),
-    new TraceLineageCapability()
-];
-
-capabilities.forEach(cap => registry.register(cap));
-
-// === 3. Initialize Event Loop (Background Services) ===
-
-// Helper to broadcast stats
 const broadcastStats = async () => {
     try {
-        const collections = await figma.variables.getLocalVariableCollectionsAsync();
-        const variables = await figma.variables.getLocalVariablesAsync();
-        const styles = await figma.getLocalPaintStylesAsync();
-
-        figma.ui.postMessage({
-            type: 'STATS_UPDATED',
-            payload: {
-                totalVariables: variables.length,
-                collections: collections.length,
-                styles: styles.length
-            }
-        });
+        const stats = await system.syncService.getStats();
+        figma.ui.postMessage({ type: 'STATS_UPDATED', payload: stats });
     } catch (error) {
-        console.error('[Controller] Failed to broadcast stats:', error);
+        console.error('[Controller] Stats Broadcast Failed:', error);
     }
 };
 
-// Handler for when the EventLoop detects a need to sync
-const handleSyncRequest = async () => {
+const performFullSync = async () => {
     try {
-        const tokens = await variableManager.syncFromFigma();
-        // Force the graph to ingest the new tokens
-        repository.reset();
-        tokens.forEach(t => repository.addNode(t));
+        const tokens = await system.syncService.sync();
 
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
@@ -88,26 +30,26 @@ const handleSyncRequest = async () => {
             timestamp: Date.now()
         });
 
-        // Broadcast stats immediately after graph update
         await broadcastStats();
-
-        console.log(`[Controller] Synced ${tokens.length} tokens to UI.`);
+        console.log(`[Controller] Synced ${tokens.length} tokens.`);
     } catch (e) {
         console.error('[Controller] Sync Failed:', e);
     }
 };
 
-const eventLoop = new EventLoop(handleSyncRequest);
+// === 3. Configure Event Loop ===
+// We override the default behavior to trigger our bound sync function
+system.eventLoop.setCallback(performFullSync);
 
 // === 4. Setup UI ===
 figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 
-// === 5. Bootstrap ===
+// === 5. Start Background Services ===
 (async () => {
     try {
-        console.log('[Vibe] Initializing Architecture v2.1...');
-        eventLoop.start();
-        console.log('[Vibe] System Ready. Waiting for UI signal.');
+        console.log('[Vibe] Initializing Architecture v2.2...');
+        system.eventLoop.start();
+        console.log('[Vibe] System Ready.');
     } catch (e) {
         console.error('[Vibe] Bootstrap failed:', e);
     }
@@ -116,16 +58,16 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 // === 6. Message Dispatcher ===
 figma.ui.onmessage = async (msg: PluginAction) => {
     try {
-        // Build Context on-the-fly
+        // Build Context
         const context: AgentContext = {
-            repository,
+            repository: system.repository,
             selection: figma.currentPage.selection,
             page: figma.currentPage,
             session: { timestamp: Date.now() }
         };
 
         // A. Capability Dispatch
-        const capability = registry.getByCommand(msg.type);
+        const capability = system.registry.getByCommand(msg.type);
         if (capability) {
             console.log(`[Dispatcher] Routing ${msg.type} -> ${capability.id}`);
 
@@ -135,8 +77,8 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 return;
             }
 
-            // Extract payload safely
-            const payload = (msg as any).payload !== undefined ? (msg as any).payload : msg;
+            // Strict Payload Extraction
+            const payload = 'payload' in msg ? msg.payload : undefined;
 
             // Execute
             const result = await capability.execute(payload, context);
@@ -149,9 +91,9 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                     timestamp: Date.now()
                 });
 
-                // If it's a sync-related action, force a broadcast
-                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTIONS'].includes(msg.type)) {
-                    await handleSyncRequest();
+                // Auto-Sync for state-changing capabilities
+                if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTIONS', 'CREATE_STYLE'].includes(msg.type)) {
+                    await performFullSync();
                 }
 
                 if (result.value && result.value.message) {
@@ -167,8 +109,8 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // B. System/Utility Fallback
         switch (msg.type) {
             case 'REQUEST_GRAPH': {
-                console.log('[Controller] UI Requested Data. Triggering deep sync...');
-                await handleSyncRequest();
+                console.log('[Controller] Triggering manual deep sync...');
+                await performFullSync();
                 break;
             }
             case 'REQUEST_STATS': {
@@ -194,61 +136,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 break;
             }
             case 'SYNC_VARIABLES': {
-                await handleSyncRequest();
-                break;
-            }
-            case 'CREATE_STYLE': {
-                const { name, type, value } = (msg as any).payload;
-                try {
-                    let newStyle: BaseStyle | null = null;
-
-                    if (type === 'typography') {
-                        await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-                        const style = figma.createTextStyle();
-                        style.name = name;
-                        style.fontName = { family: "Inter", style: "Regular" };
-                        style.fontSize = 16;
-                        newStyle = style;
-                    }
-                    else if (type === 'effect') {
-                        const style = figma.createEffectStyle();
-                        style.name = name;
-                        style.effects = [{
-                            type: 'DROP_SHADOW',
-                            color: { r: 0, g: 0, b: 0, a: 0.25 },
-                            offset: { x: 0, y: 4 },
-                            radius: 4,
-                            visible: true,
-                            blendMode: 'NORMAL'
-                        }];
-                        newStyle = style;
-                    }
-                    else if (type === 'grid') {
-                        const style = figma.createGridStyle();
-                        style.name = name;
-                        style.layoutGrids = [{
-                            pattern: 'ROWS',
-                            alignment: 'STRETCH',
-                            gutterSize: 20,
-                            count: 4,
-                            sectionSize: 1,
-                            visible: true,
-                            color: { r: 1, g: 0, b: 0, a: 0.1 }
-                        }];
-                        newStyle = style;
-                    }
-
-                    if (newStyle) {
-                        newStyle.description = value || '';
-                        figma.notify(`✅ Created Style: ${name}`);
-                        await broadcastStats();
-                    } else {
-                        throw new Error(`Unsupported style type: ${type}`);
-                    }
-                } catch (e: any) {
-                    console.error('[Controller] Failed to create style:', e);
-                    figma.notify(`❌ Failed: ${e.message}`);
-                }
+                await performFullSync();
                 break;
             }
             default: {

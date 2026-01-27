@@ -1,5 +1,7 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
+import { AIModelError, AIModelOverloadedError } from '../../shared/errors/AppErrors';
+
 export abstract class BaseAIService {
     protected model: GenerativeModel;
     protected modelName: string;
@@ -26,19 +28,23 @@ export abstract class BaseAIService {
             } catch (error: any) {
                 attempt++;
                 if (error.message === 'Timeout') {
-                    // For now we don't retry on timeout to keep it snappy, or we could if we wanted.
-                    throw new Error(`[${this.modelName}] Operation timed out after 10s.`);
+                    throw new AIModelError(`[${this.modelName}] Operation timed out after 10s.`);
                 }
                 if (this.isRetryableError(error) && attempt < maxRetries) {
-                    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+                    const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
                     console.warn(`[${this.modelName}] Error ${error.status}. Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
-                throw new Error(`[${this.modelName}] Generation failed: ${error.message}`);
+
+                if (error.status === 429 || error.message?.includes('overloaded')) {
+                    throw new AIModelOverloadedError();
+                }
+
+                throw new AIModelError(`[${this.modelName}] Generation failed: ${error.message}`);
             }
         }
-        throw new Error(`[${this.modelName}] Max retries exceeded.`);
+        throw new AIModelError(`[${this.modelName}] Max retries exceeded.`);
     }
 
     private isRetryableError(error: any): boolean {

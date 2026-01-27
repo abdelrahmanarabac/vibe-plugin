@@ -31,12 +31,12 @@ export class UpdateVariableCapability implements ICapability {
             }
 
             // 🔮 Harmony Healer: Pre-flight Check
-            const targetToken = context.repository.getGraph().get(id);
+            const targetToken = context.repository.getTokens().get(id);
             if (targetToken && targetToken.$type === 'color') {
                 // 1. Trace Dependents
-                const lineageResult = await this.lineageTracer.execute({ tokenId: id, direction: 'downstream' }, context);
+                const lineageResult = await this.lineageTracer.execute({ tokenId: id }, context);
                 if (lineageResult.success && lineageResult.value) {
-                    const dependents = lineageResult.value.nodes || []; // Assuming nodes array returned
+                    const dependents = lineageResult.value.descendants || [];
 
                     // 2. Validate Contrast
                     const issues = HarmonyValidator.validateContrast(targetToken, value, dependents);

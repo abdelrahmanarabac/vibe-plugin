@@ -21,8 +21,8 @@ export class ScanSelectionCapability implements ICapability {
         // 0. Hydrate Knowledge (Get existing tokens for Drift Detection)
         // We convert the graph to a simple Hex Map for the visitor
         const existingTokens: Record<string, string> = {};
-        const graph = context.repository.getGraph();
-        for (const [id, token] of graph.entries()) {
+        const graph = context.repository.getTokens();
+        for (const [_, token] of graph.entries()) {
             if (token.$type === 'color' && typeof token.$value === 'string') {
                 existingTokens[token.name] = token.$value;
             }

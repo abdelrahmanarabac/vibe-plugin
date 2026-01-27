@@ -10,7 +10,12 @@ export class TokenCompiler {
     /**
      * Resolves a single token's value against a registry of tokens.
      */
-    static compile(token: TokenEntity, tokenMap: Map<string, TokenEntity>, visited = new Set<string>()): TokenEntity {
+    static compile(
+        token: TokenEntity,
+        tokenMap: Map<string, TokenEntity>,
+        pathIndex: Map<string, TokenEntity>,
+        visited = new Set<string>()
+    ): TokenEntity {
         const value = token.$value;
 
         if (typeof value !== 'string' || !value.startsWith('{')) {
@@ -27,15 +32,11 @@ export class TokenCompiler {
         const match = value.match(/^{([^}]+)}$/);
         if (match) {
             const aliasPath = match[1];
-            // In a real system, we'd lookup by full path or ID.
-            // For this implementation, we assume the tokenMap is keyed by ID.
-            const target = Array.from(tokenMap.values()).find(t => {
-                const fullPath = [...t.path, t.name].join('/');
-                return fullPath === aliasPath;
-            });
+            // Optimization: Lookup by Path using pre-computed index
+            const target = pathIndex.get(aliasPath);
 
             if (target) {
-                const resolvedTarget = this.compile(target, tokenMap, new Set(visited));
+                const resolvedTarget = this.compile(target, tokenMap, pathIndex, new Set(visited));
                 return {
                     ...token,
                     $value: resolvedTarget.$value
@@ -47,7 +48,15 @@ export class TokenCompiler {
     }
 
     static compileBatch(tokens: TokenEntity[]): TokenEntity[] {
-        const map = new Map(tokens.map(t => [t.id, t]));
-        return tokens.map(t => this.compile(t, map));
+        const tokenMap = new Map(tokens.map(t => [t.id, t]));
+
+        // Build Path Index for O(1) lookup
+        const pathIndex = new Map<string, TokenEntity>();
+        tokens.forEach(t => {
+            const fullPath = [...t.path, t.name].join('/');
+            pathIndex.set(fullPath, t);
+        });
+
+        return tokens.map(t => this.compile(t, tokenMap, pathIndex));
     }
 }
