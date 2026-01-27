@@ -17,10 +17,14 @@ export const IconButton: React.FC<IconButtonProps> = ({
     className = '',
     ...props
 }) => {
+    // Accessibility: Use tooltip as aria-label if aria-label is missing
+    const ariaLabel = props['aria-label'] || tooltip;
+
     return (
         <button
             className={`figma-icon-btn ${active ? 'figma-icon-btn-active' : ''} ${className}`}
             title={tooltip}
+            aria-label={ariaLabel}
             {...props}
         >
             {icon}
