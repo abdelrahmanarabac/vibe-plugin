@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Key, Trash2, Zap, CheckCircle, XCircle, Sparkles, Plus, AlertCircle } from 'lucide-react';
+import { Settings, Key, Trash2, Zap, CheckCircle, XCircle, Sparkles, AlertCircle } from 'lucide-react';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 type ModelTier = 'AUTO' | 'LITE' | 'SMART';
@@ -219,21 +219,6 @@ export function SettingsPage({ apiKey, onSave }: SettingsPageProps) {
                         Clear Cache
                     </button>
                 </section>
-
-                {/* 4. Bottom Button (New Requirement) */}
-                <div className="flex justify-center pt-4 pb-2">
-                    <button className="group relative flex items-center gap-3 px-8 py-3 bg-surface-2 hover:bg-surface-3 text-text-primary rounded-full transition-all border border-border hover:border-border-strong">
-                        <Plus size={16} className="text-primary group-hover:scale-110 transition-transform" />
-                        <span className="font-bold text-sm">Add Mode</span>
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                        </span>
-                        <div className="ml-1 px-1.5 py-0.5 rounded-md bg-surface-3 text-[10px] font-bold text-text-dim uppercase tracking-wider group-hover:bg-surface-0 transition-colors">
-                            Soon
-                        </div>
-                    </button>
-                </div>
 
             </div>
 

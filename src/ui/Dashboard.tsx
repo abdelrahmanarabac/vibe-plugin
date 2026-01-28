@@ -1,4 +1,4 @@
-import { Download, Plus, Layers, Zap, Sun, Moon } from 'lucide-react';
+import { Download, Plus, Layers, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { type TokenEntity } from '../core/types';
 import { NewStyleDialog } from '../modules/styles/ui/dialogs/NewStyleDialog';
@@ -18,7 +18,7 @@ interface DashboardProps {
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChange, onCreateStyle }: DashboardProps) {
+export function Dashboard({ tokens = [], stats, onTabChange, onCreateStyle }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
 
     const handleExport = () => {
@@ -123,26 +123,22 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         </div>
                     </button>
 
-                    {/* 🌓 Quick Action: Toggle Theme */}
+                    {/* 🌓 Quick Action: Add Mode (Soon) */}
                     <button
-                        onClick={onThemeToggle}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
+                        disabled
+                        className="vibe-card h-[96px] p-5 flex items-center justify-between opacity-60 cursor-not-allowed border-border-strong"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
-                                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                {theme === 'dark' ? (
-                                    <Sun size={20} strokeWidth={3} className="text-text-bright group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                ) : (
-                                    <Moon size={20} strokeWidth={3} className="text-text-bright group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                )}
+                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong shadow-inner grayscale">
+                                <Plus size={20} strokeWidth={3} className="text-text-dim relative z-10" />
                             </div>
                             <div className="text-left">
-                                <div className="text-sm font-bold text-text-bright group-hover:text-primary transition-colors">
-                                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                                <div className="flex items-center gap-2">
+                                    <div className="text-sm font-bold text-text-dim">Add Mode</div>
+                                    <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-surface-3 text-text-dim uppercase tracking-wider border border-border">Soon</span>
                                 </div>
-                                <div className="text-[10px] text-text-dim">
-                                    Switch Theme
+                                <div className="text-[10px] text-text-dim opacity-70">
+                                    Advanced Features
                                 </div>
                             </div>
                         </div>
