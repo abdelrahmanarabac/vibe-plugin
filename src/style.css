@@ -11,6 +11,10 @@
   --color-surface-2: var(--vibe-surface-2);
   --color-surface-3: var(--vibe-surface-3);
 
+  /* 🧱 Borders */
+  --color-border: var(--vibe-border);
+  --color-border-strong: var(--vibe-border-strong);
+
   /* ⚡ Electric Accents */
   --color-primary: #6E62E5;
   --color-primary-hover: #5B50D6;
@@ -70,6 +74,9 @@
     --vibe-surface-2: #27272A;
     --vibe-surface-3: #3F3F46;
 
+    --vibe-border: rgba(255, 255, 255, 0.05);
+    --vibe-border-strong: rgba(255, 255, 255, 0.1);
+
     --vibe-text-bright: #FFFFFF;
     --vibe-text-primary: #E5E5E5;
     --vibe-text-dim: #A1A1AA;
@@ -97,6 +104,9 @@
     --vibe-surface-1: rgba(255, 255, 255, 0.8);
     --vibe-surface-2: #E4E4E7;
     --vibe-surface-3: #D4D4D8;
+
+    --vibe-border: rgba(0, 0, 0, 0.05);
+    --vibe-border-strong: rgba(0, 0, 0, 0.1);
 
     --vibe-text-bright: #09090B;
     --vibe-text-primary: #27272A;
@@ -154,7 +164,7 @@
   .vibe-card {
     background: var(--vibe-surface-1);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--vibe-border);
     border-radius: var(--radius-lg);
     transition: all 0.3s var(--ease-vibe);
     box-shadow: var(--shadow-card);
@@ -162,11 +172,10 @@
 
   .light-mode .vibe-card {
     background: rgba(255, 255, 255, 0.7);
-    border-color: rgba(0, 0, 0, 0.05);
   }
 
   .vibe-card:hover {
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--vibe-border-strong);
     transform: translateY(-2px);
     box-shadow: var(--shadow-card-hover);
   }
