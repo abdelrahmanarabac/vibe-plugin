@@ -78,7 +78,15 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             }
 
             // Strict Payload Extraction
-            const payload = 'payload' in msg ? msg.payload : undefined;
+            let payload = 'payload' in msg ? msg.payload : undefined;
+
+            // Fallback for flat-structure messages (legacy support)
+            if (!payload) {
+                const { type, ...rest } = msg as any;
+                if (Object.keys(rest).length > 0) {
+                    payload = rest;
+                }
+            }
 
             // Execute
             const result = await capability.execute(payload, context);
@@ -96,6 +104,11 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                     await performFullSync();
                 }
 
+                // Auto-Stats for graph requests
+                if (['REQUEST_GRAPH', 'SYNC_VARIABLES'].includes(msg.type)) {
+                    await broadcastStats();
+                }
+
                 if (result.value && result.value.message) {
                     figma.notify(result.value.message);
                 }
@@ -106,43 +119,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             return;
         }
 
-        // B. System/Utility Fallback
-        switch (msg.type) {
-            case 'REQUEST_GRAPH': {
-                console.log('[Controller] Triggering manual deep sync...');
-                await performFullSync();
-                break;
-            }
-            case 'REQUEST_STATS': {
-                await broadcastStats();
-                break;
-            }
-            case 'STORAGE_GET': {
-                const value = await figma.clientStorage.getAsync(msg.key);
-                figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value: value || null });
-                break;
-            }
-            case 'STORAGE_SET': {
-                await figma.clientStorage.setAsync(msg.key, msg.value);
-                if (msg.key === 'VIBE_API_KEY') figma.notify('✅ API Key Saved');
-                break;
-            }
-            case 'RESIZE_WINDOW': {
-                figma.ui.resize(msg.width, msg.height);
-                break;
-            }
-            case 'NOTIFY': {
-                figma.notify(msg.message);
-                break;
-            }
-            case 'SYNC_VARIABLES': {
-                await performFullSync();
-                break;
-            }
-            default: {
-                console.warn(`[Vibe] Unknown command: ${msg.type}`);
-            }
-        }
+        console.warn(`[Vibe] Unknown command: ${msg.type}`);
 
     } catch (error: any) {
         console.error('[Vibe] Controller Error:', error);

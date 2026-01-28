@@ -22,7 +22,19 @@ import { GetAnatomyCapability } from '../modules/perception/capabilities/scannin
 import { RenameCollectionsCapability } from '../modules/collections/capabilities/RenameCollectionsCapability';
 import { CreateCollectionCapability } from '../modules/collections/capabilities/CreateCollectionCapability';
 import { TraceLineageCapability } from '../modules/intelligence/capabilities/TraceLineageCapability';
+import { CheckHealthCapability } from '../modules/intelligence/capabilities/CheckHealthCapability';
 import { CreateStyleCapability } from '../modules/styles/capabilities/CreateStyleCapability';
+
+// System Capabilities
+import {
+    RequestGraphCapability,
+    RequestStatsCapability,
+    ResizeWindowCapability,
+    NotifyCapability,
+    StorageGetCapability,
+    StorageSetCapability,
+    SyncVariablesCapability
+} from '../modules/system/capabilities';
 
 export class CompositionRoot {
     // Public Services
@@ -74,7 +86,17 @@ export class CompositionRoot {
             new CreateCollectionCapability(),
             new GetAnatomyCapability(),
             new TraceLineageCapability(),
-            new CreateStyleCapability()
+            new CheckHealthCapability(this.repository),
+            new CreateStyleCapability(),
+
+            // System Capabilities
+            new RequestGraphCapability(this.syncService),
+            new RequestStatsCapability(this.syncService),
+            new ResizeWindowCapability(),
+            new NotifyCapability(),
+            new StorageGetCapability(),
+            new StorageSetCapability(),
+            new SyncVariablesCapability(this.syncService)
         ];
 
         capabilities.forEach(cap => this.registry.register(cap));

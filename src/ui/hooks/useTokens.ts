@@ -45,7 +45,7 @@ export function useTokens(): TokensViewModel {
         const handleMessage = (event: MessageEvent) => {
             const { type, payload } = event.data.pluginMessage || {};
 
-            if (type === 'GRAPH_UPDATED') {
+            if (type === 'GRAPH_UPDATED' || type === 'REQUEST_GRAPH_SUCCESS' || type === 'SYNC_VARIABLES_SUCCESS') {
                 if (Array.isArray(payload)) {
                     setTokens(payload);
                     setIsSynced(true);
@@ -60,7 +60,7 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
-            if (type === 'STATS_UPDATED') {
+            if (type === 'STATS_UPDATED' || type === 'REQUEST_STATS_SUCCESS') {
                 setStats({
                     totalVariables: payload.totalVariables ?? 0,
                     collections: payload.collections ?? 0,

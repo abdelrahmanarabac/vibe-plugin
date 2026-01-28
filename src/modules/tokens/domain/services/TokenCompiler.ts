@@ -1,4 +1,4 @@
-import type { TokenEntity } from '../../../core/types';
+import type { TokenEntity } from '../../../../core/types';
 
 /**
  * ⚙️ TokenCompiler

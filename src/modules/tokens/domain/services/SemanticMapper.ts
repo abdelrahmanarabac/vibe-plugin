@@ -1,5 +1,5 @@
 import { ColorPalette } from './ColorPalette';
-import type { TokenEntity, TokenType } from '../../../core/types';
+import type { TokenEntity, TokenType } from '../../../../core/types';
 
 /**
  * 🗺️ SemanticMapper
