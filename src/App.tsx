@@ -4,6 +4,7 @@ import { SettingsPage } from './modules/security/ui/pages/SettingsPage';
 import { EditorView } from './ui/EditorView';
 import { Dashboard } from './ui/Dashboard';
 import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
+import { useToasts } from './ui/components/base/Toast';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
@@ -17,6 +18,34 @@ export default function App() {
     const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph' | 'create-token'>('dashboard');
     const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
     const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+    const [omniboxMessage, setOmniboxMessage] = useState('');
+    const [omniboxMode, setOmniboxMode] = useState<'neutral' | 'success' | 'error' | 'warning'>('neutral');
+
+    // Subscribe to global Toasts and redirect to Omnibox
+    const { toasts, removeToast } = useToasts();
+
+    useEffect(() => {
+        if (toasts.length > 0) {
+            const latestToast = toasts[toasts.length - 1];
+            setOmniboxMessage(latestToast.message);
+
+            let newMode: 'neutral' | 'success' | 'warning' | 'error' = 'neutral';
+            if (latestToast.type === 'success') newMode = 'success';
+            else if (latestToast.type === 'error') newMode = 'error';
+            // If we add warning support to Toast later, handle it here
+
+            setOmniboxMode(newMode);
+
+            // Clear toast to prevent reprocessing
+            removeToast(latestToast.id);
+
+            // Auto-clear Omnibox
+            setTimeout(() => {
+                setOmniboxMessage('');
+                setOmniboxMode('neutral');
+            }, 3000);
+        }
+    }, [toasts, removeToast]);
 
     // Sync theme class to root
     useEffect(() => {
@@ -51,9 +80,16 @@ export default function App() {
                 <ActivityLayout>
                     <CreateTokenPage
                         onBack={() => setActiveTab('dashboard')}
-                        onSubmit={(data: TokenFormData) => {
-                            vm.tokens.createToken(data);
-                            setActiveTab('dashboard');
+                        onSubmit={async (data: TokenFormData) => {
+                            const success = await vm.tokens.createToken(data);
+                            if (success) {
+                                setOmniboxMessage('Token Created!');
+                                setOmniboxMode('success');
+                                setTimeout(() => {
+                                    setOmniboxMessage('');
+                                    setOmniboxMode('neutral');
+                                }, 3000);
+                            }
                         }}
                     />
                 </ActivityLayout>
@@ -110,6 +146,8 @@ export default function App() {
             <OmniboxTrigger
                 isOpen={isOmniboxOpen}
                 onClick={() => setIsOmniboxOpen(!isOmniboxOpen)}
+                externalMessage={omniboxMessage}
+                mode={omniboxMode}
             />
 
             <OmniboxModal

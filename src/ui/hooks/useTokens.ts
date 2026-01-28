@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { showToast } from '../components/base/Toast';
 import { type TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
 import type { TokenFormData } from '../../modules/tokens/domain/ui-types';
@@ -17,7 +18,7 @@ export interface TokensViewModel {
     isSynced: boolean;
     liveIndicator: boolean;
     updateToken: (id: string, value: string) => void;
-    createToken: (data: TokenFormData) => void;
+    createToken: (data: TokenFormData) => Promise<boolean>;
     scanAnatomy: () => void;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
@@ -40,6 +41,7 @@ export function useTokens(): TokensViewModel {
     const [liveIndicator, setLiveIndicator] = useState(false);
 
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
+    const creationPromise = useRef<((success: boolean) => void) | null>(null);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -90,6 +92,23 @@ export function useTokens(): TokensViewModel {
                     setLineageData(payload);
                 }
             }
+
+            if (type === 'CREATE_VARIABLE_SUCCESS') {
+                if (creationPromise.current) {
+                    creationPromise.current(true);
+                    creationPromise.current = null;
+                }
+            }
+
+            if (type === 'CREATE_VARIABLE_ERROR') {
+                if (payload && payload.message) {
+                    showToast(payload.message, 'error');
+                }
+                if (creationPromise.current) {
+                    creationPromise.current(false);
+                    creationPromise.current = null;
+                }
+            }
         };
 
         window.addEventListener('message', handleMessage);
@@ -116,12 +135,15 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const createToken = useCallback((data: TokenFormData) => {
-        parent.postMessage({
-            pluginMessage: {
-                type: 'CREATE_VARIABLE',
-                payload: data
-            }
-        }, '*');
+        return new Promise<boolean>((resolve) => {
+            creationPromise.current = resolve;
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'CREATE_VARIABLE',
+                    payload: data
+                }
+            }, '*');
+        });
     }, []);
 
     const traceLineage = useCallback((tokenId: string) => {

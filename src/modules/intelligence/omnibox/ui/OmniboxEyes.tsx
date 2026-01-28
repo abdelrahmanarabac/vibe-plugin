@@ -72,6 +72,11 @@ const Eye = ({ isBlinking, pupilPos, expression }: { isBlinking: boolean; pupilP
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             className={`w-full h-full bg-white relative flex items-center justify-center ${expression === 'happy' ? 'mt-1' : ''}`}
         >
+            {/* Lashes */}
+            <div className="absolute -top-[2px] left-0.5 w-[1px] h-1 bg-black/80 rotate-[-30deg] origin-bottom" />
+            <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[1px] h-1.5 bg-black/80 origin-bottom" />
+            <div className="absolute -top-[2px] right-0.5 w-[1px] h-1 bg-black/80 rotate-[30deg] origin-bottom" />
+
             <motion.div
                 className="w-1.5 h-1.5 bg-black rounded-full"
                 animate={{

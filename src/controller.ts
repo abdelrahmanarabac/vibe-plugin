@@ -114,7 +114,12 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 }
             } else {
                 console.error(`[Dispatcher] Capability failed:`, result.error);
-                figma.notify(`❌ Action failed: ${result.error}`);
+                // Send error to UI for Omnibox display
+                figma.ui.postMessage({
+                    type: `${msg.type}_ERROR`,
+                    payload: { message: result.error },
+                    timestamp: Date.now()
+                });
             }
             return;
         }
