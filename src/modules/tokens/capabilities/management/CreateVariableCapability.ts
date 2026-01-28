@@ -24,7 +24,9 @@ export class CreateVariableCapability implements ICapability {
         try {
             // Handle Color Scales
             if (payload.type === 'color' && payload.extensions?.scope && payload.extensions.scope.startsWith('scale')) {
+                console.log('[CreateVariable] Generating Scale for:', payload.value);
                 const scale = ColorPalette.generateScale(payload.value);
+                console.log('[CreateVariable] Generated Scale:', scale);
                 const createdNames: string[] = [];
 
                 // Determine Range (Default 50-950 or Custom)

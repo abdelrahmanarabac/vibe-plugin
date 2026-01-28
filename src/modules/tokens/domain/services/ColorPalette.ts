@@ -1,4 +1,7 @@
-import { colord } from 'colord';
+import { colord, extend } from 'colord';
+import mixPlugin from 'colord/plugins/mix';
+
+extend([mixPlugin]);
 
 /**
  * 🎨 ColorPalette Logic
@@ -11,6 +14,13 @@ export class ColorPalette {
      */
     static generateScale(baseHex: string): Record<number, string> {
         const base = colord(baseHex);
+
+        if (!base.isValid()) {
+            console.error(`[ColorPalette] Invalid base color: ${baseHex}`);
+            // Fallback or throw? Let's throw to make it obvious
+            throw new Error(`Invalid base color for scale: ${baseHex}`);
+        }
+
         const stops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
         const scale: Record<number, string> = {};
 

@@ -68,6 +68,12 @@ export function toHex6(color: { r: number; g: number; b: number }): string {
 }
 
 export const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, (_m, r, g, b) => {
+        return r + r + g + g + b + b;
+    });
+
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result
         ? {
@@ -83,14 +89,8 @@ export const rgbToFigma = (r: number, g: number, b: number) => {
 };
 
 // "Genius" Naming Map
-export const NAMED_COLORS: Record<string, string> = {
-    "#000000": "Void Black",
-    "#FFFFFF": "Pure White",
-    "#2563EB": "Vibe Blue",
-    "#DC2626": "Alert Red",
-    "#16A34A": "Success Green",
-    "#F59E0B": "Warning Orange",
-};
+// Removed per user request to rely on Cloud Database
+export const NAMED_COLORS: Record<string, string> = {};
 
 export const getColorName = async (hex: string): Promise<string> => {
     try {
