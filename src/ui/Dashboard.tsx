@@ -49,14 +49,14 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
 
                     <div className="flex justify-between items-start z-10">
-                        <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
+                        <div className="p-3 rounded-xl bg-surface-2 text-primary border border-border shadow-inner">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
                         <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider border border-primary/20">Active System</span>
                     </div>
 
                     <div className="z-10">
-                        <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.totalVariables ?? 0}</div>
+                        <div className="text-5xl font-display font-bold text-text-bright mb-1 tracking-tight">{stats?.totalVariables ?? 0}</div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                             Total Design Tokens
@@ -69,14 +69,14 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 blur-[80px] rounded-full group-hover:bg-secondary/20 transition-all duration-500" />
 
                     <div className="flex justify-between items-start z-10">
-                        <div className="p-3 rounded-xl bg-white/5 text-secondary border border-white/5 shadow-inner">
+                        <div className="p-3 rounded-xl bg-surface-2 text-secondary border border-border shadow-inner">
                             <Layers size={24} strokeWidth={1.5} />
                         </div>
                         <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-[11px] font-bold uppercase tracking-wider border border-secondary/20">Linked Styles</span>
                     </div>
 
                     <div className="z-10">
-                        <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.styles ?? 0}</div>
+                        <div className="text-5xl font-display font-bold text-text-bright mb-1 tracking-tight">{stats?.styles ?? 0}</div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
                             Figma Styles Mapped
@@ -95,9 +95,9 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong group-hover:border-primary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
                                 <div className="absolute inset-0 bg-primary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Plus size={24} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+                                <Plus size={24} strokeWidth={3} className="text-text-bright group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
                             </div>
                             <div className="text-left">
                                 <div className="text-base font-bold text-text-bright group-hover:text-primary transition-colors">New Token</div>
@@ -112,9 +112,9 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-5">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong group-hover:border-secondary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
                                 <div className="absolute inset-0 bg-secondary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Layers size={24} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
+                                <Layers size={24} strokeWidth={3} className="text-text-bright group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
                             </div>
                             <div className="text-left">
                                 <div className="text-base font-bold text-text-bright group-hover:text-secondary transition-colors">Add Style</div>
@@ -129,12 +129,12 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
                                 <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
                                 {theme === 'dark' ? (
-                                    <Sun size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+                                    <Sun size={20} strokeWidth={3} className="text-text-bright group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
                                 ) : (
-                                    <Moon size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
+                                    <Moon size={20} strokeWidth={3} className="text-text-bright group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
                                 )}
                             </div>
                             <div className="text-left">
@@ -154,9 +154,9 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
                     >
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-surface-0 flex items-center justify-center border border-border-strong group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
                                 <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Download size={20} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
+                                <Download size={20} strokeWidth={3} className="text-text-bright group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
                             </div>
                             <div className="text-left">
                                 <div className="text-sm font-bold text-text-bright group-hover:text-secondary transition-colors">Export JSON</div>
@@ -192,9 +192,9 @@ function EmptyStateFragment() {
         >
             <div className="w-32 h-32 mb-8 relative">
                 <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full animate-pulse" />
-                <Layers size={112} strokeWidth={0.5} className="relative text-white/10" />
+                <Layers size={112} strokeWidth={0.5} className="relative text-text-dim/20" />
             </div>
-            <h3 className="text-2xl font-black text-white mb-3 font-display uppercase tracking-widest italic">System Ready</h3>
+            <h3 className="text-2xl font-black text-text-bright mb-3 font-display uppercase tracking-widest italic">System Ready</h3>
             <p className="text-xs text-text-dim max-w-xs mb-8 leading-relaxed">
                 Your token graph is currently a void. Type a brand vibe or specific styles in the Omnibox to start building.
             </p>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Key, Trash2, Zap, CheckCircle, XCircle, Sparkles } from 'lucide-react';
+import { Settings, Key, Trash2, Zap, CheckCircle, XCircle, Sparkles, Plus, AlertCircle } from 'lucide-react';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 type ModelTier = 'AUTO' | 'LITE' | 'SMART';
@@ -12,6 +12,7 @@ export interface SettingsPageProps {
 /**
  * ⚙️ Elite Settings Page
  * High-contrast API configuration zone within the Security module.
+ * Redesigned for better hierarchy, theme support, and accessibility.
  */
 export function SettingsPage({ apiKey, onSave }: SettingsPageProps) {
     const [newKey, setNewKey] = useState('');
@@ -75,126 +76,172 @@ export function SettingsPage({ apiKey, onSave }: SettingsPageProps) {
     };
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-8 max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header Fragment */}
-            <header className="flex items-center gap-4 mb-10">
-                <div className="w-12 h-12 flex items-center justify-center rounded-[20px] bg-primary/10 border border-primary/20 text-primary shadow-[0_0_20px_rgba(0,240,255,0.1)]">
-                    <Settings size={24} />
+            <header className="flex items-center gap-5">
+                <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-glow">
+                    <Settings size={28} />
                 </div>
                 <div>
-                    <h1 className="text-xl font-bold text-white font-display uppercase tracking-tight">System Settings</h1>
-                    <p className="text-xs text-text-dim font-medium uppercase tracking-widest opacity-60">Engine Configuration</p>
+                    <h1 className="text-2xl font-bold text-text-bright font-display tracking-tight">Settings & Configuration</h1>
+                    <p className="text-sm text-text-dim font-medium">Manage your engine preferences and security keys</p>
                 </div>
             </header>
 
-            {/* API Key Identity */}
-            <section className="bg-white/[0.02] border border-white/10 p-6 rounded-[32px]">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-2">
-                        <Key size={16} className="text-primary" />
-                        <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-[0.2em]">API Authorization</span>
-                    </div>
-                    <span className={`font-mono text-[10px] px-3 py-1 rounded-full border ${apiKey ? 'bg-success/5 border-success/30 text-success' : 'bg-error/5 border-error/30 text-error'}`}>
-                        {maskedKey}
-                    </span>
-                </div>
+            <div className="grid grid-cols-1 gap-6">
 
-                <div className="space-y-4">
-                    {apiKey && (
-                        <button
-                            onClick={handleTestConnection}
-                            disabled={status === 'testing'}
-                            className="w-full flex items-center justify-center gap-2 p-4 rounded-[20px] bg-white/5 border border-white/5 hover:border-primary/40 hover:bg-white/[0.08] transition-all group"
-                        >
-                            <StatusIcon />
-                            <span className="text-xs font-bold text-text-primary uppercase tracking-tight">
-                                {status === 'testing' ? 'Testing Core...' :
-                                    status === 'success' ? 'Link Established' :
-                                        status === 'error' ? 'Link Failure - Retry?' :
-                                            'Test Connection'}
-                            </span>
-                        </button>
-                    )}
-
-                    <div className="flex gap-2">
-                        <input
-                            type="password"
-                            value={newKey}
-                            onChange={e => setNewKey(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleUpdateKey()}
-                            placeholder="Overwrite Gemini API Key..."
-                            className="flex-1 px-4 py-3 text-xs bg-[#030407] border border-white/5 rounded-[18px] text-white placeholder-text-muted/50 focus:border-primary/50 focus:outline-none transition-all"
-                        />
-                        <button
-                            onClick={handleUpdateKey}
-                            disabled={!newKey.trim()}
-                            className="px-6 py-3 bg-primary text-void rounded-[18px] text-xs font-bold hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:grayscale transition-all flex items-center justify-center gap-2"
-                        >
-                            Update
-                        </button>
-                    </div>
-                </div>
-
-                <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block mt-4 text-[10px] text-primary/80 hover:text-primary transition-colors text-center font-bold uppercase tracking-tighter"
-                >
-                    Provision new key via Google AI Studio ↗
-                </a>
-            </section>
-
-            {/* intelligence Tier */}
-            <section className="bg-white/[0.02] border border-white/10 p-6 rounded-[32px]">
-                <div className="flex items-center gap-2 mb-4">
-                    <Sparkles size={16} className="text-secondary" />
-                    <span className="text-[10px] font-extrabold text-text-muted uppercase tracking-[0.1em]">Compute Strategy</span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                    {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
-                        <button
-                            key={tier}
-                            onClick={() => setModelTier(tier)}
-                            className={`flex flex-col items-center gap-2 p-4 rounded-[24px] border transition-all relative overflow-hidden ${modelTier === tier
-                                ? 'bg-secondary/10 border-secondary text-secondary shadow-[0_0_20px_rgba(255,46,224,0.15)]'
-                                : 'bg-white/5 border-white/5 text-text-muted hover:border-white/20'
-                                }`}
-                        >
-                            <div className="text-lg">
-                                {tier === 'AUTO' && <Sparkles size={18} />}
-                                {tier === 'LITE' && '⚡'}
-                                {tier === 'SMART' && '🧠'}
+                {/* 1. API Configuration Section */}
+                <section className="vibe-card p-6 flex flex-col gap-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-surface-2 rounded-lg text-primary">
+                                <Key size={18} />
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-tighter">
-                                {tier === 'AUTO' ? 'Auto-Vibe' : tier === 'LITE' ? 'Flash' : 'Deep Thought'}
-                            </span>
-                            {tier === 'AUTO' && (
-                                <div className="absolute top-0 right-0 p-1 bg-secondary text-[#030407] text-[8px] font-black uppercase rounded-bl-lg">
-                                    Rec
-                                </div>
-                            )}
-                        </button>
-                    ))}
-                </div>
-            </section>
-
-            <div className="pt-4 space-y-4">
-                <button
-                    onClick={handleClearCache}
-                    className="w-full flex items-center justify-center gap-3 p-4 rounded-[28px] bg-red-500/5 border border-red-500/10 hover:bg-red-500/15 hover:border-red-500/30 text-red-400 transition-all border-dashed"
-                >
-                    <Trash2 size={16} />
-                    <span className="text-[11px] font-bold uppercase tracking-widest">Wipe Local Memory</span>
-                </button>
-
-                <footer className="text-center">
-                    <div className="text-[9px] font-bold text-text-muted uppercase tracking-[0.3em] opacity-40">
-                        Vibe Engine v3.1.0-Elite • Powered by Gemini Flash
+                            <h3 className="text-base font-bold text-text-bright">API Authorization</h3>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${apiKey ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'}`}>
+                            {apiKey ? 'Active' : 'Missing Key'}
+                        </div>
                     </div>
-                </footer>
+
+                    <div className="p-4 rounded-xl bg-surface-2/50 border border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 w-full">
+                            <span className="text-xs font-bold text-text-dim uppercase tracking-wider">Current Key</span>
+                            <code className="font-mono text-xs text-text-primary px-2 py-1 bg-surface-3 rounded border border-border">
+                                {maskedKey}
+                            </code>
+                        </div>
+                        {apiKey && (
+                            <button
+                                onClick={handleTestConnection}
+                                disabled={status === 'testing'}
+                                className="whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-3 hover:bg-surface-3/80 border border-border transition-colors text-xs font-bold text-text-primary disabled:opacity-50"
+                            >
+                                <StatusIcon />
+                                {status === 'testing' ? 'Testing...' :
+                                    status === 'success' ? 'Connected' :
+                                        status === 'error' ? 'Failed' :
+                                            'Test Connection'}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-text-dim uppercase tracking-wider ml-1">Update API Key</label>
+                        <div className="flex gap-3">
+                            <input
+                                type="password"
+                                value={newKey}
+                                onChange={e => setNewKey(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleUpdateKey()}
+                                placeholder="Enter Gemini API Key (starts with AIza...)"
+                                className="flex-1 px-4 py-3 bg-surface-0 border border-border rounded-xl text-sm text-text-primary placeholder:text-text-muted focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                            />
+                            <button
+                                onClick={handleUpdateKey}
+                                disabled={!newKey.trim()}
+                                className="px-6 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/20"
+                            >
+                                Save
+                            </button>
+                        </div>
+                        <a
+                            href="https://aistudio.google.com/app/apikey"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary hover:text-primary-hover transition-colors ml-1 group"
+                        >
+                            Get a free API key from Google AI Studio
+                            <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                        </a>
+                    </div>
+                </section>
+
+                {/* 2. Compute Strategy Section */}
+                <section className="vibe-card p-6 flex flex-col gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-surface-2 rounded-lg text-secondary">
+                            <Sparkles size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-text-bright">Compute Strategy</h3>
+                            <p className="text-xs text-text-dim mt-0.5">Select the intelligence model for your workflow</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
+                            <button
+                                key={tier}
+                                onClick={() => setModelTier(tier)}
+                                className={`relative flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${modelTier === tier
+                                    ? 'bg-secondary/10 border-secondary text-secondary'
+                                    : 'bg-surface-0 border-transparent hover:border-border text-text-dim hover:text-text-primary'
+                                    }`}
+                            >
+                                <div className={`text-2xl ${modelTier === tier ? 'scale-110' : 'scale-100'} transition-transform`}>
+                                    {tier === 'AUTO' && '✨'}
+                                    {tier === 'LITE' && '⚡'}
+                                    {tier === 'SMART' && '🧠'}
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xs font-bold uppercase tracking-wider">{tier === 'AUTO' ? 'Auto-Vibe' : tier === 'LITE' ? 'Flash Lite' : 'Deep Thought'}</div>
+                                    <div className="text-[10px] opacity-70 mt-1">
+                                        {tier === 'AUTO' ? 'Balanced' : tier === 'LITE' ? 'Fast & Cheap' : 'High Precision'}
+                                    </div>
+                                </div>
+                                {tier === 'AUTO' && (
+                                    <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-void text-[9px] font-black uppercase rounded-bl-lg">
+                                        Best
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </section>
+
+                {/* 3. Data Management */}
+                <section className="vibe-card p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-surface-2 rounded-lg text-error">
+                            <AlertCircle size={18} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-text-bright">Reset Local Memory</h3>
+                            <p className="text-xs text-text-dim mt-0.5">Clear cached patterns and temporary data.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleClearCache}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-error/5 border border-error/20 hover:bg-error/10 text-error transition-all text-xs font-bold uppercase tracking-wider"
+                    >
+                        <Trash2 size={14} />
+                        Clear Cache
+                    </button>
+                </section>
+
+                {/* 4. Bottom Button (New Requirement) */}
+                <div className="flex justify-center pt-4 pb-2">
+                    <button className="group relative flex items-center gap-3 px-8 py-3 bg-surface-2 hover:bg-surface-3 text-text-primary rounded-full transition-all border border-border hover:border-border-strong">
+                        <Plus size={16} className="text-primary group-hover:scale-110 transition-transform" />
+                        <span className="font-bold text-sm">Add Mode</span>
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                        <div className="ml-1 px-1.5 py-0.5 rounded-md bg-surface-3 text-[10px] font-bold text-text-dim uppercase tracking-wider group-hover:bg-surface-0 transition-colors">
+                            Soon
+                        </div>
+                    </button>
+                </div>
+
             </div>
+
+            <footer className="text-center pt-4">
+                <div className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em] opacity-50">
+                    Vibe Engine v3.1.0-Elite • Powered by Gemini Flash
+                </div>
+            </footer>
         </div>
     );
 }

@@ -28,19 +28,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     return (
         <div className="h-full w-full flex flex-col bg-void text-text-primary overflow-hidden font-sans transition-all duration-500">
             {/* 🛸 Bento Header */}
-            <header className="flex-none px-6 flex items-center justify-between z-40 bg-surface-0/80 backdrop-blur-xl border-b border-white/5 h-[72px] shadow-glass">
+            <header className="flex-none px-6 flex items-center justify-between z-40 bg-surface-0/80 backdrop-blur-xl border-b border-border h-[72px] shadow-glass">
 
                 {/* 1. Left: System Identity */}
                 <div className="flex items-center gap-4 min-w-[200px]">
                     <SystemPulse />
                     <div className="flex flex-col">
-                        <span className="font-display font-black text-sm tracking-tighter text-white uppercase leading-none">Vibe OS</span>
+                        <span className="font-display font-black text-sm tracking-tighter text-text-bright uppercase leading-none">Vibe OS</span>
                         <span className="text-[9px] text-primary font-bold uppercase tracking-[0.3em] mt-1 ml-[1px] opacity-80">v3.1.0-Elite</span>
                     </div>
                 </div>
 
                 {/* 2. Center: Navigation Tabs */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-void/40 rounded-2xl border border-white/10 shadow-inner backdrop-blur-md">
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-surface-0/40 rounded-2xl border border-border shadow-inner backdrop-blur-md">
                     <TabButton
                         active={activeTab === 'dashboard'}
                         onClick={() => onTabChange('dashboard')}
@@ -61,7 +61,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     {/* Theme Switcher */}
                     <button
                         onClick={onThemeToggle}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all group"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-1 border border-border hover:bg-surface-2 hover:border-border-strong transition-all group"
                     >
                         {theme === 'dark' ? (
                             <Moon size={18} className="text-text-dim group-hover:text-primary transition-colors" />
@@ -70,24 +70,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                         )}
                     </button>
 
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-6 bg-border" />
 
                     {/* Settings Trigger */}
                     <button
                         onClick={() => onTabChange('settings')}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${activeTab === 'settings'
                             ? 'bg-primary/20 border-primary/40 text-primary shadow-glow-primary'
-                            : 'bg-white/5 border-white/5 text-text-dim hover:text-white hover:bg-white/10'
+                            : 'bg-surface-1 border-border text-text-dim hover:text-text-bright hover:bg-surface-2'
                             }`}
                     >
                         <Settings size={18} />
                     </button>
 
                     {/* Credits Identity */}
-                    <div className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-white/5 border border-white/5 rounded-2xl">
+                    <div className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-surface-1 border border-border rounded-2xl">
                         <div className="flex flex-col items-end">
                             <span className="text-[9px] font-black text-text-dim uppercase tracking-tighter leading-none">Credits</span>
-                            <span className="text-xs font-mono font-bold text-white leading-none mt-1">{credits.toLocaleString()}</span>
+                            <span className="text-xs font-mono font-bold text-text-bright leading-none mt-1">{credits.toLocaleString()}</span>
                         </div>
                         <div className="w-8 h-8 rounded-xl bg-secondary/20 border border-secondary/30 flex items-center justify-center text-secondary shadow-glow-secondary">
                             <Wallet size={16} />
@@ -116,8 +116,8 @@ const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick:
     <button
         onClick={onClick}
         className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 relative group ${active
-            ? 'bg-white/10 text-white shadow-lg'
-            : 'text-text-dim hover:text-text-primary hover:bg-white/5'
+            ? 'bg-surface-2 text-text-bright shadow-lg'
+            : 'text-text-dim hover:text-text-primary hover:bg-surface-1'
             }`}
     >
         {icon}
@@ -133,7 +133,7 @@ const SystemPulse = () => {
         <div className="relative w-10 h-10 flex items-center justify-center">
             {/* Core Node */}
             <div className="w-3.5 h-3.5 bg-gradient-to-tr from-primary to-secondary rounded-full z-10 shadow-glow-primary relative">
-                <div className="absolute inset-0 bg-white opacity-40 rounded-full animate-ping" />
+                <div className="absolute inset-0 bg-surface-0 opacity-40 rounded-full animate-ping" />
             </div>
 
             {/* Orbiting Rings */}

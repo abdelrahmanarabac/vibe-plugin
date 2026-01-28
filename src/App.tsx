@@ -22,9 +22,9 @@ export default function App() {
     useEffect(() => {
         const root = document.documentElement;
         if (theme === 'light') {
-            root.classList.add('vibe-light');
+            root.classList.add('light-mode');
         } else {
-            root.classList.remove('vibe-light');
+            root.classList.remove('light-mode');
         }
     }, [theme]);
 
