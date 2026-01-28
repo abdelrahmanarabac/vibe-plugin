@@ -3,7 +3,7 @@ import type { AgentContext } from '../../../../core/AgentContext';
 import { Result } from '../../../../shared/utils/Result';
 import type { VariableManager } from '../../../governance/VariableManager';
 
-import { ColorPalette } from '../../logic/ColorPalette';
+import { ColorPalette } from '../../domain/services/ColorPalette';
 
 export class CreateVariableCapability implements ICapability {
     readonly id = 'create-variable-v1';

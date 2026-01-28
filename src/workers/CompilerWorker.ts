@@ -1,4 +1,4 @@
-import { TokenCompiler } from '../modules/tokens/logic/TokenCompiler';
+import { TokenCompiler } from '../modules/tokens/domain/services/TokenCompiler';
 
 // Web Worker Entry Point
 self.onmessage = (e) => {

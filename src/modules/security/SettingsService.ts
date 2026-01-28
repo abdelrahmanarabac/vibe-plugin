@@ -28,15 +28,17 @@ export const SettingsService = {
 
             const listener = (event: MessageEvent) => {
                 const msg = event.data.pluginMessage;
-                if (msg?.type === 'STORAGE_GET_RESPONSE' && msg.key === 'GEMINI_API_KEY') {
+                if ((msg?.type === 'STORAGE_GET_RESPONSE' || msg?.type === 'STORAGE_GET_SUCCESS') && (msg.key === 'GEMINI_API_KEY' || msg.payload?.key === 'GEMINI_API_KEY')) {
                     window.removeEventListener('message', listener);
 
-                    if (!msg.value) {
+                    const value = msg.value || msg.payload?.value;
+
+                    if (!value) {
                         resolve("");
                         return;
                     }
 
-                    decryptAPIKey(msg.value)
+                    decryptAPIKey(value)
                         .then(decrypted => resolve(decrypted))
                         .catch(err => {
                             console.warn("Key Decryption Failed (Device mismatch or legacy key):", err);

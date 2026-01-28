@@ -7,6 +7,7 @@ import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
+import { ActivityLayout } from './ui/layouts/ActivityLayout';
 import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
 import type { TokenFormData } from './modules/tokens/domain/ui-types';
 
@@ -47,13 +48,7 @@ export default function App() {
         <div className="vibe-root relative h-full">
             {/* Full-Screen Activity Mode: Create Token */}
             {activeTab === 'create-token' ? (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.4, ease: [0.19, 1, 0.22, 1] }}
-                    className="vibe-activity h-full w-full bg-nebula text-text-primary overflow-hidden"
-                >
+                <ActivityLayout>
                     <CreateTokenPage
                         onBack={() => setActiveTab('dashboard')}
                         onSubmit={(data: TokenFormData) => {
@@ -61,7 +56,7 @@ export default function App() {
                             setActiveTab('dashboard');
                         }}
                     />
-                </motion.div>
+                </ActivityLayout>
             ) : (
                 /* Normal Layout Mode: Dashboard, Tokens, Settings */
                 <MainLayout

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { TokenEntity } from '../../core/types';
-import { TokenCompiler } from '../../modules/tokens/logic/TokenCompiler';
+import { TokenCompiler } from '../../modules/tokens/domain/services/TokenCompiler';
 
 /**
  * 🎣 useTokenCompiler
