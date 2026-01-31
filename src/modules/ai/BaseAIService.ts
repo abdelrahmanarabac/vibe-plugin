@@ -25,31 +25,43 @@ export abstract class BaseAIService {
                 // Race between generation and 10s timeout
                 return await Promise.race([resultPromise, timeoutPromise]);
 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 attempt++;
-                if (error.message === 'Timeout') {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+
+                if (errorMessage === 'Timeout') {
                     throw new AIModelError(`[${this.modelName}] Operation timed out after 10s.`);
                 }
                 if (this.isRetryableError(error) && attempt < maxRetries) {
                     const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
-                    console.warn(`[${this.modelName}] Error ${error.status}. Retrying in ${delay}ms...`);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const status = (error as any).status;
+                    console.warn(`[${this.modelName}] Error ${status}. Retrying in ${delay}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }
 
-                if (error.status === 429 || error.message?.includes('overloaded')) {
+                if (this.isOverloadedError(error)) {
                     throw new AIModelOverloadedError();
                 }
 
-                throw new AIModelError(`[${this.modelName}] Generation failed: ${error.message}`);
+                throw new AIModelError(`[${this.modelName}] Generation failed: ${errorMessage}`);
             }
         }
         throw new AIModelError(`[${this.modelName}] Max retries exceeded.`);
     }
 
-    private isRetryableError(error: any): boolean {
+    private isOverloadedError(error: unknown): boolean {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = error as any;
+        return e.status === 429 || e.message?.includes('overloaded');
+    }
+
+    private isRetryableError(error: unknown): boolean {
         // 429: Too Many Requests, 503: Service Unavailable
-        return error.status === 429 || error.status === 503 || error.message?.includes('overloaded');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const e = error as any;
+        return e.status === 429 || e.status === 503 || e.message?.includes('overloaded');
     }
 
     abstract generate(prompt: string): Promise<string>;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Paintbrush, Settings } from 'lucide-react';
+import { Paintbrush } from 'lucide-react';
 
 import { useTokenCreation } from '../hooks/useTokenCreation';
 import { TokenNameInput } from '../components/TokenNameInput';
@@ -18,7 +18,7 @@ interface CreateTokenPageProps {
 
 export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
     const { tokens } = useTokens();
-    const tokenNames = tokens.map((t: any) => [...t.path, t.name].join('/'));
+    const tokenNames = tokens.map(t => t.name);
 
     const { formState, setters, actions } = useTokenCreation(true);
 
@@ -46,25 +46,8 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
         <div className="w-full h-full relative flex flex-col bg-[#09090b]">
             <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="w-full max-w-2xl mx-auto px-6 py-6 pb-28 flex flex-col relative z-10">
-                    <div className="w-full mb-6 flex items-center justify-between gap-3">
-                        <button
-                            onClick={onBack}
-                            className="flex items-center gap-2 text-text-dim hover:text-white transition-all group"
-                        >
-                            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-                            <span className="text-sm font-bold">Back</span>
-                        </button>
 
-                        <div className="flex items-center gap-3">
-                            <button className="w-9 h-9 rounded-full flex items-center justify-center transition-all bg-surface-1 border border-white/5 text-text-dim hover:text-white hover:bg-surface-2">
-                                <Settings size={16} />
-                            </button>
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border border-white/5 rounded-full">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] animate-pulse" />
-                                <span className="text-xs font-bold text-white font-mono">1,250</span>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -145,6 +128,7 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
 
             <div className="w-full absolute bottom-0 left-0 p-6 bg-gradient-to-t from-[#09090b] via-[#09090b] to-transparent z-50 pointer-events-none flex justify-center">
                 <div className="w-full max-w-2xl flex gap-4 pointer-events-auto">
+
                     <button
                         type="button"
                         onClick={onBack}
@@ -154,7 +138,7 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                     </button>
                     <button
                         type="button"
-                        onClick={(e) => handleSubmit(e as any)}
+                        onClick={handleSubmit}
                         className="flex-[2] py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-sm font-bold text-white shadow-[0_4px_20px_rgba(110,98,229,0.3)] hover:shadow-[0_4px_25px_rgba(110,98,229,0.5)] transition-all flex items-center justify-center gap-2 border border-white/10 group"
                     >
                         <Paintbrush size={16} />
@@ -169,6 +153,6 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

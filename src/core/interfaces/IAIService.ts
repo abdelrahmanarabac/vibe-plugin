@@ -17,7 +17,7 @@ export interface IAIService {
     /**
      * Generates structured JSON data.
      */
-    generateJSON<T>(prompt: string, schema?: any): Promise<T>;
+    generateJSON<T>(prompt: string, schema?: unknown): Promise<T>;
 
     /**
      * Analyzes an image and returns a text description.

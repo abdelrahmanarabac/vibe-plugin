@@ -2,10 +2,25 @@ import type { ICapability } from '../../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../../core/AgentContext';
 import { Result } from '../../../../shared/utils/Result';
 import type { VariableManager } from '../../../governance/VariableManager';
+import type { VariableValue } from '../../../../core/types';
 
 import { ColorPalette } from '../../domain/services/ColorPalette';
 
-export class CreateVariableCapability implements ICapability {
+type CreatePayload = {
+    name: string;
+    type: 'color' | 'number' | 'string';
+    value: VariableValue;
+    extensions?: { scope?: string; range?: [number, number] }
+};
+
+type CreateResult = {
+    created: boolean;
+    names?: string[];
+    count?: number;
+    name?: string
+};
+
+export class CreateVariableCapability implements ICapability<CreatePayload, CreateResult> {
     readonly id = 'create-variable-v1';
     readonly commandId = 'CREATE_VARIABLE';
     readonly description = 'Creates a new design token (variable) in Figma.';
@@ -20,12 +35,15 @@ export class CreateVariableCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { name: string; type: 'color' | 'number' | 'string'; value: any; extensions?: any }, _context: AgentContext): Promise<Result<any>> {
+    async execute(
+        payload: CreatePayload,
+        _context: AgentContext
+    ): Promise<Result<CreateResult>> {
         try {
             // Handle Color Scales
             if (payload.type === 'color' && payload.extensions?.scope && payload.extensions.scope.startsWith('scale')) {
                 console.log('[CreateVariable] Generating Scale for:', payload.value);
-                const scale = ColorPalette.generateScale(payload.value);
+                const scale = ColorPalette.generateScale(payload.value as string);
                 console.log('[CreateVariable] Generated Scale:', scale);
                 const createdNames: string[] = [];
 
@@ -53,8 +71,9 @@ export class CreateVariableCapability implements ICapability {
             // Default: Single Variable
             await this.variableManager.createVariable(payload.name, payload.type, payload.value);
             return Result.ok({ created: true, name: payload.name });
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error during creation';
+            return Result.fail(message);
         }
     }
 }

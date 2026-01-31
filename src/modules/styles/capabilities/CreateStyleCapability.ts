@@ -17,7 +17,7 @@ export class CreateStyleCapability implements ICapability<CreateStylePayload> {
         return true;
     }
 
-    async execute(payload: CreateStylePayload, _context: AgentContext): Promise<Result<any>> {
+    async execute(payload: CreateStylePayload, _context: AgentContext): Promise<Result<{ success: boolean; name: string; id: string }>> {
         try {
             const { name, type, value } = payload;
             let newStyle: BaseStyle | null = null;
@@ -65,8 +65,9 @@ export class CreateStyleCapability implements ICapability<CreateStylePayload> {
                 return Result.fail(`Unsupported style type: ${type}`);
             }
 
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Create style failed';
+            return Result.fail(message);
         }
     }
 }

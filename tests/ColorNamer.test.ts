@@ -14,17 +14,19 @@ describe('ColorNamer Intelligent Engine', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // Reset singleton internal state for clean tests
-        // @ts-ignore - reaching into private for test reset
+        // @ts-expect-error - reaching into private for test reset
         ColorNamer.instance = undefined;
     });
 
     it('should handle exact matches with 100% confidence', async () => {
-        (ColorRepository.fetchAll as any).mockResolvedValue([
-            { name: 'vibe-purple', hex: '#6e62e5' }
+        vi.mocked(ColorRepository.fetchAll).mockResolvedValue([
+            { name: 'vibe-purple', hex: '#6e62e5', created_at: '', id: 1, dataset_source: '' }
         ]);
 
         await vibeColor.init();
-        const result = (ColorNamer.get() as any).name('#6e62e5');
+        const namer = ColorNamer.get();
+        if (!namer) throw new Error('Namer not initialized');
+        const result = namer.name('#6e62e5');
 
         expect(result.name).toBe('vibe-purple');
         expect(result.confidence).toBe(1.0);
@@ -32,13 +34,15 @@ describe('ColorNamer Intelligent Engine', () => {
     });
 
     it('should handle near matches using CIEDE2000', async () => {
-        (ColorRepository.fetchAll as any).mockResolvedValue([
-            { name: 'vibe-purple', hex: '#6e62e5' }
+        vi.mocked(ColorRepository.fetchAll).mockResolvedValue([
+            { name: 'vibe-purple', hex: '#6e62e5', created_at: '', id: 1, dataset_source: '' }
         ]);
 
         await vibeColor.init();
         // Shift hex slightly
-        const result = (ColorNamer.get() as any).name('#6e62e6');
+        const namer = ColorNamer.get();
+        if (!namer) throw new Error('Namer not initialized');
+        const result = namer.name('#6e62e6');
 
         expect(result.name).toBe('vibe-purple');
         expect(result.source).toBe('db_perfect');
@@ -46,22 +50,26 @@ describe('ColorNamer Intelligent Engine', () => {
     });
 
     it('should fallback to algorithmic naming for unknown colors', async () => {
-        (ColorRepository.fetchAll as any).mockResolvedValue([]); // Empty DB
+        vi.mocked(ColorRepository.fetchAll).mockResolvedValue([]); // Empty DB
 
         await vibeColor.init();
-        const result = (ColorNamer.get() as any).name('#ff0000');
+        const namer = ColorNamer.get();
+        if (!namer) throw new Error('Namer not initialized');
+        const result = namer.name('#ff0000');
 
         expect(result.name).toBe('red-500');
         expect(result.source).toBe('algo_fallback');
     });
 
     it('should use weighted hue priority for ambiguous colors', async () => {
-        (ColorRepository.fetchAll as any).mockResolvedValue([
-            { name: 'deep-blue', hex: '#000080' }
+        vi.mocked(ColorRepository.fetchAll).mockResolvedValue([
+            { name: 'deep-blue', hex: '#000080', created_at: '', id: 1, dataset_source: '' }
         ]);
 
         await vibeColor.init();
-        const result = (ColorNamer.get() as any).name('#1a1a9a');
+        const namer = ColorNamer.get();
+        if (!namer) throw new Error('Namer not initialized');
+        const result = namer.name('#1a1a9a');
 
         // Log for calibration
         const lab1 = ColorScience.hexToLab('#000080');

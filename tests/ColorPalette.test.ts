@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ColorPalette } from '../src/modules/tokens/logic/ColorPalette';
+import { ColorPalette } from '../src/modules/tokens/domain/services/ColorPalette';
 
 describe('ColorPalette', () => {
     it('should throw error for invalid hex', () => {

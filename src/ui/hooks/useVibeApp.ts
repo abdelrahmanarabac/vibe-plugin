@@ -1,4 +1,4 @@
-import { useSettings, type SettingsViewModel } from '../../modules/security/hooks/useSettings';
+import { useSettings, type SettingsViewModel } from '../../modules/settings/hooks/useSettings';
 import { useTokens, type TokensViewModel } from './useTokens';
 import { useAI, type AIViewModel } from './useAI';
 import { useStyles, type StylesViewModel } from './useStyles';
@@ -19,7 +19,7 @@ export function useVibeApp() {
     const settings = useSettings();
     const tokens = useTokens();
     const styles = useStyles();
-    const ai = useAI(settings.apiKey);
+    const ai = useAI(settings.settings.apiKey);
 
     return {
         settings,

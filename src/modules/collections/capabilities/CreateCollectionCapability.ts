@@ -2,7 +2,10 @@ import type { ICapability } from "../../../core/interfaces/ICapability";
 import type { AgentContext } from "../../../core/AgentContext";
 import { Result } from "../../../shared/utils/Result";
 
-export class CreateCollectionCapability implements ICapability {
+type CreateCollectionPayload = { name: string };
+type CreateCollectionResult = { message: string; collectionId: string };
+
+export class CreateCollectionCapability implements ICapability<CreateCollectionPayload, CreateCollectionResult> {
     readonly id = "create-collection-v1";
     readonly commandId = "CREATE_COLLECTION";
     readonly description = "Creates a new variable collection in Figma";
@@ -11,7 +14,7 @@ export class CreateCollectionCapability implements ICapability {
         return true; // Available in any context
     }
 
-    async execute(payload: { name: string }, _context: AgentContext): Promise<Result<any>> {
+    async execute(payload: CreateCollectionPayload, _context: AgentContext): Promise<Result<CreateCollectionResult>> {
         try {
             // 1. Validate name
             const name = payload.name || "New Collection";
@@ -31,9 +34,10 @@ export class CreateCollectionCapability implements ICapability {
                 collectionId: collection.id
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
             console.error('[CreateCollectionCapability] Execution Error:', error);
-            return Result.fail(`Failed to create collection: ${error.message}`);
+            return Result.fail(`Failed to create collection: ${message}`);
         }
     }
 }

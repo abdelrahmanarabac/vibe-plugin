@@ -3,7 +3,7 @@ import type { AgentContext } from '../../../core/AgentContext';
 import { Result } from '../../../shared/utils/Result';
 import { QualityGate } from '../QualityGate';
 import { TokenRepository } from '../../../core/TokenRepository';
-import type { VibeToken } from '../types';
+import type { VibeToken, TokenType as VibeTokenType } from '../types';
 
 export class CheckHealthCapability implements ICapability {
     readonly id = 'intelligence-check-health';
@@ -20,7 +20,7 @@ export class CheckHealthCapability implements ICapability {
         return true;
     }
 
-    async execute(_payload: any, _context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, _context: AgentContext): Promise<Result<{ errors: unknown[]; score: number; timestamp: number }>> {
         try {
             const entities = this.repository.getAllNodes();
 
@@ -28,7 +28,7 @@ export class CheckHealthCapability implements ICapability {
             const tokens: VibeToken[] = entities.map(e => ({
                 name: e.name,
                 $value: e.$value,
-                $type: e.$type as any,
+                $type: e.$type as unknown as VibeTokenType, // Conversional cast between Core and Intelligence domains
                 description: e.$description
             }));
 
@@ -39,8 +39,9 @@ export class CheckHealthCapability implements ICapability {
                 score: Math.max(0, 100 - (errors.length * 5)),
                 timestamp: Date.now()
             });
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            return Result.fail(message);
         }
     }
 }

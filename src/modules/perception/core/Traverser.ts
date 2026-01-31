@@ -30,7 +30,7 @@ export class Traverser {
 
         // 2. Recurse if applicable (DFS)
         if ('children' in node) {
-            const children = (node as any).children;
+            const children = (node as { children: readonly SceneNode[] }).children;
             if (children && Array.isArray(children)) {
                 for (const child of children) {
                     this.walk(child, visitor, {

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
@@ -5,37 +6,8 @@ import type { ReactNode } from 'react';
 // TYPE DEFINITIONS
 // ============================================================================
 
-export interface DesignSystemConfig {
-    metadata: {
-        name: string;
-        version: string;
-        createdAt: string;
-    };
-    brand: {
-        primaryColor: string;
-        name: string;
-    };
-    typography: {
-        fontFamily: string;
-        customFontName?: string;
-        scaleRatio: number;
-        baseSize: number;
-    };
-    layout: {
-        gridBase: 4 | 8;
-    };
-    advanced: {
-        includeSemantics: boolean;
-        multiMode: boolean;
-    };
-}
-
-interface ConfigContextType {
-    config: DesignSystemConfig;
-    updateConfig: (updates: Partial<DesignSystemConfig>) => void;
-    resetConfig: () => void;
-    isLoaded: boolean;
-}
+import type { DesignSystemConfig, ConfigContextType } from './ConfigTypes';
+export type { DesignSystemConfig, ConfigContextType };
 
 // ============================================================================
 // DEFAULT CONFIGURATION

@@ -1,5 +1,4 @@
-import { Download, Plus, Layers, Zap, Sun, Moon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
 import { type TokenEntity } from '../core/types';
 import { NewStyleDialog } from '../modules/styles/ui/dialogs/NewStyleDialog';
 import { useState } from 'react';
@@ -8,22 +7,21 @@ import type { ViewType } from './layouts/MainLayout';
 interface DashboardProps {
     tokens?: TokenEntity[];
     stats?: { totalVariables: number; collections: number; styles: number; lastSync: number };
-    theme?: 'dark' | 'light';
-    onThemeToggle?: () => void;
+
     onTabChange?: (tab: ViewType) => void;
-    onCreateStyle?: (data: { name: string; type: string; value: any }) => void;
+    onCreateStyle?: (data: { name: string; type: string; value: string | number | { r: number; g: number; b: number; a?: number } }) => void;
 }
 
 /**
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChange, onCreateStyle }: DashboardProps) {
+export function Dashboard({ tokens = [], stats, onTabChange, onCreateStyle }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
 
     const handleExport = () => {
         const exportData = {
-            version: '3.1',
+            version: '1.0',
             exportedAt: new Date().toISOString(),
             tokens: tokens.map(t => ({ id: t.id, name: t.name, type: t.$type, value: t.$value }))
         };
@@ -90,7 +88,7 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                     {/* 🚀 Quick Action: New Token */}
                     <button
                         onClick={() => {
-                            onTabChange && onTabChange('create-token');
+                            onTabChange?.('create-token');
                         }}
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
                     >
@@ -123,30 +121,28 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                         </div>
                     </button>
 
-                    {/* 🌓 Quick Action: Toggle Theme */}
+                    {/* 🌐 Quick Action: Add Mode (SOON) */}
                     <button
-                        onClick={onThemeToggle}
-                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-primary/50 hover:bg-surface-2 group transition-all"
+                        className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-emerald-500/50 hover:bg-surface-2 group transition-all relative overflow-hidden"
+                        onClick={() => { }} // No-op for now
+                        disabled
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors shadow-md relative overflow-hidden">
-                                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                {theme === 'dark' ? (
-                                    <Sun size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                ) : (
-                                    <Moon size={20} strokeWidth={3} className="text-white group-hover:text-primary transition-colors relative z-10 drop-shadow-md" />
-                                )}
+                        <div className="flex items-center gap-5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-emerald-500/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                                <div className="absolute inset-0 bg-emerald-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Globe size={24} strokeWidth={3} className="text-white group-hover:text-emerald-500 transition-colors relative z-10 drop-shadow-md" />
                             </div>
                             <div className="text-left">
-                                <div className="text-sm font-bold text-text-bright group-hover:text-primary transition-colors">
-                                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                                </div>
-                                <div className="text-[10px] text-text-dim">
-                                    Switch Theme
-                                </div>
+                                <div className="text-base font-bold text-text-bright group-hover:text-emerald-500 transition-colors">Add Mode</div>
+                                <div className="text-xs text-text-dim group-hover:text-emerald-500 transition-colors">Figma variable mode</div>
                             </div>
                         </div>
+                        <div className="absolute top-3 right-3 px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-black uppercase text-text-dim tracking-widest backdrop-blur-md">
+                            Soon
+                        </div>
                     </button>
+
+
 
                     {/* 💾 Quick Action: Export */}
                     <button
@@ -167,9 +163,6 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                 </div>
             </div>
 
-            {/* 🧩 Empty State Fragment */}
-            {tokens.length === 0 && <EmptyStateFragment />}
-
             {/* 🆕 New Style Dialog */}
             <NewStyleDialog
                 isOpen={showNewStyleDialog}
@@ -180,24 +173,5 @@ export function Dashboard({ tokens = [], stats, theme, onThemeToggle, onTabChang
                 }}
             />
         </div>
-    );
-}
-
-function EmptyStateFragment() {
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="py-16 flex flex-col items-center text-center px-10"
-        >
-            <div className="w-32 h-32 mb-8 relative">
-                <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full animate-pulse" />
-                <Layers size={112} strokeWidth={0.5} className="relative text-white/10" />
-            </div>
-            <h3 className="text-2xl font-black text-white mb-3 font-display uppercase tracking-widest italic">System Ready</h3>
-            <p className="text-xs text-text-dim max-w-xs mb-8 leading-relaxed">
-                Your token graph is currently a void. Type a brand vibe or specific styles in the Omnibox to start building.
-            </p>
-        </motion.div>
     );
 }

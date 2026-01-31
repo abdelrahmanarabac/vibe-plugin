@@ -52,7 +52,7 @@ export function SettingsPage({ apiKey, onSave }: SettingsPageProps) {
 
             setStatus('success');
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '✅ Connection Successful' } }, '*');
-        } catch (error) {
+        } catch {
             setStatus('error');
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '❌ Connection Failed' } }, '*');
         }

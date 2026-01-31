@@ -23,6 +23,7 @@ const mockFigma = {
 };
 
 // Inject into global scope
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (global as any).figma = mockFigma;
 
 console.log('[Test Setup] Global Figma Mock Injected');

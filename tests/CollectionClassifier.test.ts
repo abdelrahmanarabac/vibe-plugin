@@ -1,20 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CollectionClassifier } from '../src/modules/collections/logic/CollectionClassifier';
 
-// Mock types since we can't import figma types easily in node environment
-const createMockVariable = (name: string, hasAliases: boolean, scopes: string[] = ['ALL_SCOPES']) => ({
+// Mock types
+interface MockVariable {
+    id: string;
+    name: string;
+    resolvedType: string;
+    valuesByMode: Record<string, unknown>;
+    scopes: string[];
+    hasAliases: boolean;
+}
+
+interface ClassificationResult {
+    type: string;
+    confidence: number;
+}
+
+interface TestableClassifier {
+    extractVariableInfo: (collection: unknown) => Promise<unknown[]>;
+    runClassificationLogic: (collection: unknown, variables: unknown[]) => ClassificationResult;
+}
+
+const createMockVariable = (name: string, hasAliases: boolean, scopes: string[] = ['ALL_SCOPES']): MockVariable => ({
     id: `mock-id-${name}`,
     name,
-    resolvedType: 'COLOR',
+    resolvedType: 'COLOR' as any,
     valuesByMode: { 'mode-1': hasAliases ? { type: 'VARIABLE_ALIAS' } : '#000000' },
-    scopes: scopes as any[]
-});
-
-const createMockCollection = (variables: any[]) => ({
-    id: 'collection-id',
-    name: 'Untitled Collection',
-    variableIds: variables.map((_, i) => `var-${i}`),
-    modes: [{ modeId: 'mode-1', name: 'Mode 1' }]
+    scopes,
+    hasAliases
 });
 
 describe('CollectionClassifier', () => {
@@ -23,30 +36,29 @@ describe('CollectionClassifier', () => {
     beforeEach(() => {
         classifier = new CollectionClassifier();
 
-        // Mock the extractVariableInfo method to avoid making Figma API calls
-        // We're testing the classification logic, not the extraction logic
-        vi.spyOn(classifier as any, 'extractVariableInfo').mockImplementation(async (collection: any) => {
-            return collection.variables;
+        // Mock the extractVariableInfo method
+        vi.spyOn(classifier as unknown as TestableClassifier, 'extractVariableInfo').mockImplementation(async (collection: unknown) => {
+            return (collection as { variables: unknown[] }).variables;
         });
     });
 
     // Helper to access private method for testing logic directly
-    const runLogic = (variables: any[], collectionName = 'Untitled Collection') => {
+    const runLogic = (variables: MockVariable[], collectionName = 'Untitled Collection'): ClassificationResult => {
         const mockCollection = {
             id: 'collection-id',
             name: collectionName,
             variableIds: variables.map((_, i) => `var-${i}`),
             modes: [{ modeId: 'mode-1', name: 'Mode 1' }]
-        } as any;
-        return (classifier as any).runClassificationLogic(mockCollection, variables);
+        };
+        return (classifier as unknown as TestableClassifier).runClassificationLogic(mockCollection, variables);
     };
 
     it('should classify Primitives correctly based on patterns (Rule 1)', () => {
         const variables = [
-            { name: 'primitives/blue/500', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'color-red-500', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'spacing-4', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'radius-sm', hasAliases: false, scopes: ['ALL_SCOPES'] },
+            createMockVariable('primitives/blue/500', false),
+            createMockVariable('color-red-500', false),
+            createMockVariable('spacing-4', false),
+            createMockVariable('radius-sm', false),
         ];
 
         const result = runLogic(variables);
@@ -57,10 +69,10 @@ describe('CollectionClassifier', () => {
 
     it('should classify Semantic correctly based on patterns (Rule 1)', () => {
         const variables = [
-            { name: 'brand/primary', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'surface/background', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'text/primary', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'border/default', hasAliases: true, scopes: ['ALL_SCOPES'] },
+            createMockVariable('brand/primary', true),
+            createMockVariable('surface/background', true),
+            createMockVariable('text/primary', true),
+            createMockVariable('border/default', true),
         ];
 
         const result = runLogic(variables);
@@ -71,10 +83,10 @@ describe('CollectionClassifier', () => {
 
     it('should classify Component correctly based on patterns (Rule 1)', () => {
         const variables = [
-            { name: 'component/button/bg', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'button-primary-bg', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'card-shadow', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'input-border', hasAliases: true, scopes: ['ALL_SCOPES'] },
+            createMockVariable('component/button/bg', true),
+            createMockVariable('button-primary-bg', true),
+            createMockVariable('card-shadow', true),
+            createMockVariable('input-border', true),
         ];
 
         const result = runLogic(variables);
@@ -86,11 +98,11 @@ describe('CollectionClassifier', () => {
     it('should classify Semantic tokens correctly based on alias dependency (Rule 2)', () => {
         // No patterns, but high alias count (> 80%)
         const variables = [
-            { name: 'action-primary', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'container-bg', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'header-text', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'sidebar-border', hasAliases: true, scopes: ['ALL_SCOPES'] },
-            { name: 'extra-item', hasAliases: true, scopes: ['ALL_SCOPES'] },
+            createMockVariable('action-primary', true),
+            createMockVariable('container-bg', true),
+            createMockVariable('header-text', true),
+            createMockVariable('sidebar-border', true),
+            createMockVariable('extra-item', true),
         ];
 
         const result = runLogic(variables);
@@ -102,11 +114,11 @@ describe('CollectionClassifier', () => {
     it('should classify Primitives correctly based on raw values (Rule 2)', () => {
         // No patterns, but raw values (no aliases < 20%)
         const variables = [
-            { name: 'blue-500', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'space-16', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'rem-1', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'font-bold', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'extra-val', hasAliases: false, scopes: ['ALL_SCOPES'] },
+            createMockVariable('blue-500', false),
+            createMockVariable('space-16', false),
+            createMockVariable('rem-1', false),
+            createMockVariable('font-bold', false),
+            createMockVariable('extra-val', false),
         ];
 
         const result = runLogic(variables);
@@ -119,9 +131,9 @@ describe('CollectionClassifier', () => {
         // Avoid Rule 2 (Semantic) by having aliases < 80% (66% here)
         // Avoid Rule 2 (Primitive) by having aliases > 20%
         const variables = [
-            { name: 'random-var-1', hasAliases: true, scopes: ['TEXT_FILL'] },
-            { name: 'input-text', hasAliases: true, scopes: ['TEXT_FILL'] }, // matches /^input-/
-            { name: 'random-var-2', hasAliases: false, scopes: ['ALL_SCOPES'] },
+            createMockVariable('random-var-1', true, ['TEXT_FILL']),
+            createMockVariable('input-text', true, ['TEXT_FILL']), // matches /^input-/
+            createMockVariable('random-var-2', false),
         ];
 
         // Component patterns: 1/3 (input-text).
@@ -135,9 +147,9 @@ describe('CollectionClassifier', () => {
 
     it('should return Unknown for ambiguous structure', () => {
         const variables = [
-            { name: 'random-1', hasAliases: false, scopes: ['ALL_SCOPES'] },
-            { name: 'random-2', hasAliases: true, scopes: ['ALL_SCOPES'] }, // Mixed alias/raw
-            { name: 'random-2', hasAliases: true, scopes: ['ALL_SCOPES'] },
+            createMockVariable('random-1', false),
+            createMockVariable('random-2', true), // Mixed alias/raw
+            createMockVariable('random-2', true),
         ];
 
         const result = runLogic(variables);

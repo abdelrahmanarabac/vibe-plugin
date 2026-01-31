@@ -94,7 +94,7 @@ export class EventLoop {
             try {
                 // We use ID + Name + Type + Values to detect structural or content changes
                 return `${v.id}:${v.name}:${v.resolvedType}:${JSON.stringify(v.valuesByMode)}`;
-            } catch (e) {
+            } catch {
                 // Fallback for safety
                 return v.id;
             }
@@ -109,7 +109,7 @@ export class EventLoop {
             try {
                 // ID + Name + Modes check
                 return `${c.id}:${c.name}:${c.modes.length}`;
-            } catch (e) {
+            } catch {
                 return c.id;
             }
         }).join('|');

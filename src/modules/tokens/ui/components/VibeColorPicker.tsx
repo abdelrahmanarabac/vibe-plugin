@@ -38,15 +38,22 @@ export function VibeColorPicker({ value, onChange }: ColorPickerProps) {
                 const newHsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
                 // Preserve Hue when Saturation or Value are zero to prevent spinner jumping back to red
                 if (newHsv.s === 0 || newHsv.v === 0) {
-                    setHsv(prev => ({ ...newHsv, h: prev.h }));
+                    // Check if update is needed to avoid loop
+                    if (hsv.s !== newHsv.s || hsv.v !== newHsv.v) {
+                        // eslint-disable-next-line react-hooks/set-state-in-effect
+                        setHsv(prev => ({ ...newHsv, h: prev.h }));
+                    }
                 } else {
-                    setHsv(newHsv);
+                    // Check equal
+                    if (hsv.h !== newHsv.h || hsv.s !== newHsv.s || hsv.v !== newHsv.v) {
+                        setHsv(newHsv);
+                    }
                 }
             }
         } catch (e) {
             console.error("[VibeColorPicker] Sync failed:", e);
         }
-    }, [value, isDragging]);
+    }, [value, isDragging, hsv]);
 
     // 🧮 Logic: Update color based on coordinate interaction
     const updateFromPosition = useCallback((clientX: number, clientY: number) => {

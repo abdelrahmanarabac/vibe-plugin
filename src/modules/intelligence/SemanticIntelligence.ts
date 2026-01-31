@@ -1,17 +1,16 @@
 import { z } from "zod";
-// import { VibeToken } from "./types";
-// import { ColorUtils } from "./ColorUtils"; 
+import type { ScannedPrimitive, VibeToken } from "./types";
 
 // Updated Schema to accept Numbers (for Spacing/Radius) and Strings
 const TokenSchema = z.object({
   name: z.string(),
-  $value: z.any(), // Flexible - Allows strings, numbers, or complex objects (Shadows, Typography)
+  $value: z.union([z.string(), z.number(), z.record(z.unknown())]), // Flexible - Allows strings, numbers, or complex objects (Shadows, Typography)
   $type: z.string().optional().default("color"),
   description: z.string().optional()
 });
 
 export class SemanticIntelligence {
-  static buildMappingPrompt(primitives: any[], vibe: string, history: any[] = []): string {
+  static buildMappingPrompt(primitives: ScannedPrimitive[], vibe: string, history: unknown[] = []): string {
     return `
       SYSTEM ROLE: Design System Architect (Strict IO).
       OBJECTIVE: Generate a complete semantic token map JSON based on the provided Vibe and Primitives.
@@ -43,7 +42,7 @@ export class SemanticIntelligence {
     `;
   }
 
-  static parseResponse(response: string): any[] {
+  static parseResponse(response: string): VibeToken[] {
     try {
       // 1. Surgical Extraction: Find the JSON array within the text
       const start = response.indexOf('[');
@@ -58,7 +57,9 @@ export class SemanticIntelligence {
 
       // 2. Validate with Zod
       const schema = z.array(TokenSchema);
-      return schema.parse(parsed);
+      // We safely cast the result of parse because our Zod schema aligns with VibeToken (mostly)
+      // Note: Zod return type for $value is string | number | Record<string, unknown> which matches TokenValue
+      return schema.parse(parsed) as unknown as VibeToken[];
     } catch (e) {
       console.error("Parsing Error Details:", e);
       throw new Error(`AI Syntax Error: ${e instanceof Error ? e.message : String(e)}`);

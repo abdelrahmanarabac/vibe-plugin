@@ -13,12 +13,12 @@ export interface IVariableRepository {
     /**
      * Creates a new variable in the external source
      */
-    create(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void>;
+    create(name: string, type: 'color' | 'number' | 'string', value: VariableValue): Promise<void>;
 
     /**
      * Updates an existing variable
      */
-    update(id: string, value: any): Promise<void>;
+    update(id: string, value: VariableValue): Promise<void>;
 
     /**
      * Renames a variable

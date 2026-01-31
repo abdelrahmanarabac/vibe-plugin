@@ -120,11 +120,12 @@ export class CollectionRenamer {
                         result.renamedCount++;
                     }
 
-                } catch (collectionError: any) {
+                } catch (collectionError: unknown) {
+                    const message = collectionError instanceof Error ? collectionError.message : String(collectionError);
                     // Handle individual collection errors without stopping the batch
                     result.errors.push({
                         collectionId: collection.id,
-                        error: collectionError.message || 'Unknown error during classification/rename'
+                        error: message || 'Unknown error during classification/rename'
                     });
                     result.success = false;
                     console.error(
@@ -134,12 +135,13 @@ export class CollectionRenamer {
                 }
             }
 
-        } catch (globalError: any) {
+        } catch (globalError: unknown) {
+            const message = globalError instanceof Error ? globalError.message : String(globalError);
             // Handle fatal errors (e.g., API unavailable)
             result.success = false;
             result.errors.push({
                 collectionId: 'GLOBAL',
-                error: globalError.message || 'Failed to retrieve collections'
+                error: message || 'Failed to retrieve collections'
             });
             console.error('Fatal error in renameAll:', globalError);
         }
@@ -202,9 +204,10 @@ export class CollectionRenamer {
             );
             return true;
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
             figma.notify(
-                `❌ Rename failed: ${error.message}`,
+                `❌ Rename failed: ${message}`,
                 { error: true, timeout: 5000 }
             );
             console.error('Error in renameById:', error);
@@ -230,9 +233,10 @@ export class CollectionRenamer {
                 results.push(classification);
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
             console.error('Error in previewClassifications:', error);
-            throw new Error(`Failed to generate preview: ${error.message}`);
+            throw new Error(`Failed to generate preview: ${message}`);
         }
 
         return results;

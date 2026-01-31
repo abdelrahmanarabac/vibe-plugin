@@ -55,11 +55,12 @@ export function useAI(apiKey: string | null): AIViewModel {
                 }
             }, '*');
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("[useAI] Command failed:", error);
 
             // Extract meaningful error messages for the user
-            const displayMsg = error.message?.includes('403')
+            const message = error instanceof Error ? error.message : String(error);
+            const displayMsg = message.includes('403')
                 ? '❌ API Key Error (403). Check Settings.'
                 : '❌ Engine Failure. Please retry.';
 

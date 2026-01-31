@@ -134,47 +134,13 @@ export const Toast = ({ message, type, duration = 3000, onClose }: ToastProps) =
 };
 
 // Toast Manager Hook
-interface ToastState {
-    id: number;
-    message: string;
-    type: ToastType;
-}
+import { useToasts } from './ToastManager';
 
-let toastId = 0;
-let toastListeners: ((toasts: ToastState[]) => void)[] = [];
-let currentToasts: ToastState[] = [];
 
-export const showToast = (message: string, type: ToastType = 'info') => {
-    const newToast: ToastState = {
-        id: toastId++,
-        message,
-        type
-    };
-
-    currentToasts = [...currentToasts, newToast];
-    toastListeners.forEach(listener => listener(currentToasts));
-};
-
-export const useToasts = () => {
-    const [toasts, setToasts] = useState<ToastState[]>(currentToasts);
-
-    useEffect(() => {
-        toastListeners.push(setToasts);
-        return () => {
-            toastListeners = toastListeners.filter(l => l !== setToasts);
-        };
-    }, []);
-
-    const removeToast = (id: number) => {
-        currentToasts = currentToasts.filter(t => t.id !== id);
-        toastListeners.forEach(listener => listener(currentToasts));
-    };
-
-    return { toasts, removeToast };
-};
 
 export const ToastContainer = () => {
     const { toasts, removeToast } = useToasts();
+
 
     return (
         <>

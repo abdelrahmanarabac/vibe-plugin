@@ -1,9 +1,12 @@
 import type { ICapability } from '../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../core/AgentContext';
 import { Result } from '../../../shared/utils/Result';
+import type { RenameResult } from '../types';
 import type { CollectionRenamer } from '../adapters/CollectionRenamer';
 
-export class RenameCollectionsCapability implements ICapability {
+type RenameCollectionsPayload = { dryRun?: boolean };
+
+export class RenameCollectionsCapability implements ICapability<RenameCollectionsPayload, RenameResult> {
     readonly id = 'rename-collections-v1';
     readonly commandId = 'RENAME_COLLECTIONS';
     readonly description = 'Batch renames variable collections based on classification.';
@@ -18,7 +21,7 @@ export class RenameCollectionsCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { dryRun?: boolean }, _context: AgentContext): Promise<Result<any>> {
+    async execute(payload: RenameCollectionsPayload, _context: AgentContext): Promise<Result<RenameResult>> {
         try {
             const isDryRun = payload?.dryRun ?? false;
             const result = await this.renamer.renameAll(isDryRun);
@@ -28,8 +31,9 @@ export class RenameCollectionsCapability implements ICapability {
             }
 
             return Result.ok(result);
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            return Result.fail(message);
         }
     }
 }

@@ -2,7 +2,9 @@ import type { ICapability } from '../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../core/AgentContext';
 import { Result } from '../../../shared/utils/Result';
 
-export class NotifyCapability implements ICapability {
+type NotifyPayload = { message: string } | string;
+
+export class NotifyCapability implements ICapability<NotifyPayload, void> {
     readonly id = 'system-notify';
     readonly commandId = 'NOTIFY';
     readonly description = 'Displays a notification in Figma.';
@@ -11,7 +13,7 @@ export class NotifyCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { message: string } | any, _context: AgentContext): Promise<Result<void>> {
+    async execute(payload: NotifyPayload, _context: AgentContext): Promise<Result<void>> {
         try {
             const message = typeof payload === 'string' ? payload : payload?.message;
             if (message) {
@@ -19,8 +21,9 @@ export class NotifyCapability implements ICapability {
                 return Result.ok(undefined);
             }
             return Result.fail('No message provided');
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Notification failed';
+            return Result.fail(message);
         }
     }
 }

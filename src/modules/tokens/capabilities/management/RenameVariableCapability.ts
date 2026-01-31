@@ -3,7 +3,10 @@ import type { AgentContext } from '../../../../core/AgentContext';
 import { Result } from '../../../../shared/utils/Result';
 import type { VariableManager } from '../../../governance/VariableManager';
 
-export class RenameVariableCapability implements ICapability {
+type RenamePayload = { id: string; newName: string };
+type RenameResult = { renamed: boolean; id: string; newName: string };
+
+export class RenameVariableCapability implements ICapability<RenamePayload, RenameResult> {
     readonly id = 'rename-variable-v1';
     readonly commandId = 'RENAME_TOKEN'; // Adapting to the specific command ID used in UI
     readonly description = 'Renames an existing variable.';
@@ -18,12 +21,13 @@ export class RenameVariableCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { id: string; newName: string }, _context: AgentContext): Promise<Result<any>> {
+    async execute(payload: RenamePayload, _context: AgentContext): Promise<Result<RenameResult>> {
         try {
             await this.variableManager.renameVariable(payload.id, payload.newName);
             return Result.ok({ renamed: true, id: payload.id, newName: payload.newName });
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error during rename';
+            return Result.fail(message);
         }
     }
 }

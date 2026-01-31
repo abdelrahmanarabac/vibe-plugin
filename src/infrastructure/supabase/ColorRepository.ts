@@ -8,6 +8,13 @@ export interface RemoteColor {
     created_at: string;
 }
 
+export interface RemoteColorMatch {
+    name: string;
+    hex: string;
+    delta_e: number;
+    confidence: number;
+}
+
 export class ColorRepository {
     /**
      * Finds exact or nearest color from the cloud database
@@ -69,7 +76,7 @@ export class ColorRepository {
      * Server-Side Nearest Match (Uses Database Delta E Logic)
      * Extremely fast for on-demand queries.
      */
-    static async findClosestRemote(hex: string, limit = 5): Promise<any[]> {
+    static async findClosestRemote(hex: string, limit = 5): Promise<RemoteColorMatch[]> {
         const client = VibeSupabase.get();
         if (!client) return [];
 

@@ -1,5 +1,12 @@
 import { TokenRepository } from '../TokenRepository';
 import { VariableManager } from '../../modules/governance/VariableManager';
+import type { TokenEntity } from '../types';
+
+export interface SyncStats {
+    totalVariables: number;
+    collections: number;
+    styles: number;
+}
 
 export class SyncService {
     private readonly variableManager: VariableManager;
@@ -17,7 +24,7 @@ export class SyncService {
      * Performs a full synchronization from Figma variables to the internal Graph.
      * Returns the synced tokens.
      */
-    async sync(): Promise<any[]> {
+    async sync(): Promise<TokenEntity[]> {
         const tokens = await this.variableManager.syncFromFigma();
 
         // Update Graph
@@ -30,7 +37,7 @@ export class SyncService {
     /**
      * Collects current statistics from Figma.
      */
-    async getStats() {
+    async getStats(): Promise<SyncStats> {
         const collections = await figma.variables.getLocalVariableCollectionsAsync();
         const variables = await figma.variables.getLocalVariablesAsync();
         const styles = await figma.getLocalPaintStylesAsync();

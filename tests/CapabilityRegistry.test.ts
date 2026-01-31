@@ -1,7 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CapabilityRegistry } from '../src/core/CapabilityRegistry';
 import type { ICapability } from '../src/core/interfaces/ICapability';
-import type { AgentContext } from '../src/core/AgentContext';
 import { Result } from '../src/shared/utils/Result';
 
 describe('CapabilityRegistry', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, LayoutGrid, Cpu, Moon, Sun, Wallet } from 'lucide-react';
+import { Settings, LayoutGrid, Cpu, Wallet } from 'lucide-react';
 
 export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token';
 
@@ -8,8 +8,7 @@ interface MainLayoutProps {
     activeTab: ViewType;
     onTabChange: (tab: ViewType) => void;
     credits?: number;
-    theme: 'dark' | 'light';
-    onThemeToggle: () => void;
+
 }
 
 /**
@@ -22,8 +21,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
     activeTab,
     onTabChange,
     credits = 0,
-    theme,
-    onThemeToggle
+
 }) => {
     return (
         <div className="h-full w-full flex flex-col bg-void text-text-primary overflow-hidden font-sans transition-all duration-500">
@@ -31,11 +29,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <header className="flex-none px-6 flex items-center justify-between z-40 bg-surface-0/80 backdrop-blur-xl border-b border-white/5 h-[72px] shadow-glass">
 
                 {/* 1. Left: System Identity */}
-                <div className="flex items-center gap-4 min-w-[200px]">
+                <div className="flex items-center gap-2 min-w-[200px]">
                     <SystemPulse />
-                    <div className="flex flex-col">
-                        <span className="font-display font-black text-sm tracking-tighter text-white uppercase leading-none">Vibe OS</span>
-                        <span className="text-[9px] text-primary font-bold uppercase tracking-[0.3em] mt-1 ml-[1px] opacity-80">v3.1.0-Elite</span>
+                    <div className="flex flex-col justify-center">
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-display font-semibold text-sm tracking-tighter text-white uppercase leading-none">Vibe Tokens Manager</span>
+                            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">V1.0</span>
+                        </div>
                     </div>
                 </div>
 
@@ -58,30 +58,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 {/* 3. Right: Intelligence & Credits */}
                 <div className="flex items-center justify-end gap-4 min-w-[200px]">
 
-                    {/* Theme Switcher */}
-                    <button
-                        onClick={onThemeToggle}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all group"
-                    >
-                        {theme === 'dark' ? (
-                            <Moon size={18} className="text-text-dim group-hover:text-primary transition-colors" />
-                        ) : (
-                            <Sun size={18} className="text-warning group-hover:text-warning/80 transition-colors" />
-                        )}
-                    </button>
 
-                    <div className="w-px h-6 bg-white/10" />
 
                     {/* Settings Trigger */}
                     <button
                         onClick={() => onTabChange('settings')}
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${activeTab === 'settings'
-                            ? 'bg-primary/20 border-primary/40 text-primary shadow-glow-primary'
-                            : 'bg-white/5 border-white/5 text-text-dim hover:text-white hover:bg-white/10'
+                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-500 shadow-glow-primary'
+                            : 'bg-white/5 border-white/5 text-text-dim hover:text-white hover:bg-emerald-500/10 hover:border-emerald-500/20'
                             }`}
                     >
                         <Settings size={18} />
                     </button>
+
+                    <div className="w-px h-6 bg-white/10" />
 
                     {/* Credits Identity */}
                     <div className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-white/5 border border-white/5 rounded-2xl">

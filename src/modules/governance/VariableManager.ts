@@ -1,4 +1,4 @@
-import type { TokenEntity } from '../../core/types';
+import type { TokenEntity, VariableValue } from '../../core/types';
 import type { TokenRepository } from '../../core/TokenRepository';
 import type { IVariableRepository } from '../../core/interfaces/IVariableRepository';
 
@@ -42,14 +42,14 @@ export class VariableManager {
     /**
      * Creates a new variable via repository.
      */
-    async createVariable(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void> {
+    async createVariable(name: string, type: 'color' | 'number' | 'string', value: VariableValue): Promise<void> {
         await this.figmaRepo.create(name, type, value);
     }
 
     /**
      * Updates a variable value directly via repository.
      */
-    async updateVariable(id: string, value: any): Promise<void> {
+    async updateVariable(id: string, value: VariableValue): Promise<void> {
         await this.figmaRepo.update(id, value);
     }
 

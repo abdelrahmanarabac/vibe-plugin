@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { type TokenEntity } from '../../../../core/types';
 import { Table, Eye, Code, Package, Terminal } from 'lucide-react';
 
+import type { VariableValue } from '../../../../core/types';
+
 interface SmartInspectorProps {
     tokens: TokenEntity[];
-    onUpdate: (id: string, value: any) => void;
+    onUpdate: (id: string, value: VariableValue) => void;
 }
 
 export function SmartInspector({ tokens, onUpdate }: SmartInspectorProps) {
@@ -20,7 +22,7 @@ export function SmartInspector({ tokens, onUpdate }: SmartInspectorProps) {
             // In a real implementation, we'd diff and apply partial updates
             console.log("Saving JSON Surgery:", parsed);
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "JSON Surgery Applied (Simulation)" } }, '*');
-        } catch (e) {
+        } catch {
             parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: "Invalid JSON Syntax" } }, '*');
         }
     };
@@ -99,6 +101,14 @@ export function SmartInspector({ tokens, onUpdate }: SmartInspectorProps) {
                                         <td className="px-4 py-3">
                                             <button className="p-1.5 text-text-muted hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
                                                 <Eye size={12} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    // Request deep sync
+                                                }}
+                                                className="p-1 hover:bg-white/10 rounded"
+                                            >
+                                                {/* Placeholder for new button content */}
                                             </button>
                                         </td>
                                     </tr>

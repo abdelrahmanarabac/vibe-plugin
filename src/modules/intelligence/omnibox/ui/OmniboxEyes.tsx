@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 
 export const OmniboxEyes = ({ expression = 'neutral' }: { expression?: 'neutral' | 'happy' }) => {
@@ -57,34 +57,40 @@ export const OmniboxEyes = ({ expression = 'neutral' }: { expression?: 'neutral'
     );
 };
 
-const Eye = ({ isBlinking, pupilPos, expression }: { isBlinking: boolean; pupilPos: { x: number; y: number }, expression: 'neutral' | 'happy' }) => (
-    <div className="relative w-2.5 h-3.5 rounded-full overflow-hidden shadow-sm">
-        <motion.div
-            initial={false}
-            animate={{
-                // Squint logic:
-                height: expression === 'happy' ? '12px' : '100%',
-                borderRadius: expression === 'happy' ? '0px 0px 100% 100%' : '100%',
-                // Blink logic overrides
-                scaleY: isBlinking ? 0.1 : (expression === 'happy' ? 0.6 : 1),
-                rotate: expression === 'happy' ? (Math.random() > 0.5 ? -10 : 10) : 0, // Cheerful tilt
-            }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className={`w-full h-full bg-white relative flex items-center justify-center ${expression === 'happy' ? 'mt-1' : ''}`}
-        >
-            {/* Lashes */}
-            <div className="absolute -top-[2px] left-0.5 w-[1px] h-1 bg-black/80 rotate-[-30deg] origin-bottom" />
-            <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[1px] h-1.5 bg-black/80 origin-bottom" />
-            <div className="absolute -top-[2px] right-0.5 w-[1px] h-1 bg-black/80 rotate-[30deg] origin-bottom" />
+const Eye = ({ isBlinking, pupilPos, expression }: { isBlinking: boolean; pupilPos: { x: number; y: number }, expression: 'neutral' | 'happy' }) => {
+    // Memoize the random tilt so it doesn't change on every render frame
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const randomTilt = useMemo(() => Math.random() > 0.5 ? -10 : 10, [expression === 'happy']);
 
+    return (
+        <div className="relative w-2.5 h-3.5 rounded-full overflow-hidden shadow-sm">
             <motion.div
-                className="w-1.5 h-1.5 bg-black rounded-full"
+                initial={false}
                 animate={{
-                    x: pupilPos.x,
-                    y: pupilPos.y,
+                    // Squint logic:
+                    height: expression === 'happy' ? '12px' : '100%',
+                    borderRadius: expression === 'happy' ? '0px 0px 100% 100%' : '100%',
+                    // Blink logic overrides
+                    scaleY: isBlinking ? 0.1 : (expression === 'happy' ? 0.6 : 1),
+                    rotate: expression === 'happy' ? randomTilt : 0, // Cheerful tilt
                 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            />
-        </motion.div>
-    </div>
-);
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className={`w-full h-full bg-white relative flex items-center justify-center ${expression === 'happy' ? 'mt-1' : ''}`}
+            >
+                {/* Lashes */}
+                <div className="absolute -top-[2px] left-0.5 w-[1px] h-1 bg-black/80 rotate-[-30deg] origin-bottom" />
+                <div className="absolute -top-[3px] left-1/2 -translate-x-1/2 w-[1px] h-1.5 bg-black/80 origin-bottom" />
+                <div className="absolute -top-[2px] right-0.5 w-[1px] h-1 bg-black/80 rotate-[30deg] origin-bottom" />
+
+                <motion.div
+                    className="w-1.5 h-1.5 bg-black rounded-full"
+                    animate={{
+                        x: pupilPos.x,
+                        y: pupilPos.y,
+                    }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                />
+            </motion.div>
+        </div>
+    );
+};

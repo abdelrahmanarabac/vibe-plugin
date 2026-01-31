@@ -3,6 +3,8 @@ import type { AgentContext } from '../../../core/AgentContext';
 import { Result } from '../../../shared/utils/Result';
 import type { SyncService } from '../../../core/services/SyncService';
 
+import type { TokenEntity } from '../../../core/types';
+
 export class RequestGraphCapability implements ICapability {
     readonly id = 'system-request-graph';
     readonly commandId = 'REQUEST_GRAPH';
@@ -18,12 +20,13 @@ export class RequestGraphCapability implements ICapability {
         return true;
     }
 
-    async execute(_payload: any, _context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, _context: AgentContext): Promise<Result<TokenEntity[]>> {
         try {
             const tokens = await this.syncService.sync();
             return Result.ok(tokens);
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Graph sync failed';
+            return Result.fail(message);
         }
     }
 }

@@ -20,7 +20,7 @@ const ITERATIONS = 100000;
  * Safe access to Web Crypto API
  */
 function getCrypto(): Crypto {
-    const c = window.crypto || (window as any).msCrypto;
+    const c = window.crypto;
     if (!c || !c.subtle) {
         throw new Error("Secure Context Required: Web Crypto API is unavailable. Ensure you are running locally or on HTTPS.");
     }

@@ -1,8 +1,12 @@
 import type { ICapability } from '../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../core/AgentContext';
 import { Result } from '../../../shared/utils/Result';
+import type { TokenEntity } from '../../../core/types';
 
-export class TraceLineageCapability implements ICapability {
+type TraceLineagePayload = { tokenId: string };
+type TraceLineageResult = { target: TokenEntity; ancestors: TokenEntity[]; descendants: TokenEntity[] };
+
+export class TraceLineageCapability implements ICapability<TraceLineagePayload, TraceLineageResult> {
     readonly id = 'trace-lineage-v1';
     readonly commandId = 'TRACE_LINEAGE';
     readonly description = 'Traces the ancestry and impact of a specific token.';
@@ -11,7 +15,7 @@ export class TraceLineageCapability implements ICapability {
         return true;
     }
 
-    async execute(payload: { tokenId: string }, context: AgentContext): Promise<Result<any>> {
+    async execute(payload: TraceLineagePayload, context: AgentContext): Promise<Result<TraceLineageResult>> {
         const { tokenId } = payload;
         const target = context.repository.getNode(tokenId);
 

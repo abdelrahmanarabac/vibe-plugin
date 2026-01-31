@@ -23,7 +23,7 @@ export class CachedAIService implements IAIService {
         return result;
     }
 
-    async generateJSON<T>(prompt: string, schema?: any): Promise<T> {
+    async generateJSON<T>(prompt: string, schema?: unknown): Promise<T> {
         const key = `json:${prompt}`;
         if (this.cache.has(key)) return JSON.parse(this.cache.get(key)!) as T;
 

@@ -46,6 +46,10 @@ src/
 └── controller.ts          # 🎮 Main Plugin Controller
 ```
 
+### 📖 Documentation
+For a deep dive into our architecture, mathematical core, and file structure, please refer to:
+---
+
 ### Data Flow Strategy
 
 1.  **Perception**: The plugin scans the user's selection in Figma.

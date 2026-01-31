@@ -15,14 +15,14 @@ export class ScanSelectionCapability implements ICapability {
         return context.selection.length > 0;
     }
 
-    async execute(_payload: any, context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, context: AgentContext): Promise<Result<{ stats: unknown; findings: unknown }>> {
         console.log('[ScanCapability] Initializing Perception Engine v2...');
 
         // 0. Hydrate Knowledge (Get existing tokens for Drift Detection)
         // We convert the graph to a simple Hex Map for the visitor
         const existingTokens: Record<string, string> = {};
         const graph = context.repository.getTokens();
-        for (const [_, token] of graph.entries()) {
+        for (const token of graph.values()) {
             if (token.$type === 'color' && typeof token.$value === 'string') {
                 existingTokens[token.name] = token.$value;
             }

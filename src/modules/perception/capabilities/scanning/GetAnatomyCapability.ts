@@ -2,7 +2,7 @@ import type { ICapability } from '../../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../../core/AgentContext';
 import { Result } from '../../../../shared/utils/Result';
 import { Traverser } from '../../core/Traverser';
-import { HierarchyVisitor } from '../../visitors/HierarchyVisitor';
+import { HierarchyVisitor, type SceneNodeAnatomy } from '../../visitors/HierarchyVisitor';
 
 export class GetAnatomyCapability implements ICapability {
     readonly id = 'get-anatomy';
@@ -13,7 +13,7 @@ export class GetAnatomyCapability implements ICapability {
         return context.selection.length > 0;
     }
 
-    async execute(_payload: any, context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, context: AgentContext): Promise<Result<{ anatomy: SceneNodeAnatomy[] }>> {
         const traverser = new Traverser();
         const visitor = new HierarchyVisitor();
 

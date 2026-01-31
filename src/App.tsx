@@ -1,61 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useVibeApp } from './ui/hooks/useVibeApp';
-import { SettingsPage } from './modules/security/ui/pages/SettingsPage';
+import { SettingsPage } from './modules/settings/ui/SettingsPage';
 import { EditorView } from './ui/EditorView';
 import { Dashboard } from './ui/Dashboard';
-import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
-import { useToasts } from './ui/components/base/Toast';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { MainLayout } from './ui/layouts/MainLayout';
-import { ActivityLayout } from './ui/layouts/ActivityLayout';
 import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
-import type { TokenFormData } from './modules/tokens/domain/ui-types';
+import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
 
 
 export default function App() {
     const vm = useVibeApp();
     const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph' | 'create-token'>('dashboard');
     const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
-    const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-    const [omniboxMessage, setOmniboxMessage] = useState('');
-    const [omniboxMode, setOmniboxMode] = useState<'neutral' | 'success' | 'error' | 'warning'>('neutral');
 
-    // Subscribe to global Toasts and redirect to Omnibox
-    const { toasts, removeToast } = useToasts();
-
-    useEffect(() => {
-        if (toasts.length > 0) {
-            const latestToast = toasts[toasts.length - 1];
-            setOmniboxMessage(latestToast.message);
-
-            let newMode: 'neutral' | 'success' | 'warning' | 'error' = 'neutral';
-            if (latestToast.type === 'success') newMode = 'success';
-            else if (latestToast.type === 'error') newMode = 'error';
-            // If we add warning support to Toast later, handle it here
-
-            setOmniboxMode(newMode);
-
-            // Clear toast to prevent reprocessing
-            removeToast(latestToast.id);
-
-            // Auto-clear Omnibox
-            setTimeout(() => {
-                setOmniboxMessage('');
-                setOmniboxMode('neutral');
-            }, 3000);
-        }
-    }, [toasts, removeToast]);
-
-    // Sync theme class to root
-    useEffect(() => {
-        const root = document.documentElement;
-        if (theme === 'light') {
-            root.classList.add('vibe-light');
-        } else {
-            root.classList.remove('vibe-light');
-        }
-    }, [theme]);
 
     // Fake credits for demo (Matches Dashboard)
     const credits = 1250;
@@ -75,79 +34,66 @@ export default function App() {
 
     return (
         <div className="vibe-root relative h-full">
-            {/* Full-Screen Activity Mode: Create Token */}
-            {activeTab === 'create-token' ? (
-                <ActivityLayout>
-                    <CreateTokenPage
-                        onBack={() => setActiveTab('dashboard')}
-                        onSubmit={async (data: TokenFormData) => {
-                            const success = await vm.tokens.createToken(data);
-                            if (success) {
-                                setOmniboxMessage('Token Created!');
-                                setOmniboxMode('success');
-                                setTimeout(() => {
-                                    setOmniboxMessage('');
-                                    setOmniboxMode('neutral');
-                                }, 3000);
-                            }
-                        }}
-                    />
-                </ActivityLayout>
-            ) : (
-                /* Normal Layout Mode: Dashboard, Tokens, Settings */
-                <MainLayout
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    credits={credits}
-                    theme={theme}
-                    onThemeToggle={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                >
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={activeTab}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
-                            className="h-full"
-                        >
-                            {activeTab === 'dashboard' && (
-                                <div className="fragment-dashboard animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                    <Dashboard
-                                        tokens={vm.tokens.tokens}
-                                        stats={vm.tokens.stats}
-                                        theme={theme}
-                                        onThemeToggle={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-                                        onTabChange={setActiveTab}
-                                        onCreateStyle={vm.styles.createStyle}
-                                    />
-                                </div>
-                            )}
+            <MainLayout
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                credits={credits}
 
-                            {activeTab === 'graph' && (
-                                <div className="fragment-tokens h-full">
-                                    <EditorView
-                                        tokens={vm.tokens.tokens}
-                                        onTraceLineage={vm.tokens.traceLineage}
-                                        lineageData={vm.tokens.lineageData}
-                                    />
-                                </div>
-                            )}
+            >
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={activeTab}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
+                        className="h-full"
+                    >
+                        {activeTab === 'dashboard' && (
+                            <div className="fragment-dashboard animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                <Dashboard
+                                    tokens={vm.tokens.tokens}
+                                    stats={vm.tokens.stats}
 
-                            {activeTab === 'settings' && (
-                                <SettingsPage apiKey={vm.settings.apiKey} onSave={vm.settings.saveApiKey} />
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
-                </MainLayout>
-            )}
+                                    onTabChange={(tab) => setActiveTab(tab)}
+                                />
+                            </div>
+                        )}
 
-            {/* Omnibox Feature - Always Available */}
+                        {activeTab === 'graph' && (
+                            <div className="fragment-tokens h-full">
+                                <EditorView
+                                    tokens={vm.tokens.tokens}
+                                    onTraceLineage={vm.tokens.traceLineage}
+                                    lineageData={vm.tokens.lineageData}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'create-token' && (
+                            <div className="fragment-create h-full">
+                                <CreateTokenPage
+                                    onBack={() => setActiveTab('dashboard')}
+                                    onSubmit={(tokenData) => {
+                                        vm.tokens.createToken(tokenData);
+                                        setActiveTab('dashboard');
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'settings' && (
+                            <SettingsPage />
+                        )}
+                    </motion.div>
+                </AnimatePresence>
+            </MainLayout>
+
+            {/* Omnibox Feature */}
             <OmniboxTrigger
                 isOpen={isOmniboxOpen}
                 onClick={() => setIsOmniboxOpen(!isOmniboxOpen)}
-                externalMessage={omniboxMessage}
-                mode={omniboxMode}
+                isLifted={activeTab === 'create-token'}
             />
 
             <OmniboxModal
@@ -155,6 +101,7 @@ export default function App() {
                 onClose={() => setIsOmniboxOpen(false)}
                 onCommand={(cmd) => {
                     vm.ai.handleCommand(cmd);
+                    // Optional: Switch to relevant tab if needed, but for now just execute
                 }}
                 isProcessing={vm.ai.isProcessing}
             />
@@ -164,6 +111,6 @@ export default function App() {
                 <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full" />
                 <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary/10 blur-[120px] rounded-full" />
             </div>
-        </div>
+        </div >
     );
 }

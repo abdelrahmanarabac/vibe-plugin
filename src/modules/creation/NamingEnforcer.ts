@@ -19,7 +19,7 @@ export class NamingEnforcer {
                 .replace(/\$context/g, '[a-z0-9]+')
                 .replace(/\$element/g, '[a-z0-9]+')
                 .replace(/\$state/g, '[a-z0-9]+')
-                .replace(/\-/g, '\\-');
+                .replace(/-/g, '\\-');
             this.pattern = new RegExp(`^${regexStr}$`);
         }
     }

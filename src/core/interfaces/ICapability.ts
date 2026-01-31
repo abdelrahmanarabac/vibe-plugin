@@ -5,7 +5,7 @@ import type { Result } from '../../shared/utils/Result';
  * Standard Interface for ALL Plugin Features (Capabilities).
  * Replaces the monolithic controller switch statement.
  */
-export interface ICapability<TPayload = any, TResult = any> {
+export interface ICapability<TPayload = unknown, TResult = unknown> {
     /**
      * Unique Identifier (e.g., 'scan-selection-v1')
      */

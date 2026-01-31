@@ -16,10 +16,10 @@ self.onmessage = (e) => {
                 payload: result,
                 metrics: { time: end - start }
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             self.postMessage({
                 type: 'ERROR',
-                message: error.message
+                message: error instanceof Error ? error.message : String(error)
             });
         }
     }

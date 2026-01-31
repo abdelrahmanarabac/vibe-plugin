@@ -13,7 +13,8 @@ export function ImpactWarning({ report, onDismiss }: { report: ImpactReport | nu
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        if (report) {
+        if (report && !visible) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setVisible(true);
             const timer = setTimeout(() => {
                 setVisible(false);
@@ -21,7 +22,7 @@ export function ImpactWarning({ report, onDismiss }: { report: ImpactReport | nu
             }, 5000);
             return () => clearTimeout(timer);
         }
-    }, [report, onDismiss]);
+    }, [report, onDismiss, visible]);
 
     if (!report && !visible) return null;
 

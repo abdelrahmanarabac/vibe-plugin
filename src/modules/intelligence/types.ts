@@ -1,4 +1,4 @@
-export type TokenValue = string | number | Record<string, any>;
+export type TokenValue = string | number | Record<string, unknown>;
 
 export type TokenType = 'color' | 'spacing' | 'borderRadius' | 'typography' | 'boxShadow' | 'fontFamily' | 'fontSize' | 'fontWeight';
 
@@ -30,7 +30,7 @@ export interface DesignNode {
 export interface ScannedPrimitive {
     id: string;
     name: string;
-    $value: any;
+    $value: TokenValue;
     $type: TokenType;
     usageCount?: number;
 }
@@ -41,7 +41,7 @@ export interface UserIntent {
     type: IntentType;
     confidence: number;
     originalQuery: string;
-    payload?: any;
+    payload?: Record<string, unknown>;
 }
 
 export interface AgentContext {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CreateVariableCapability } from '../src/modules/tokens/capabilities/management/CreateVariableCapability';
 import { VariableManager } from '../src/modules/governance/VariableManager';
+import type { AgentContext } from '../src/core/AgentContext';
 
 describe('CreateVariableCapability', () => {
     it('should generate a color scale successfully', async () => {
@@ -21,7 +22,7 @@ describe('CreateVariableCapability', () => {
             }
         };
 
-        const result = await cap.execute(payload, {} as any);
+        const result = await cap.execute(payload, {} as AgentContext);
 
         if (!result.success) {
             console.error('Execution Failed:', result.error);
@@ -57,7 +58,7 @@ describe('CreateVariableCapability', () => {
             }
         };
 
-        const result = await cap.execute(payload, {} as any);
+        const result = await cap.execute(payload, {} as AgentContext);
 
         expect(result.success).toBe(true);
         // Stops: 100, 200, 300

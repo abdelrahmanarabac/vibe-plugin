@@ -9,7 +9,7 @@ export type Result<T, E = string> =
 
 export const Result = {
     ok: <T>(value: T): Result<T> => ({ success: true, value }),
-    fail: <E>(error: E): Result<any, E> => ({ success: false, error }),
+    fail: <E, T = never>(error: E): Result<T, E> => ({ success: false, error } as Result<T, E>),
 
     /**
      * Safely executes a promise and returns a Result.
@@ -18,8 +18,9 @@ export const Result = {
         try {
             const data = await promise;
             return Result.ok(data);
-        } catch (e: any) {
-            return Result.fail(e.message || 'Unknown error');
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            return Result.fail(message || 'Unknown error');
         }
     }
 };

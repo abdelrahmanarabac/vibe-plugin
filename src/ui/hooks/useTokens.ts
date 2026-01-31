@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { showToast } from '../components/base/Toast';
+import { showToast } from '../components/base/ToastManager';
 import { type TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
 import type { TokenFormData } from '../../modules/tokens/domain/ui-types';

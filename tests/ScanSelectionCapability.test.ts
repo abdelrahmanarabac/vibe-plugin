@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { ScanSelectionCapability } from '../src/modules/perception/capabilities/scanning/ScanSelectionCapability';
 import type { AgentContext } from '../src/core/AgentContext';
+import type { TokenRepository } from '../src/core/TokenRepository';
 
 describe('ScanSelectionCapability', () => {
     // Mock Context
+    // Mock Context
     const mockContext: AgentContext = {
         repository: {
-            getTokens: () => new Map()
-        } as any,
+            getTokens: () => new Map(),
+            addNode: () => { },
+            findNode: () => undefined
+        } as unknown as TokenRepository,
         selection: [{
             id: '1',
             name: 'Rect',
@@ -15,8 +19,8 @@ describe('ScanSelectionCapability', () => {
             width: 100,
             height: 100,
             fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }]
-        }] as any,
-        page: {} as any,
+        }] as unknown as ReadonlyArray<SceneNode>,
+        page: {} as PageNode,
         session: { timestamp: Date.now() }
     };
 

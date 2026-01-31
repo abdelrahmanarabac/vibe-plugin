@@ -7,9 +7,10 @@ interface OmniboxTriggerProps {
     isOpen: boolean;
     externalMessage?: string;
     mode?: 'neutral' | 'success' | 'error' | 'warning';
+    isLifted?: boolean;
 }
 
-export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen, externalMessage, mode = 'neutral' }) => {
+export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen, isLifted = false }) => {
     const [isHovered, setIsHovered] = useState(false);
     const [message, setMessage] = useState('');
     const [showBubble, setShowBubble] = useState(false);
@@ -60,31 +61,9 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
         }, 80); // Typing speed
     };
 
-    // Watch for external messages
-    useEffect(() => {
-        if (externalMessage) {
-            setMessage(externalMessage);
-            setShowBubble(true);
-
-            // Set expression based on mode
-            if (mode === 'success') setExpression('happy');
-            else if (mode === 'error') setExpression('neutral');
-            else if (mode === 'warning') setExpression('neutral');
-            else setExpression('neutral');
-
-            // Auto hide after delay
-            const timer = setTimeout(() => {
-                setShowBubble(false);
-                setExpression('neutral');
-            }, 3000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [externalMessage, mode]);
-
     return (
         <motion.button
-            className="fixed bottom-24 right-6 z-[9999] group outline-none cursor-pointer"
+            className={`fixed right-6 z-[9999] group outline-none cursor-pointer ${isLifted ? 'bottom-24' : 'bottom-6'} transition-all duration-300`}
             onClick={handleClick}
             onHoverStart={() => {
                 setIsHovered(true);
@@ -125,12 +104,7 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: 10, scale: 0.9 }}
                         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                        className={`absolute right-full top-1/2 -translate-y-1/2 mr-4 whitespace-nowrap px-4 py-2 text-sm font-bold rounded-l-2xl rounded-tr-2xl rounded-br-sm shadow-xl z-50 flex items-center gap-2
-                            ${mode === 'success' ? 'bg-emerald-200 text-emerald-900' :
-                                mode === 'error' ? 'bg-red-200 text-red-900' :
-                                    mode === 'warning' ? 'bg-orange-200 text-orange-900' :
-                                        'bg-white text-black'}
-                        `}
+                        className="absolute right-full top-1/2 -translate-y-1/2 mr-4 whitespace-nowrap px-4 py-2 bg-white text-black text-sm font-bold rounded-l-2xl rounded-tr-2xl rounded-br-sm shadow-xl z-50 flex items-center gap-2"
                     >
                         <span className="font-mono tracking-tight">
                             {message}

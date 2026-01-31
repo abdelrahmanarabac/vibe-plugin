@@ -24,14 +24,15 @@ export class GenerateDocsCapability implements ICapability {
         return true;
     }
 
-    async execute(_payload: any, _context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, _context: AgentContext): Promise<Result<{ generated: boolean }>> {
         try {
             // Ensure data is fresh before generating docs
             await this.variableManager.syncFromFigma();
             await this.docsRenderer.generateDocs();
             return Result.ok({ generated: true });
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            return Result.fail(message);
         }
     }
 }

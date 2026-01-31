@@ -7,9 +7,13 @@ import type { TokenEntity } from '../../../core/types';
  * Generates Tailwind CSS configuration from the token graph.
  * Implements recursive object nesting based on token paths.
  */
+interface ColorTree {
+    [key: string]: string | number | ColorTree;
+}
+
 export class TailwindExporter extends TokenExporter {
     execute(tokens: TokenEntity[]): ExportResult {
-        const colors: Record<string, any> = {};
+        const colors: ColorTree = {};
 
         tokens.filter(t => t.$type === 'color').forEach(token => {
             const parts = [...token.path, token.name];

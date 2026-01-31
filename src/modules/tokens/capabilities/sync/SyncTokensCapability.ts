@@ -18,7 +18,7 @@ export class SyncTokensCapability implements ICapability {
         return true; // Always allowed
     }
 
-    async execute(_payload: any, _context: AgentContext): Promise<Result<any>> {
+    async execute(_payload: unknown, _context: AgentContext): Promise<Result<{ tokens: ReturnType<VariableManager['syncFromFigma']> extends Promise<infer T> ? T : never; count: number; timestamp: number }>> {
         try {
             const tokens = await this.variableManager.syncFromFigma();
             return Result.ok({
@@ -26,8 +26,9 @@ export class SyncTokensCapability implements ICapability {
                 count: tokens.length,
                 timestamp: Date.now()
             });
-        } catch (e: any) {
-            return Result.fail(e.message);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error during sync';
+            return Result.fail(message);
         }
     }
 }

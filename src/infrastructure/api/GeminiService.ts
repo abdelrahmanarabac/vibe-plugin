@@ -30,7 +30,7 @@ export class GeminiService implements IAIService {
         return result.response.text();
     }
 
-    async generateJSON<T>(prompt: string, _schema?: any): Promise<T> {
+    async generateJSON<T>(prompt: string, _schema?: unknown): Promise<T> {
         const model = this.genAI.getGenerativeModel({
             model: this.flash3,
             generationConfig: { responseMimeType: "application/json" }

@@ -1,5 +1,5 @@
 import type { IVariableRepository } from '../../core/interfaces/IVariableRepository';
-import type { TokenEntity, VariableScope } from '../../core/types';
+import type { TokenEntity, VariableScope, VariableValue } from '../../core/types';
 
 // Helper to map Figma types to W3C
 function mapFigmaResolvedType(type: "COLOR" | "FLOAT" | "STRING" | "BOOLEAN"): TokenEntity['$extensions']['figma']['resolvedType'] {
@@ -9,15 +9,16 @@ function mapFigmaResolvedType(type: "COLOR" | "FLOAT" | "STRING" | "BOOLEAN"): T
 /**
  * Converts Figma RGB to HEX string.
  */
-function rgbToHex(rgb: any): string | null {
+function rgbToHex(rgb: unknown): string | null {
     if (!rgb || typeof rgb !== 'object' || !('r' in rgb)) return null;
+    const c = rgb as RGB; // Safe cast after check
 
     const toHex = (n: number) => {
         const hex = Math.round(n * 255).toString(16);
         return hex.length === 1 ? "0" + hex : hex;
     };
 
-    return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`.toUpperCase();
+    return `#${toHex(c.r)}${toHex(c.g)}${toHex(c.b)}`.toUpperCase();
 }
 
 export class FigmaVariableRepository implements IVariableRepository {
@@ -54,7 +55,7 @@ export class FigmaVariableRepository implements IVariableRepository {
                 // Extract dependencies (aliases) and value resolution
                 const dependencies: string[] = [];
 
-                const resolveValue = (val: any): string | number => {
+                const resolveValue = (val: VariableValue | VariableAlias): string | number => {
                     if (val && typeof val === 'object' && 'type' in val && val.type === 'VARIABLE_ALIAS') {
                         dependencies.push(val.id);
                         const target = allVariables.find(v => v.id === val.id);
@@ -71,7 +72,12 @@ export class FigmaVariableRepository implements IVariableRepository {
                     if (variable.resolvedType === 'COLOR') {
                         return rgbToHex(val) || '#000000';
                     }
-                    return val;
+
+                    if (typeof val === 'string' || typeof val === 'number') {
+                        return val;
+                    }
+
+                    return String(val); // Fallback
                 };
 
                 const resolvedValue = resolveValue(value);
@@ -103,9 +109,10 @@ export class FigmaVariableRepository implements IVariableRepository {
         }
     }
 
-    async create(name: string, type: 'color' | 'number' | 'string', value: any): Promise<void> {
+    async create(name: string, type: 'color' | 'number' | 'string', value: VariableValue): Promise<void> {
 
         // Check if this is a Responsive Definition (Multi-mode)
+        // We cast value to unknown first to safely check properties
         const isResponsive = typeof value === 'object' && value !== null && 'mobile' in value;
 
         let collection: VariableCollection;
@@ -167,29 +174,32 @@ export class FigmaVariableRepository implements IVariableRepository {
             // We map input keys (lowercase) to Mode Names (Title case)
             const map: Record<string, string> = { 'mobile': 'Mobile', 'tablet': 'Tablet', 'desktop': 'Desktop' };
 
-            for (const [key, val] of Object.entries(value)) {
+            // Safe cast since we confirmed isResponsive
+            const responsiveValue = value as Record<string, VariableValue>;
+
+            for (const [key, val] of Object.entries(responsiveValue)) {
                 const modeName = map[key];
                 const mode = modes.find(m => m.name === modeName);
                 if (mode) {
-                    const parsed = type === 'number' ? parseFloat(val as string) : val;
+                    const parsed = type === 'number' && typeof val === 'string' ? parseFloat(val) : val;
                     variable.setValueForMode(mode.modeId, parsed as VariableValue);
                 }
             }
         } else {
             // Standard Set
             const modeId = collection.modes[0].modeId;
-            if (type === 'color') {
+            if (type === 'color' && typeof value === 'string') {
                 const rgb = this.hexToRgbInternal(value);
                 variable.setValueForMode(modeId, rgb);
-            } else if (type === 'number') {
+            } else if (type === 'number' && typeof value === 'string') {
                 variable.setValueForMode(modeId, parseFloat(value));
             } else {
-                variable.setValueForMode(modeId, value);
+                variable.setValueForMode(modeId, value as VariableValue);
             }
         }
     }
 
-    async update(id: string, value: any): Promise<void> {
+    async update(id: string, value: VariableValue): Promise<void> {
         const variable = await figma.variables.getVariableByIdAsync(id);
         if (!variable) throw new Error(`Variable ${id} not found`);
 

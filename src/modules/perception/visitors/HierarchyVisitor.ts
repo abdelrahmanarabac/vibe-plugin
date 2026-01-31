@@ -24,12 +24,22 @@ export class HierarchyVisitor implements IVisitor {
 
         // Check for bound variables (Figma Native Variables)
         if ('boundVariables' in node && node.boundVariables) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const bv = node.boundVariables as any;
 
-            const extractId = (target: any): string | undefined => {
+            const extractId = (target: unknown): string | undefined => {
                 if (!target) return undefined;
-                if (typeof target === 'object' && 'id' in target) return target.id;
-                if (Array.isArray(target) && target[0] && target[0].id) return target[0].id;
+
+                // VariableAlias check
+                if (typeof target === 'object' && 'id' in target) {
+                    return (target as { id: string }).id;
+                }
+
+                // Array check
+                if (Array.isArray(target) && target.length > 0 && target[0] && 'id' in target[0]) {
+                    return (target[0] as { id: string }).id;
+                }
+
                 return undefined;
             };
 

@@ -13,6 +13,10 @@ export type VariableScope =
     | 'STROKE_COLOR'
     | 'EFFECT_COLOR';
 
+export type RGB = { r: number; g: number; b: number };
+export type RGBA = RGB & { a: number };
+export type VariableValue = string | number | boolean | RGB | RGBA;
+
 export interface TokenEntity {
     id: string;                    // Figma Variable ID
     name: string;                  // "primary-500"

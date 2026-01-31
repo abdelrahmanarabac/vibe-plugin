@@ -9,5 +9,5 @@ export interface StyleFormData {
 export interface NewStyleDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: { name: string; type: string; value: any }) => void;
+    onSubmit: (data: { name: string; type: string; value: string | number | { r: number; g: number; b: number; a?: number } }) => void;
 }
