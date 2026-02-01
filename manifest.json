@@ -12,7 +12,7 @@
   "permissions": [],
   "networkAccess": {
     "allowedDomains": [
-      "https://*.supabase.co",
+      "https://sxbqcwgvoqripawwoowg.supabase.co",
       "https://generativelanguage.googleapis.com"
     ]
   }
