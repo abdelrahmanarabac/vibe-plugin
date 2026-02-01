@@ -64,20 +64,20 @@
   :root {
     /* 🌑 Default: Dark Theme */
     --vibe-void: #050505;
-    --vibe-nebula: #0A0A0A;
-    --vibe-surface-0: #121212;
-    --vibe-surface-1: #18181B;
-    --vibe-surface-2: #27272A;
-    --vibe-surface-3: #3F3F46;
+    --vibe-nebula: #09090B;
+    --vibe-surface-0: #121214;
+    --vibe-surface-1: #1C1C21;
+    --vibe-surface-2: #2D2D35;
+    --vibe-surface-3: #4A4A55;
 
     --vibe-text-bright: #FFFFFF;
-    --vibe-text-primary: #E5E5E5;
-    --vibe-text-dim: #A1A1AA;
-    --vibe-text-muted: #52525B;
+    --vibe-text-primary: #F4F4F5;
+    --vibe-text-dim: #D4D4D8; /* Improved from A1A1AA */
+    --vibe-text-muted: #A1A1AA; /* Improved from 52525B */
 
-    --vibe-shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.4);
-    --vibe-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --vibe-shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --vibe-shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.5);
+    --vibe-shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --vibe-shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 
 
     font-family: var(--font-body);
@@ -91,17 +91,17 @@
 
   :root.light-mode {
     /* ☀️ Light Theme overrides */
-    --vibe-void: #FAFAFA;
-    --vibe-nebula: #F4F4F5;
-    --vibe-surface-0: #FFFFFF;
-    --vibe-surface-1: rgba(255, 255, 255, 0.8);
-    --vibe-surface-2: #E4E4E7;
-    --vibe-surface-3: #D4D4D8;
+    --vibe-void: #FFFFFF;
+    --vibe-nebula: #F8F8FA;
+    --vibe-surface-0: #F1F1F4;
+    --vibe-surface-1: rgba(255, 255, 255, 0.9);
+    --vibe-surface-2: #E4E4E9;
+    --vibe-surface-3: #D4D4DB;
 
     --vibe-text-bright: #09090B;
-    --vibe-text-primary: #27272A;
-    --vibe-text-dim: #52525B;
-    --vibe-text-muted: #71717A;
+    --vibe-text-primary: #18181B;
+    --vibe-text-dim: #3F3F46;  /* Improved from 52525B */
+    --vibe-text-muted: #71717A; /* Improved from 71717A (contextual shift) */
 
     --vibe-shadow-glass: 0 8px 32px -4px rgba(0, 0, 0, 0.1);
     --vibe-shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);

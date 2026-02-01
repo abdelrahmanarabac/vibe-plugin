@@ -12,7 +12,7 @@ export type PluginAction =
     | { type: 'RENAME_COLLECTION_BY_ID'; payload: { collectionId: string } }
     | { type: 'PREVIEW_CLASSIFICATIONS' }
     | { type: 'NOTIFY'; message: string }
-    | { type: 'RESIZE_WINDOW'; width: number; height: number }
+
     | { type: 'STORAGE_GET'; key: string }
     | { type: 'STORAGE_SET'; key: string; value: unknown }
     | { type: 'STORAGE_REMOVE'; key: string }

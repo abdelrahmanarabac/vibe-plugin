@@ -30,4 +30,7 @@
 - **Design Gravity**: All scanning capabilities must implement drift detection (CIEDE2000 < 2.5 DeltaE) to bridge the gap between "Loose Styles" and "Strict Tokens".
 - **Harmony Healer**: Any color mutation MUST undergo `HarmonyValidator.validateContrast` to prevent WCAG regressions in dependent layers.
 
-
+*   **Activity Lifecycle (Persistence)**: Token creation is a high-frequency, repetitive task. Auto-closing views or navigating away is destructive; preserving state (Path, Type, Value) while resetting only the Name field enables high-speed sequential creation.
+*   **Unified Feedback Layer**: Fragmented feedback systems (Toasts vs. Modals) increase cognitive load. Routing all lifecycle status (Loading/Success/Error) through a centralized `OmniboxManager` ensures a consistent "OS-level" feedback loop.
+*   **Design Token Discipline**: Hardcoded colors (`#1A1A1A`, `white/5`) are "Logic Drift". Strict adherence to semantic tokens (`bg-surface-1`, `border-surface-2`) is mandatory for theme integrity and human-centric design.
+*   **Primary Action Positioning**: Centering the "New Collection" / "Add Group" button within the Path Picker dropdown transforms it from a utility to a primary structural action, aligning with "Human-Crafted" design standards.

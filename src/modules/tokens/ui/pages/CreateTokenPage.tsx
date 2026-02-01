@@ -13,18 +13,24 @@ import type { TokenFormData } from '../../../../modules/tokens/domain/ui-types';
 
 interface CreateTokenPageProps {
     onBack: () => void;
-    onSubmit: (token: TokenFormData) => void;
+    onSubmit: (token: TokenFormData) => Promise<boolean>;
 }
 
 export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
-    const { tokens } = useTokens();
-    const tokenNames = tokens.map(t => t.name);
+    const { tokens, createCollection } = useTokens();
+    const tokenNames = tokens.map(t => {
+        // Construct full path string: path/to/token
+        if (t.path && t.path.length > 0) {
+            return [...t.path, t.name].join('/');
+        }
+        return t.name;
+    });
 
     const { formState, setters, actions } = useTokenCreation(true);
 
     const [place, setPlace] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!formState.name.trim()) return;
@@ -38,12 +44,18 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
             name: fullName
         };
 
-        console.log('[CreatePage] Submitting:', finalData);
-        onSubmit(finalData);
+        const success = await onSubmit(finalData);
+
+        if (success) {
+            // Only reset the name to allow sequential creation in the same context
+            setters.setName('');
+            setters.setNamingResult(null);
+            // We keep: type, value, path (place), scope, etc.
+        }
     };
 
     return (
-        <div className="w-full h-full relative flex flex-col bg-[#09090b]">
+        <div className="w-full h-full relative flex flex-col bg-void">
             <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="w-full max-w-2xl mx-auto px-6 py-6 pb-28 flex flex-col relative z-10">
 
@@ -78,6 +90,7 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                                         placeholder="e.g. Brand/Colors"
                                         size="md"
                                         existingTokens={tokenNames}
+                                        onCreateCollection={createCollection}
                                     />
                                 </div>
                             </div>
@@ -126,13 +139,13 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                 </div>
             </div>
 
-            <div className="w-full absolute bottom-0 left-0 p-6 bg-gradient-to-t from-[#09090b] via-[#09090b] to-transparent z-50 pointer-events-none flex justify-center">
+            <div className="w-full absolute bottom-0 left-0 p-6 bg-gradient-to-t from-void via-void to-transparent z-50 pointer-events-none flex justify-center">
                 <div className="w-full max-w-2xl flex gap-4 pointer-events-auto">
 
                     <button
                         type="button"
                         onClick={onBack}
-                        className="flex-1 py-3.5 rounded-xl bg-surface-2/80 hover:bg-surface-2 backdrop-blur-md text-sm font-bold text-text-dim hover:text-white transition-colors border border-white/5"
+                        className="flex-1 py-3.5 rounded-xl bg-surface-2/80 hover:bg-surface-2 backdrop-blur-md text-sm font-bold text-text-dim hover:text-white transition-colors border border-surface-2"
                     >
                         Cancel
                     </button>

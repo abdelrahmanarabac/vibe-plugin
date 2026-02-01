@@ -17,7 +17,14 @@ export class NotifyCapability implements ICapability<NotifyPayload, void> {
         try {
             const message = typeof payload === 'string' ? payload : payload?.message;
             if (message) {
-                figma.notify(message);
+                // Send to UI for "Omnibox" display instead of native toast
+                figma.ui.postMessage({
+                    type: 'OMNIBOX_NOTIFY',
+                    payload: {
+                        message,
+                        type: 'info'
+                    }
+                });
                 return Result.ok(undefined);
             }
             return Result.fail('No message provided');

@@ -10,28 +10,38 @@ type CreatePayload = {
     name: string;
     type: 'color' | 'number' | 'string';
     value: VariableValue;
-    extensions?: { scope?: string; range?: [number, number] }
+    extensions?: {
+        scope?: string;
+        range?: [number, number];
+        description?: string;
+    }
 };
 
 type CreateResult = {
     created: boolean;
     names?: string[];
     count?: number;
-    name?: string
+    name?: string;
+    message?: string;
 };
 
+/**
+ * 🛠️ CreateVariableCapability
+ * Handles the creation of design tokens with built-in intelligence for scales and naming conventions.
+ */
 export class CreateVariableCapability implements ICapability<CreatePayload, CreateResult> {
     readonly id = 'create-variable-v1';
     readonly commandId = 'CREATE_VARIABLE';
     readonly description = 'Creates a new design token (variable) in Figma.';
 
-    private variableManager: VariableManager;
+    private readonly variableManager: VariableManager;
 
     constructor(variableManager: VariableManager) {
         this.variableManager = variableManager;
     }
 
     canExecute(_context: AgentContext): boolean {
+        // Always executable, but we could restrict based on selection in future
         return true;
     }
 
@@ -40,40 +50,80 @@ export class CreateVariableCapability implements ICapability<CreatePayload, Crea
         _context: AgentContext
     ): Promise<Result<CreateResult>> {
         try {
-            // Handle Color Scales
-            if (payload.type === 'color' && payload.extensions?.scope && payload.extensions.scope.startsWith('scale')) {
-                console.log('[CreateVariable] Generating Scale for:', payload.value);
-                const scale = ColorPalette.generateScale(payload.value as string);
-                console.log('[CreateVariable] Generated Scale:', scale);
-                const createdNames: string[] = [];
+            const { name, type, value, extensions } = payload;
 
-                // Determine Range (Default 50-950 or Custom)
-                let min = 50;
-                let max = 950;
-
-                if (payload.extensions.scope === 'scale-custom' && payload.extensions.range) {
-                    [min, max] = payload.extensions.range;
-                }
-
-                // Create each stop
-                for (const [stop, hex] of Object.entries(scale)) {
-                    const stopNum = parseInt(stop);
-                    if (stopNum >= min && stopNum <= max) {
-                        const tokenName = `${payload.name}/${stop}`; // name/500
-                        await this.variableManager.createVariable(tokenName, 'color', hex);
-                        createdNames.push(tokenName);
-                    }
-                }
-
-                return Result.ok({ created: true, names: createdNames, count: createdNames.length });
+            // 1. Sanitize Input
+            const cleanName = name.trim();
+            if (!cleanName) {
+                return Result.fail('Variable name cannot be empty.');
             }
 
-            // Default: Single Variable
-            await this.variableManager.createVariable(payload.name, payload.type, payload.value);
-            return Result.ok({ created: true, name: payload.name });
+            // 2. Handle Color Scales (Smart Expansion)
+            if (type === 'color' && extensions?.scope?.startsWith('scale')) {
+                return this.createColorScale(cleanName, value as string, extensions);
+            }
+
+            // 3. Default: Single Variable Creation
+            await this.variableManager.createVariable(cleanName, type, value);
+
+            // Add description if provided (Future: move to VariableManager)
+            // Note: VariableManager.createVariable currently doesn't support description, 
+            // but we should arguably add it there. For now, we assume basic creation.
+
+            return Result.ok({
+                created: true,
+                name: cleanName,
+                message: `✅ Created token: ${cleanName}`
+            });
+
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : 'Unknown error during creation';
+            console.error(`[CreateVariable] Failed:`, e);
             return Result.fail(message);
+        }
+    }
+
+    /**
+     * Generates a stepped color scale (e.g. primary/50...950)
+     */
+    private async createColorScale(
+        baseName: string,
+        hex: string,
+        extensions: NonNullable<CreatePayload['extensions']>
+    ): Promise<Result<CreateResult>> {
+        console.log(`[CreateVariable] Generating Scale for: ${baseName} (${hex})`);
+
+        try {
+            const scale = ColorPalette.generateScale(hex);
+            const createdNames: string[] = [];
+
+            // Defaults: standard tailwind-like scale
+            let min = 50;
+            let max = 950;
+
+            if (extensions.scope === 'scale-custom' && extensions.range) {
+                [min, max] = extensions.range;
+            }
+
+            // Create steps sequentially to ensure order (Figma sometimes weird with parallelism)
+            for (const [stop, stopHex] of Object.entries(scale)) {
+                const stopNum = parseInt(stop);
+                if (stopNum >= min && stopNum <= max) {
+                    const tokenName = `${baseName}/${stop}`;
+                    await this.variableManager.createVariable(tokenName, 'color', stopHex);
+                    createdNames.push(tokenName);
+                }
+            }
+
+            return Result.ok({
+                created: true,
+                names: createdNames,
+                count: createdNames.length,
+                message: `✅ Generated ${createdNames.length} scale tokens for ${baseName}`
+            });
+
+        } catch (error) {
+            return Result.fail(`Failed to generate scale: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }

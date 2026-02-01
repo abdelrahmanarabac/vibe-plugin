@@ -1,6 +1,6 @@
 import { TokenRepository } from './TokenRepository';
 import { CapabilityRegistry } from './CapabilityRegistry';
-import { EventLoop } from './EventLoop';
+import { SyncEngine } from './SyncEngine';
 import { SyncService } from './services/SyncService';
 
 // Core Modules
@@ -29,7 +29,7 @@ import { CreateStyleCapability } from '../modules/styles/capabilities/CreateStyl
 import {
     RequestGraphCapability,
     RequestStatsCapability,
-    ResizeWindowCapability,
+
     NotifyCapability,
     StorageGetCapability,
     StorageSetCapability,
@@ -39,7 +39,7 @@ import {
 export class CompositionRoot {
     // Public Services
     public readonly registry: CapabilityRegistry;
-    public readonly eventLoop: EventLoop;
+    public readonly syncEngine: SyncEngine;
     public readonly repository: TokenRepository;
     public readonly syncService: SyncService;
 
@@ -61,11 +61,11 @@ export class CompositionRoot {
         this.registry = new CapabilityRegistry();
         this.registerCapabilities(variableManager, docsRenderer, collectionRenamer);
 
-        // 4. Background Services (EventLoop)
+        // 4. Background Services (SyncEngine)
         // We inject a placeholder callback, the Controller will bind the actual UI-messaging logic
         // or we can pass the logic here if we invert control properly.
-        // For now, we expose the EventLoop and let the Controller bind the callback.
-        this.eventLoop = new EventLoop(async () => {
+        // For now, we expose the SyncEngine and let the Controller bind the callback.
+        this.syncEngine = new SyncEngine(async () => {
             // Default no-op, Controller will override or we pass it in 'start'
         });
     }
@@ -92,7 +92,7 @@ export class CompositionRoot {
             // System Capabilities
             new RequestGraphCapability(this.syncService),
             new RequestStatsCapability(this.syncService),
-            new ResizeWindowCapability(),
+
             new NotifyCapability(),
             new StorageGetCapability(),
             new StorageSetCapability(),

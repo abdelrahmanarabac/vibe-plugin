@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { showToast } from '../components/base/ToastManager';
+import { omnibox } from '../managers/OmniboxManager';
 import { type TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
 import type { TokenFormData } from '../../modules/tokens/domain/ui-types';
@@ -20,6 +20,7 @@ export interface TokensViewModel {
     updateToken: (id: string, value: string) => void;
     createToken: (data: TokenFormData) => Promise<boolean>;
     scanAnatomy: () => void;
+    createCollection: (name: string) => void;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
@@ -94,6 +95,7 @@ export function useTokens(): TokensViewModel {
             }
 
             if (type === 'CREATE_VARIABLE_SUCCESS') {
+                omnibox.show('Token created successfully', { type: 'success' });
                 if (creationPromise.current) {
                     creationPromise.current(true);
                     creationPromise.current = null;
@@ -101,9 +103,8 @@ export function useTokens(): TokensViewModel {
             }
 
             if (type === 'CREATE_VARIABLE_ERROR') {
-                if (payload && payload.message) {
-                    showToast(payload.message, 'error');
-                }
+                omnibox.show(payload.message || 'Failed to create token', { type: 'error' });
+
                 if (creationPromise.current) {
                     creationPromise.current(false);
                     creationPromise.current = null;
@@ -136,6 +137,7 @@ export function useTokens(): TokensViewModel {
 
     const createToken = useCallback((data: TokenFormData) => {
         return new Promise<boolean>((resolve) => {
+            omnibox.show(`Creating ${data.name}...`, { type: 'loading', duration: 0 });
             creationPromise.current = resolve;
             parent.postMessage({
                 pluginMessage: {
@@ -150,6 +152,15 @@ export function useTokens(): TokensViewModel {
         parent.postMessage({ pluginMessage: { type: 'TRACE_LINEAGE', payload: { tokenId } } }, '*');
     }, []);
 
+    const createCollection = useCallback((name: string) => {
+        parent.postMessage({
+            pluginMessage: {
+                type: 'CREATE_COLLECTION',
+                payload: { name }
+            }
+        }, '*');
+    }, []);
+
     return {
         tokens,
         anatomy,
@@ -159,6 +170,7 @@ export function useTokens(): TokensViewModel {
         lineageData,
         updateToken,
         createToken,
+        createCollection,
         scanAnatomy,
         traceLineage
     };

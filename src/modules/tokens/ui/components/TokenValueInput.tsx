@@ -35,7 +35,7 @@ export const TokenValueInput: React.FC<TokenValueInputProps> = ({
                         type="text"
                         value={typeof value === 'string' ? value : ''}
                         onChange={(e) => onValueChange(e.target.value)}
-                        className="flex-1 bg-[#1A1A1A] border border-white/5 rounded-xl px-4 py-3 text-sm text-white font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all uppercase"
+                        className="flex-1 bg-surface-1 border border-surface-2 rounded-xl px-4 py-3 text-sm text-text-primary font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all uppercase"
                     />
                     {colorScope.startsWith('scale') && (
                         <div className="px-3 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold whitespace-nowrap">
@@ -57,7 +57,7 @@ export const TokenValueInput: React.FC<TokenValueInputProps> = ({
                                         const current = typeof value === 'object' ? value : { mobile: value, tablet: value, desktop: value };
                                         onValueChange({ ...current, [mode]: e.target.value });
                                     }}
-                                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl pl-4 pr-9 py-3 text-sm text-white font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                                    className="w-full bg-surface-1 border border-surface-2 rounded-xl pl-4 pr-9 py-3 text-sm text-text-primary font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                                     placeholder={mode === 'mobile' ? "4" : mode === 'tablet' ? "8" : "12"}
                                 />
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim group-focus-within:text-primary transition-colors pointer-events-none">
@@ -74,7 +74,7 @@ export const TokenValueInput: React.FC<TokenValueInputProps> = ({
                     type="text"
                     value={typeof value === 'object' ? '' : value}
                     onChange={(e) => onValueChange(e.target.value)}
-                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl px-4 py-3 text-sm text-white font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all disabled:opacity-50"
+                    className="w-full bg-surface-1 border border-surface-2 rounded-xl px-4 py-3 text-sm text-text-primary font-mono focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all disabled:opacity-50"
                 />
             )}
         </div>

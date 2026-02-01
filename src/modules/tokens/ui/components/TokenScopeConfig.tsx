@@ -43,13 +43,13 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
 
             {type === 'color' ? (
                 <div className="space-y-3">
-                    <div className="flex bg-[#1A1A1A] rounded-xl p-1 border border-white/5 h-[46px] items-center">
+                    <div className="flex bg-surface-1 rounded-xl p-1 border border-surface-2 h-[46px] items-center">
                         {(['single', 'scale', 'scale-custom'] as const).map((scopeOption) => (
                             <button
                                 key={scopeOption}
                                 type="button"
                                 onClick={() => onColorScopeChange(scopeOption)}
-                                className={`flex-1 flex items-center justify-center py-2 text-[10px] font-bold rounded-lg transition-all h-full ${colorScope === scopeOption ? 'bg-[#2E2E2E] text-white shadow-sm' : 'text-text-dim hover:text-white'}`}
+                                className={`flex-1 flex items-center justify-center py-2 text-[10px] font-bold rounded-lg transition-all h-full ${colorScope === scopeOption ? 'bg-surface-2 text-text-primary shadow-sm' : 'text-text-dim hover:text-text-primary'}`}
                             >
                                 {scopeOption === 'scale-custom' ? 'Range' : scopeOption.charAt(0).toUpperCase() + scopeOption.slice(1)}
                             </button>
@@ -71,18 +71,18 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                                             type="number"
                                             value={customRange[0]}
                                             onChange={e => onCustomRangeChange([parseInt(e.target.value), customRange[1]])}
-                                            className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all placeholder:text-white/20 font-mono"
+                                            className="w-full bg-surface-1 border border-surface-2 rounded-xl px-4 py-3 text-sm text-text-primary focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all placeholder:text-text-dim/20 font-mono"
                                             step={50} min={50} max={950}
                                         />
                                     </div>
-                                    <div className="text-white/20 pt-4">→</div>
+                                    <div className="text-text-dim/20 pt-4">→</div>
                                     <div className="flex-1 space-y-1">
                                         <label className="text-[9px] font-bold text-text-dim ml-1">END</label>
                                         <input
                                             type="number"
                                             value={customRange[1]}
                                             onChange={e => onCustomRangeChange([customRange[0], parseInt(e.target.value)])}
-                                            className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all placeholder:text-white/20 font-mono"
+                                            className="w-full bg-surface-1 border border-surface-2 rounded-xl px-4 py-3 text-sm text-text-primary focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all placeholder:text-text-dim/20 font-mono"
                                             step={50} min={50} max={950}
                                         />
                                     </div>
@@ -92,7 +92,7 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                     </AnimatePresence>
                 </div>
             ) : (
-                <div className="flex bg-[#1A1A1A] rounded-xl p-1 border border-white/5 items-center gap-1 h-[46px]">
+                <div className="flex bg-surface-1 rounded-xl p-1 border border-surface-2 items-center gap-1 h-[46px]">
                     {(['mobile', 'tablet', 'desktop'] as const).map(mode => (
                         <button
                             key={mode}
@@ -103,7 +103,7 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                                     : [...activeModes, mode];
                                 if (newModes.length > 0) onActiveModesChange(newModes);
                             }}
-                            className={`p-2 h-full flex items-center justify-center rounded-lg transition-all ${activeModes.includes(mode) ? 'bg-[#2E2E2E] text-white shadow-sm' : 'text-text-dim hover:text-white'}`}
+                            className={`p-2 h-full flex items-center justify-center rounded-lg transition-all ${activeModes.includes(mode) ? 'bg-surface-2 text-text-primary shadow-sm' : 'text-text-dim hover:text-text-primary'}`}
                             title={`Toggle ${mode}`}
                         >
                             {mode === 'mobile' && <Smartphone size={14} />}
@@ -111,13 +111,13 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                             {mode === 'desktop' && <Monitor size={14} />}
                         </button>
                     ))}
-                    <div className="w-px h-4 bg-white/10 mx-1" />
+                    <div className="w-px h-4 bg-surface-3 mx-1" />
                     <div className="flex items-center gap-2 px-2 h-full">
                         <input
                             type="text"
                             value={ratio}
                             onChange={(e) => onRatioChange(e.target.value)}
-                            className="w-8 bg-transparent text-xs text-white font-mono outline-none text-center"
+                            className="w-8 bg-transparent text-xs text-text-primary font-mono outline-none text-center"
                             placeholder="1.5"
                         />
                         <div className="text-text-dim"><Scaling size={12} /></div>

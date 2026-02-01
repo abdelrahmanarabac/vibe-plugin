@@ -1,20 +1,17 @@
 /**
- * 🔄 EventLoop
- * Manages background processes and polling intervals alongside the main thread.
- * Decouples "Infrastructure" (setInterval) from "Application Logic" (Controller).
+ * 🔄 SyncEngine
+ * Orchestrates background synchronization between the Plugin environment and the UI.
+ * Monitors for external changes (Figma variables, collections) and triggers updates.
  */
-export class EventLoop {
+export class SyncEngine {
     private syncIntervalId: number | null = null;
     private lastVariableHash: string = '';
     private lastCollectionHash: string = '';
     private readonly INTERVAL_MS = 1000;
 
-    // Explicitly declare property to satisfy erasableSyntaxOnly
     private onSyncNeeded: () => Promise<void>;
 
-    constructor(
-        onSyncNeeded: () => Promise<void>
-    ) {
+    constructor(onSyncNeeded: () => Promise<void>) {
         this.onSyncNeeded = onSyncNeeded;
     }
 
@@ -23,12 +20,12 @@ export class EventLoop {
     }
 
     /**
-     * Starts the background synchronization loop.
+     * Ignatius the background synchronization engine.
      */
     public start(): void {
         if (this.syncIntervalId !== null) return;
 
-        console.log('[EventLoop] Starting background sync...');
+        console.log('[SyncEngine] Ignition sequence started...');
 
         this.syncIntervalId = setInterval(async () => {
             await this.tick();
@@ -36,18 +33,18 @@ export class EventLoop {
     }
 
     /**
-     * Stops the background synchronization loop.
+     * Halts the synchronization engine.
      */
     public stop(): void {
         if (this.syncIntervalId !== null) {
             clearInterval(this.syncIntervalId);
             this.syncIntervalId = null;
-            console.log('[EventLoop] Background sync stopped.');
+            console.log('[SyncEngine] Engine shutting down.');
         }
     }
 
     /**
-     * Single tick of the event loop.
+     * Execution tick.
      */
     private async tick(): Promise<void> {
         try {
@@ -62,7 +59,7 @@ export class EventLoop {
 
             if (currentHash !== this.lastVariableHash) {
                 if (this.lastVariableHash !== '') {
-                    console.log('[EventLoop] Change detected in variables.');
+                    console.log('[SyncEngine] Variable drift detected.');
                     hasChanges = true;
                 }
                 this.lastVariableHash = currentHash;
@@ -70,44 +67,41 @@ export class EventLoop {
 
             if (currentCollectionHash !== this.lastCollectionHash) {
                 if (this.lastCollectionHash !== '') {
-                    console.log('[EventLoop] Change detected in collections.');
+                    console.log('[SyncEngine] Collection drift detected.');
                     hasChanges = true;
                 }
                 this.lastCollectionHash = currentCollectionHash;
             }
 
             if (hasChanges) {
-                console.log('[EventLoop] Triggering sync due to external changes.');
+                console.log('[SyncEngine] Triggering synchronization protocol.');
                 await this.onSyncNeeded();
             }
 
         } catch (error) {
-            console.error('[EventLoop] Error in tick:', error);
+            console.error('[SyncEngine] Critical Tick Failure:', error);
         }
     }
 
     /**
-     * Computes a fingerprint of the current variables to detect changes/diffs.
+     * Generates a structural fingerprint for variables.
      */
     private computeVariableHash(variables: Variable[]): string {
         return variables.map(v => {
             try {
-                // We use ID + Name + Type + Values to detect structural or content changes
                 return `${v.id}:${v.name}:${v.resolvedType}:${JSON.stringify(v.valuesByMode)}`;
             } catch {
-                // Fallback for safety
                 return v.id;
             }
         }).join('|');
     }
 
     /**
-     * Computes a fingerprint of the current collections to detect renames or creations.
+     * Generates a structural fingerprint for collections.
      */
     private computeCollectionHash(collections: VariableCollection[]): string {
         return collections.map(c => {
             try {
-                // ID + Name + Modes check
                 return `${c.id}:${c.name}:${c.modes.length}`;
             } catch {
                 return c.id;

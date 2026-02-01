@@ -18,9 +18,15 @@ export class StorageSetCapability implements ICapability<StorageSetPayload, void
             if (!payload?.key) return Result.fail('No key provided');
             await figma.clientStorage.setAsync(payload.key, payload.value);
 
-            // Special notification logic from original controller (could be moved to UI or kept here)
+            // Special notification logic via Omnibox
             if (payload.key === 'VIBE_API_KEY') {
-                figma.notify('✅ API Key Saved');
+                figma.ui.postMessage({
+                    type: 'OMNIBOX_NOTIFY',
+                    payload: {
+                        message: '✅ API Key Saved',
+                        type: 'success'
+                    }
+                });
             }
 
             return Result.ok(undefined);

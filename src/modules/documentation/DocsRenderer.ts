@@ -73,7 +73,10 @@ export class DocsRenderer {
         }
 
         page.appendChild(grid);
-        figma.notify('✨ Vibe Documentation Generated');
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: { message: '✨ Vibe Documentation Generated', type: 'success' }
+        });
     }
 
     private getOrCreatePage(): PageNode {

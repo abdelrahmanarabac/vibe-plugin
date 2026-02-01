@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { omnibox } from './managers/OmniboxManager';
 import { TokenTree } from '../modules/tokens/ui/components/TokenTree';
 import { LineageExplorer } from '../modules/intelligence/ui/components/LineageExplorer';
 import { SmartInspector } from '../modules/intelligence/ui/components/SmartInspector';
 import { type TokenEntity } from '../core/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
+import { Omnibox } from './components/feedback/Omnibox';
+
 
 interface EditorViewProps {
     tokens: TokenEntity[];
@@ -32,6 +35,17 @@ export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageDa
         ? tokens.find(t => t.id === selectedTokenId)
         : null;
 
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const { type, payload } = event.data.pluginMessage || {};
+            if (type === 'OMNIBOX_NOTIFY') {
+                omnibox.show(payload.message, { type: payload.type || 'info' });
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     return (
         <div className="flex w-full h-full overflow-hidden bg-void/20 p-2 gap-2">
@@ -159,6 +173,7 @@ export function EditorView({ tokens = [], searchFocus, onTraceLineage, lineageDa
                     }
                 </AnimatePresence>
             </main>
+            <Omnibox />
         </div>
     );
 }

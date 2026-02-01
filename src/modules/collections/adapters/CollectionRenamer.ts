@@ -149,20 +149,22 @@ export class CollectionRenamer {
         return result;
     }
 
-    /**
-     * Renames a specific collection by ID.
-     * 
-     * Use case: User manually triggers rename on a single collection via UI.
-     * 
-     * @param collectionId - Figma Variable Collection ID
-     * @returns true if renamed successfully, false otherwise
-     */
+    // Helper for omnibox notifications
+    private notify(message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') {
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: { message, type }
+        });
+    }
+
+    // ... inside renameById ...
+
     async renameById(collectionId: string): Promise<boolean> {
         try {
             const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
 
             if (!collection) {
-                figma.notify(`❌ Collection not found (ID: ${collectionId})`, { error: true });
+                this.notify(`❌ Collection not found (ID: ${collectionId})`, 'error');
                 return false;
             }
 
@@ -170,46 +172,31 @@ export class CollectionRenamer {
 
             // Check if classification is valid
             if (classification.proposedName === 'Unknown') {
-                figma.notify(
-                    `⚠️ Cannot classify '${collection.name}'. ${classification.reason}`,
-                    { error: false, timeout: 5000 }
-                );
+                this.notify(`⚠️ Cannot classify '${collection.name}'. ${classification.reason}`, 'warning');
                 return false;
             }
 
             // Check confidence
             if (classification.confidence < this.confidenceThreshold) {
-                figma.notify(
-                    `⚠️ Low confidence (${Math.round(classification.confidence * 100)}%). ${classification.reason}`,
-                    { error: false, timeout: 5000 }
-                );
+                this.notify(`⚠️ Low confidence (${Math.round(classification.confidence * 100)}%). ${classification.reason}`, 'warning');
                 return false;
             }
 
             // Check if already correct
             if (collection.name === classification.proposedName) {
-                figma.notify(
-                    `✅ '${collection.name}' already has the correct name`,
-                    { timeout: 3000 }
-                );
+                this.notify(`✅ '${collection.name}' already has the correct name`, 'success');
                 return true;
             }
 
             // Apply rename
             const oldName = collection.name;
             collection.name = classification.proposedName;
-            figma.notify(
-                `✅ Renamed '${oldName}' → '${classification.proposedName}'`,
-                { timeout: 3000 }
-            );
+            this.notify(`✅ Renamed '${oldName}' → '${classification.proposedName}'`, 'success');
             return true;
 
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
-            figma.notify(
-                `❌ Rename failed: ${message}`,
-                { error: true, timeout: 5000 }
-            );
+            this.notify(`❌ Rename failed: ${message}`, 'error');
             console.error('Error in renameById:', error);
             return false;
         }

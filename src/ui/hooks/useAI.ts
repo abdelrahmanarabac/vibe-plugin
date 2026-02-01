@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { omnibox } from '../managers/OmniboxManager';
 import { IntentEngine } from '../../modules/intelligence/IntentEngine';
 import { AIFactory } from '../../core/services/AIFactory';
 
@@ -17,9 +18,11 @@ export function useAI(apiKey: string | null): AIViewModel {
 
     const handleCommand = useCallback(async (command: string) => {
         if (!apiKey) {
-            parent.postMessage({
-                pluginMessage: { type: 'NOTIFY', message: '🔑 Please configure your API key in Settings.' }
-            }, '*');
+            omnibox.show('🔑 Please configure your API key in Settings.', {
+                type: 'warning',
+                duration: 5000,
+                action: { label: 'Settings', onClick: () => console.log('Navigate to settings') } // TODO: Add navigation
+            });
             return;
         }
 
@@ -29,7 +32,7 @@ export function useAI(apiKey: string | null): AIViewModel {
             const aiService = AIFactory.getInstance(apiKey);
             const engine = new IntentEngine(aiService);
 
-            parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '🤖 Analyzing vibe...' } }, '*');
+            omnibox.show('🤖 Analyzing vibe...', { type: 'loading', duration: 0 });
 
             const intent = await engine.classify(command);
 
@@ -48,12 +51,7 @@ export function useAI(apiKey: string | null): AIViewModel {
             const prompt = `You are Vibe Token OS. User request: "${command}". Provide a brief, actionable response. Ensure you sound professional but high-tech.`;
             const response = await aiService.generate(prompt, { tier: 'LITE' });
 
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'NOTIFY',
-                    message: `💡 ${response.substring(0, 100)}...`
-                }
-            }, '*');
+            omnibox.show(`💡 ${response.substring(0, 100)}...`, { type: 'info' });
 
         } catch (error: unknown) {
             console.error("[useAI] Command failed:", error);
@@ -61,10 +59,10 @@ export function useAI(apiKey: string | null): AIViewModel {
             // Extract meaningful error messages for the user
             const message = error instanceof Error ? error.message : String(error);
             const displayMsg = message.includes('403')
-                ? '❌ API Key Error (403). Check Settings.'
+                ? '🔑 API Key Error (403). Check Settings.'
                 : '❌ Engine Failure. Please retry.';
 
-            parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: displayMsg } }, '*');
+            omnibox.show(displayMsg, { type: 'error' });
         } finally {
             setIsProcessing(false);
         }
