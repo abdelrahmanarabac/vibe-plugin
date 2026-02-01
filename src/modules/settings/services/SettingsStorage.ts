@@ -1,49 +1,46 @@
-import { encryptAPIKey, decryptAPIKey } from '../../security/CryptoService';
+import { CryptoService } from '../../security/CryptoService';
 import type { VibeSettings } from '../domain/SettingsTypes';
 import { DEFAULT_SETTINGS } from '../domain/SettingsTypes';
+import { storage } from '../../security/StorageProxy';
 
 /**
  * 💾 SettingsStorage
  * Persistence adapter for Vibe configuration.
- * Handles Encryption for Secrets and JSON serialization for Preferences.
+ * Delegates secret management to CryptoService (Zero-Trust).
  */
 export const SettingsStorage = {
     /**
      * Save the full settings object.
-     * Encrypts the API key if it's being updated/present.
+     * Secrets are diverted to the Secure Vault.
+     * Preferences are saved as standard JSON.
      */
     saveSettings: async (settings: VibeSettings): Promise<void> => {
         try {
-            // 1. Handle API Key Encryption independently
+            // 1. Divert Secret to Secure Vault
+            // Only update if key is present/changed.
             if (settings.apiKey) {
-                // Check if it's already encrypted? No, assumes we get raw key here from UI
-                // But we don't want to double-encrypt if we actulaly have the encrypted version.
-                // Strategy: The UI should pass the RAW key only if changed.
-                // Actually, simplest is to re-encrypt.
-                const encryptedKey = await encryptAPIKey(settings.apiKey);
-                parent.postMessage({
-                    pluginMessage: {
-                        type: 'STORAGE_SET',
-                        key: 'GEMINI_API_KEY',
-                        value: encryptedKey
-                    }
-                }, '*');
+                // If session is active, save it.
+                // If session is NOT active, this will THROW.
+                // The UI (SecurityGate) guarantees session is active before we get here?
+                // OR SettingsPage handles the error.
+                if (CryptoService.isSessionActive()) {
+                    await CryptoService.saveAPIKey(settings.apiKey);
+                } else {
+                    console.warn("Skipping API Key save: Session Locked.");
+                    // We knowingly skip saving the key if locked to prevent errors,
+                    // but ideally, this shouldn't happen if Gate is working.
+                }
             }
 
-            // 2. Save the rest of the settings as a JSON blob
+            // 2. Save Preferences (Excluding Secrets)
             const preferences = {
                 modelTier: settings.modelTier,
                 standards: settings.standards,
                 governance: settings.governance
+                // apiKey is deliberately OMITTED from plaintext storage
             };
 
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'STORAGE_SET',
-                    key: 'VIBE_PREFERENCES',
-                    value: JSON.stringify(preferences)
-                }
-            }, '*');
+            await storage.setItem('VIBE_PREFERENCES', JSON.stringify(preferences));
 
         } catch (error) {
             console.error("Settings Save Failed:", error);
@@ -52,91 +49,46 @@ export const SettingsStorage = {
     },
 
     /**
-     * Load settings from Figma client storage.
+     * Load settings.
+     * Rehydrates secrets from Secure Vault if Session is Active.
      */
-    loadSettings: (): Promise<VibeSettings> => {
-        return new Promise((resolve) => {
-            // We need to fetch TWO keys: GEMINI_API_KEY and VIBE_PREFERENCES.
-            // This is async. We'll chain them or use Promise.all logic if we could, 
-            // but postMessage is event-based. We'll do a sequential fetch for simplicity 
-            // or modify the backend to support 'STORAGE_GET_ALL' (Out of scope).
-            // Let's rely on individual fetches.
-
-            // Request 1: Preferences
-            parent.postMessage({ pluginMessage: { type: 'STORAGE_GET', key: 'VIBE_PREFERENCES' } }, '*');
-
-            // Request 2: API Key
-            parent.postMessage({ pluginMessage: { type: 'STORAGE_GET', key: 'GEMINI_API_KEY' } }, '*');
-
-            let loadedApiKey: string | null = null;
+    loadSettings: async (): Promise<VibeSettings> => {
+        try {
+            // 1. Fetch Preferences
+            const rawPrefs = await storage.getItem('VIBE_PREFERENCES');
             let loadedPreferences: Partial<VibeSettings> = {};
-            let keysLoaded = 0;
 
-            const listener = async (event: MessageEvent) => {
-                const msg = event.data.pluginMessage;
-                if (!msg) return;
-
-                if (msg.type === 'STORAGE_GET_SUCCESS' || msg.type === 'STORAGE_GET_RESPONSE') {
-                    // Handle Preferences
-                    if (msg.key === 'VIBE_PREFERENCES' || msg.payload?.key === 'VIBE_PREFERENCES') {
-                        const raw = msg.value || msg.payload?.value;
-                        if (raw) {
-                            try {
-                                loadedPreferences = JSON.parse(raw);
-                            } catch {
-                                console.warn("Corrupt Settings JSON, using defaults.");
-                            }
-                        }
-                        keysLoaded++;
-                    }
-
-                    // Handle API Key
-                    if (msg.key === 'GEMINI_API_KEY' || msg.payload?.key === 'GEMINI_API_KEY') {
-                        const rawKey = msg.value || msg.payload?.value;
-                        if (rawKey) {
-                            try {
-                                loadedApiKey = await decryptAPIKey(rawKey);
-                            } catch (e) {
-                                console.warn("Key Decryption Failed:", e);
-                                loadedApiKey = null;
-                            }
-                        }
-                        keysLoaded++;
-                    }
-
-                    // Check Completion (We sent 2 requests)
-                    if (keysLoaded >= 2) {
-                        window.removeEventListener('message', listener);
-
-                        // Merge with Defaults
-                        const finalSettings: VibeSettings = {
-                            ...DEFAULT_SETTINGS,
-                            ...loadedPreferences,
-                            apiKey: loadedApiKey,
-                            // Deep merge standards/governance to ensure no missing keys
-                            standards: { ...DEFAULT_SETTINGS.standards, ...loadedPreferences.standards },
-                            governance: { ...DEFAULT_SETTINGS.governance, ...loadedPreferences.governance }
-                        };
-                        resolve(finalSettings);
-                    }
+            if (rawPrefs) {
+                try {
+                    loadedPreferences = JSON.parse(rawPrefs);
+                } catch {
+                    console.warn("Corrupt Settings JSON, using defaults.");
                 }
+            }
+
+            // 2. Fetch Secret (If Unlocked)
+            let loadedApiKey: string | null = null;
+            if (CryptoService.isSessionActive()) {
+                try {
+                    loadedApiKey = await CryptoService.loadAPIKey();
+                } catch (e) {
+                    console.warn("Vault Access Failed during Settings Load:", e);
+                }
+            }
+
+            // 3. Merge
+            return {
+                ...DEFAULT_SETTINGS,
+                ...loadedPreferences,
+                apiKey: loadedApiKey,
+                // Deep merge standards/governance to ensure no missing keys
+                standards: { ...DEFAULT_SETTINGS.standards, ...loadedPreferences.standards },
+                governance: { ...DEFAULT_SETTINGS.governance, ...loadedPreferences.governance }
             };
 
-            window.addEventListener('message', listener);
-
-            // Timeout safety
-            setTimeout(() => {
-                window.removeEventListener('message', listener);
-                // Return what we have
-                const finalSettings: VibeSettings = {
-                    ...DEFAULT_SETTINGS,
-                    ...loadedPreferences,
-                    apiKey: loadedApiKey,
-                    standards: { ...DEFAULT_SETTINGS.standards, ...loadedPreferences.standards },
-                    governance: { ...DEFAULT_SETTINGS.governance, ...loadedPreferences.governance }
-                };
-                resolve(finalSettings);
-            }, 2000);
-        });
+        } catch (error) {
+            console.error("Settings Load Failed:", error);
+            return DEFAULT_SETTINGS;
+        }
     }
 };

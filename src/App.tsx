@@ -13,10 +13,14 @@ import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
 import { SystemProvider } from './ui/contexts/SystemContext';
 import { SystemMessageBar } from './ui/components/system/SystemMessageBar';
 
+import { SecurityGate } from './modules/security/ui/SecurityGate';
+
 export default function App() {
     return (
         <SystemProvider>
-            <VibeAppContent />
+            <SecurityGate>
+                <VibeAppContent />
+            </SecurityGate>
         </SystemProvider>
     );
 }

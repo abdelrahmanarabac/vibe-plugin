@@ -5,8 +5,9 @@ import {
 } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
 import type { NamingConvention, ColorSpace, OutputFormat } from '../domain/SettingsTypes';
+import { GeminiService } from '../../../infrastructure/api/GeminiService';
 
-// --- UI Components (Locally Scoped for Atomic Completeness) ---
+// --- UI Components (Locally Scoped) ---
 
 const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: React.ComponentType<{ size?: number; className?: string }>, title: string, subtitle: string }) => (
     <div className="flex items-center gap-3 mb-4">
@@ -52,15 +53,19 @@ export function SettingsPage() {
     };
 
     const handleTestConnection = async () => {
+        // Use the key from settings (which might be null if not loaded yet, but UI disables button if so?)
+        // Actually, settings.apiKey is the decrypted key if session is active.
         if (!settings.apiKey) return;
+
         setStatus('testing');
         try {
-            // Dynamic import to avoid heavy load on init
-            const { Flash3Service } = await import('../../ai/Flash3Service');
-            const ai = new Flash3Service(settings.apiKey);
-            await ai.generate('Ping');
+            // Use the hardened GeminiService directly
+            const ai = new GeminiService(settings.apiKey);
+            // Simple ping prompt
+            await ai.generate('Ping. Reply with Pong only.', { tier: 'LITE' });
             setStatus('success');
-        } catch {
+        } catch (e) {
+            console.error("Connection Test Failed:", e);
             setStatus('error');
         }
     };

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIService, AIOptions } from '../../core/interfaces/IAIService';
+import { SafeBinary } from '../../modules/security/SafeBinary';
 
 /**
  * 🤖 GeminiService
@@ -37,14 +38,16 @@ export class GeminiService implements IAIService {
         });
 
         const result = await model.generateContent(prompt);
+        // Defense: Validate JSON structure if schema is provided (Future enhancement)
         return JSON.parse(result.response.text()) as T;
     }
 
     async analyzeImage(imageBytes: Uint8Array, prompt: string): Promise<string> {
         const model = this.genAI.getGenerativeModel({ model: this.flash3 });
 
-        // Platform-safe base64 conversion
-        const base64 = btoa(new Uint8Array(imageBytes).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+        // SECURE IMPLEMENTATION:
+        // Use SafeBinary for deterministic, stack-safe Base64 conversion
+        const base64 = SafeBinary.toBase64(imageBytes);
 
         const result = await model.generateContent([
             prompt,
