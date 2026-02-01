@@ -13,7 +13,7 @@ export interface AIViewModel {
  * Processes natural language commands via the Intent Engine.
  * Ensures the AI Engine instance is synchronized with the current API Key.
  */
-export function useAI(apiKey: string | null): AIViewModel {
+export function useAI(apiKey: string | null, onNavigate?: (view: 'dashboard' | 'settings' | 'graph' | 'create-token') => void): AIViewModel {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handleCommand = useCallback(async (command: string) => {
@@ -21,7 +21,10 @@ export function useAI(apiKey: string | null): AIViewModel {
             omnibox.show('🔑 Please configure your API key in Settings.', {
                 type: 'warning',
                 duration: 5000,
-                action: { label: 'Settings', onClick: () => console.log('Navigate to settings') } // TODO: Add navigation
+                action: {
+                    label: 'Settings',
+                    onClick: () => onNavigate?.('settings')
+                }
             });
             return;
         }

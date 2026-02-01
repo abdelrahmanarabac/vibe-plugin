@@ -27,7 +27,6 @@ export default function App() {
 
 function VibeAppContent() {
     const vm = useVibeApp();
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'settings' | 'graph' | 'create-token'>('dashboard');
     const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
 
     // Fake credits for demo (Matches Dashboard)

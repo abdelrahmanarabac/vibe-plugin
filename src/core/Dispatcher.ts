@@ -58,7 +58,7 @@ export class Dispatcher {
         }
     }
 
-    private sendSuccess(type: string, payload: any) {
+    private sendSuccess<T>(type: string, payload: T) {
         figma.ui.postMessage({
             type: `${type}_SUCCESS`,
             payload: payload,
@@ -66,7 +66,7 @@ export class Dispatcher {
         });
     }
 
-    private handleSideEffects(value: any) {
+    private handleSideEffects(value: unknown) {
         if (value && typeof value === 'object' && 'message' in value) {
             const msg = (value as Record<string, unknown>).message;
             if (typeof msg === 'string') {
