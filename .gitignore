@@ -7,10 +7,24 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+.pnp
+.pnp.js
+
+# Build Output
 dist
 dist-ssr
-*.local
+build
+out
+
+# Local Environment & Secrets (CRITICAL)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
 
 # Editor directories and files
 .vscode/*
@@ -23,8 +37,9 @@ dist-ssr
 *.sln
 *.sw?
 
-/.agent
-<<<<<<< HEAD
-.env
-=======
->>>>>>> 703e0dd0de5fda5e7ebba74e5f09b2313a2d5f47
+# Vibe Agent Memory
+.agent
+
+# Misc
+.DS_Store
+Thumbs.db
