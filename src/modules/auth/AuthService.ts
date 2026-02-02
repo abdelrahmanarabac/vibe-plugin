@@ -113,7 +113,8 @@ export class AuthService {
 
     /**
      * Sends an OTP code to the user's email for password recovery.
-     * This replaces the redirect-based flow for a more secure in-plugin experience.
+     * Uses `resetPasswordForEmail` to trigger the standard recovery flow.
+     * NOTE: Requires Supabase Email Template "Reset Password" to use {{ .Token }} instead of link.
      * @param email The user's email address.
      */
     static async sendRecoveryOtp(email: string): Promise<{ error: Error | null }> {
@@ -121,30 +122,26 @@ export class AuthService {
         if (!supabase) return { error: new Error("Supabase disconnected") };
 
         try {
-            const { error } = await supabase.auth.signInWithOtp({
-                email,
-                options: {
-                    // This tells Supabase to treat it as a recovery, not a login magic link.
-                    // The user will receive a 6-digit OTP code.
-                    shouldCreateUser: false, // Don't create user if they don't exist.
-                }
-            });
+            // Use resetPasswordForEmail effectively requests a recovery token.
+            // By default, this sends a Magic Link. The User MUST configure the template
+            // to send a code, or Supabase must be configured to send instructions.
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
 
             if (error) {
-                console.error("[AuthService] OTP Send Failed:", error.message);
+                console.error("[AuthService] Password Reset Request Failed:", error.message);
                 return { error };
             }
 
             return { error: null };
         } catch (e) {
-            console.error("[AuthService] OTP Send Exception:", e);
+            console.error("[AuthService] Password Reset Exception:", e);
             return { error: e instanceof Error ? e : new Error(String(e)) };
         }
     }
 
     /**
      * Verifies the OTP code sent to the user's email.
-     * On success, a session is created and the user can update their password.
+     * Uses type 'recovery' which corresponds to `resetPasswordForEmail` flow.
      * @param email The user's email address.
      * @param token The 6-digit OTP code.
      */
@@ -156,7 +153,7 @@ export class AuthService {
             const { data, error } = await supabase.auth.verifyOtp({
                 email,
                 token,
-                type: 'email', // Use 'email' for OTP verification via email
+                type: 'recovery', // corrected from 'email' to 'recovery' for password reset
             });
 
             if (error) {

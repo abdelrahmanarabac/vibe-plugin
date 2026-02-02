@@ -1,7 +1,7 @@
 import React from 'react';
 import { Settings, LayoutGrid, Cpu, Wallet } from 'lucide-react';
 
-export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token';
+export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token' | 'export-tokens';
 
 interface MainLayoutProps {
     children: React.ReactNode;

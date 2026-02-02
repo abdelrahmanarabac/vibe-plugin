@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { VibeSupabase } from './infrastructure/supabase/SupabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { useVibeApp } from './ui/hooks/useVibeApp';
 import { MainLayout } from './ui/layouts/MainLayout';
 import { EditorView } from './ui/EditorView';
 import { Dashboard } from './ui/Dashboard';
 import { SettingsPage } from './modules/settings/ui/SettingsPage';
 import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
+import { ExportTokensPage } from './modules/export/ui/pages/ExportTokensPage';
 import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
 
 // System Messaging
@@ -113,6 +113,13 @@ function VibeAppContent() {
                                 onSubmit={async (tokenData) => {
                                     return await vm.tokens.createToken(tokenData);
                                 }}
+                            />
+                        )}
+
+                        {activeTab === 'export-tokens' && (
+                            <ExportTokensPage
+                                tokens={vm.tokens.tokens}
+                                onBack={() => setActiveTab('dashboard')}
                             />
                         )}
 

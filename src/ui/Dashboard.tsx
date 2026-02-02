@@ -16,24 +16,8 @@ interface DashboardProps {
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens = [], stats, onTabChange, onCreateStyle }: DashboardProps) {
+export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateStyle }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
-
-    const handleExport = () => {
-        const exportData = {
-            version: '1.0',
-            exportedAt: new Date().toISOString(),
-            tokens: tokens.map(t => ({ id: t.id, name: t.name, type: t.$type, value: t.$value }))
-        };
-
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `vibe-tokens-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
 
     return (
         <div className="flex flex-col items-center py-8 px-4 gap-8 w-full max-w-[1008px] mx-auto">
@@ -146,17 +130,17 @@ export function Dashboard({ tokens = [], stats, onTabChange, onCreateStyle }: Da
 
                     {/* 💾 Quick Action: Export */}
                     <button
-                        onClick={handleExport}
+                        onClick={() => onTabChange?.('export-tokens')}
                         className="vibe-card h-[96px] p-5 flex items-center justify-between hover:border-secondary/50 hover:bg-surface-2 group transition-all"
                     >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 transition-colors shadow-md relative overflow-hidden">
-                                <div className="absolute inset-0 bg-white/10 blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <Download size={20} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 rounded-2xl bg-void flex items-center justify-center border border-white/10 group-hover:border-secondary/50 group-hover:scale-110 transition-all shadow-lg relative overflow-hidden">
+                                <div className="absolute inset-0 bg-secondary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Download size={24} strokeWidth={3} className="text-white group-hover:text-secondary transition-colors relative z-10 drop-shadow-md" />
                             </div>
                             <div className="text-left">
-                                <div className="text-sm font-bold text-text-bright group-hover:text-secondary transition-colors">Export JSON</div>
-                                <div className="text-[10px] text-text-dim">Download Token Map</div>
+                                <div className="text-base font-bold text-text-bright group-hover:text-secondary transition-colors">Export Tokens</div>
+                                <div className="text-xs text-text-dim group-hover:text-text-primary transition-colors">Multiple formats</div>
                             </div>
                         </div>
                     </button>

@@ -3,7 +3,7 @@
  * @description Premium Login Screen for Vibe Plugin with OTP Password Reset.
  * @version 2.1.0 - OTP-based recovery flow (no external redirect).
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, Sparkles, AlertCircle, CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react';
 import { AuthService } from '../AuthService';
@@ -25,7 +25,11 @@ interface LoginScreenProps {
     onSuccess?: () => void;
 }
 
+// Config
+const OTP_COOLDOWN_SECONDS = 120;
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
+    console.log("🚀 Vibe Plugin: Auth v2.2 (OTP Fix Loaded)");
     const [mode, setMode] = useState<AuthMode>('LOGIN');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -41,6 +45,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     const [otpCode, setOtpCode] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Rate Limit Timer
+    const [resendTimer, setResendTimer] = useState(0);
+
+    // Countdown Effect
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     const resetState = () => {
         setError(null);
@@ -59,6 +77,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     // ==========================================================================
 
     const handleSendOtp = async () => {
+        if (resendTimer > 0) return; // Prevent spamming
+
         resetState();
         if (!email.trim()) {
             setError("Please enter your email address.");
@@ -69,10 +89,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
         const { error: otpError } = await AuthService.sendRecoveryOtp(email.trim());
 
         if (otpError) {
-            setError(otpError.message);
+            setError(mapAuthError(otpError));
         } else {
             setSuccessMessage("A 6-digit code has been sent to your email.");
             setRecoveryStep('OTP');
+            setResendTimer(OTP_COOLDOWN_SECONDS); // Start Cooldown
         }
         setLoading(false);
     };
@@ -80,7 +101,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     const handleVerifyOtp = async () => {
         resetState();
         if (!otpCode.trim() || otpCode.length < 6) {
-            setError("Please enter the 6-digit code from your email.");
+            setError("Please enter the verification code.");
             return;
         }
         setLoading(true);
@@ -338,15 +359,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                                     className="overflow-hidden"
                                 >
                                     <Input
-                                        label="Verification Code"
+                                        label="Verification Code (6-8 digits)"
                                         type="text"
                                         placeholder="123456"
                                         value={otpCode}
-                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
                                         required
                                         icon={<KeyRound className="w-4 h-4" />}
                                         className="bg-void/50 text-center tracking-[0.3em] font-mono"
-                                        maxLength={6}
+                                        maxLength={8}
                                     />
                                 </motion.div>
                             )}
@@ -418,9 +439,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                                 size="lg"
                                 className="w-full shadow-glow hover:shadow-primary/50"
                                 loading={loading}
-                                icon={!loading && <ArrowRight className="w-4 h-4" />}
+                                disabled={loading || (mode === 'FORGOT_PASSWORD' && recoveryStep === 'EMAIL' && resendTimer > 0)}
+                                icon={(!loading && resendTimer === 0) ? <ArrowRight className="w-4 h-4" /> : undefined}
                             >
-                                {getButtonLabel()}
+                                {mode === 'FORGOT_PASSWORD' && recoveryStep === 'EMAIL' && resendTimer > 0
+                                    ? `Resend available in ${resendTimer}s`
+                                    : getButtonLabel()}
                             </Button>
 
                             <div className="flex items-center justify-between text-xs text-text-muted px-1">
