@@ -1,20 +1,35 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Environment variables should be loaded from secure storage or config
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
 export class VibeSupabase {
     private static instance: SupabaseClient | null = null;
+    private static currentConfig: { url: string; key: string } | null = null;
 
-    static get(): SupabaseClient | null {
-        if (!SUPABASE_URL || !SUPABASE_KEY) {
-            console.warn("⚠️ VibeSupabase: Missing credentials. Running in offline mode.");
-            return null;
+    static initialize(url: string, key: string) {
+        // Idempotency check to prevent unnecessary re-creation
+        if (this.currentConfig?.url === url && this.currentConfig?.key === key && this.instance) {
+            return;
         }
 
+        try {
+            this.instance = createClient(url, key, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: false,
+                },
+            });
+            this.currentConfig = { url, key };
+            console.log("✅ VibeSupabase: Connection Initialized.");
+        } catch (e) {
+            console.error("❌ VibeSupabase: Initialization Failed", e);
+            this.instance = null;
+        }
+    }
+
+    static get(): SupabaseClient | null {
         if (!this.instance) {
-            this.instance = createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.warn("⚠️ VibeSupabase: Client not initialized. Check Settings.");
+            return null;
         }
         return this.instance;
     }

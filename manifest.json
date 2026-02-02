@@ -12,8 +12,9 @@
   "permissions": [],
   "networkAccess": {
     "allowedDomains": [
-      "https://sxbqcwgvoqripawwoowg.supabase.co",
+      "https://*.supabase.co",
       "https://generativelanguage.googleapis.com"
-    ]
+    ],
+    "reasoning": "This plugin connects to Supabase for color naming database access and Google Gemini for AI token generation."
   }
 }

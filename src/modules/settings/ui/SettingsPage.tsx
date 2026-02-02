@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import {
     Settings as SettingsIcon, Key, Zap, CheckCircle, XCircle, Sparkles,
-    Trash2, FileCode, ShieldCheck, BrainCircuit
+    Trash2, FileCode, ShieldCheck, BrainCircuit, Database
 } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
-import type { NamingConvention, ColorSpace, OutputFormat } from '../domain/SettingsTypes';
+import type { NamingConvention, ColorSpace, OutputFormat, VibeSettings } from '../domain/SettingsTypes';
 import { GeminiService } from '../../../infrastructure/api/GeminiService';
 
 // --- UI Components (Locally Scoped) ---
@@ -38,6 +38,72 @@ const Chip = ({ label, active, onClick }: { label: string, active: boolean, onCl
 );
 
 // --- Page Component ---
+
+const SupabaseConfigSection = ({ settings, updateSettings }: { settings: VibeSettings, updateSettings: (partial: Partial<VibeSettings>) => Promise<void> }) => {
+    const [url, setUrl] = useState('');
+    const [key, setKey] = useState('');
+
+    const isConfigured = !!settings.supabase;
+
+    const handleSave = () => {
+        if (!url || !key) return;
+        updateSettings({ supabase: { url: url.trim(), anonKey: key.trim() } });
+        setUrl('');
+        setKey('');
+        parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '🗄️ Database Linked' } }, '*');
+    };
+
+    return (
+        <div className="space-y-2 pt-4 border-t border-white/5">
+            <label className="text-[10px] text-text-muted/80 uppercase font-bold flex items-center gap-2">
+                <Database size={10} className="text-secondary" />
+                Supabase Connection (Color Naming)
+            </label>
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5">
+                <div className="flex items-center gap-3">
+                    <Database size={14} className="text-primary/70" />
+                    <span className="text-[10px] font-mono text-text-muted">
+                        {isConfigured ? `${settings.supabase?.url.slice(8, 20)}...` : 'NOT LINKED'}
+                    </span>
+                </div>
+                <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${isConfigured ? 'bg-success/10 text-success' : 'bg-white/5 text-text-muted'}`}>
+                    {isConfigured ? 'Active' : 'Missing'}
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <input
+                    type="text"
+                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
+                    placeholder="Project URL (https://...supabase.co)"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                />
+                <div className="flex gap-2">
+                    <input
+                        type="password"
+                        className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
+                        placeholder="Anon Public Key"
+                        value={key}
+                        onChange={(e) => setKey(e.target.value)}
+                    />
+                    <button
+                        onClick={handleSave}
+                        disabled={!url || !key}
+                        className="px-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 disabled:opacity-30 transition-all"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
+
+            <p className="text-[9px] text-text-muted italic opacity-60">
+                Required for AI Color Naming. Your keys are encrypted locally.
+            </p>
+        </div>
+    );
+};
 
 export function SettingsPage() {
     const { settings, updateSettings, updateStandard, updateGovernance, wipeMemory } = useSettings();
@@ -96,73 +162,78 @@ export function SettingsPage() {
                 </div>
             </header>
 
-            {/* 1. Engine Configuration */}
+            {/* 1. Connection Center */}
             <Card>
-                <SectionHeader icon={BrainCircuit} title="Neural Engine" subtitle="API Authorization & Tier Selection" />
+                <SectionHeader icon={BrainCircuit} title="Connection Center" subtitle="Third-Party Integrations" />
 
-                <div className="space-y-4">
-                    {/* API Key Display */}
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5">
-                        <div className="flex items-center gap-3">
-                            <Key size={14} className="text-primary/70" />
-                            <span className="text-[10px] font-mono text-text-muted">
-                                {settings.apiKey ? `••••••••${settings.apiKey.slice(-5)}` : 'UNKNOWN'}
-                            </span>
+                <div className="space-y-6">
+                    {/* Gemini Configuration */}
+                    <div className="space-y-2">
+                        <label className="text-[10px] text-text-muted/80 uppercase font-bold flex items-center gap-2">
+                            <Sparkles size={10} className="text-secondary" />
+                            Google Gemini (Generative AI)
+                        </label>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5">
+                            <div className="flex items-center gap-3">
+                                <Key size={14} className="text-primary/70" />
+                                <span className="text-[10px] font-mono text-text-muted">
+                                    {settings.apiKey ? `••••••••${settings.apiKey.slice(-5)}` : 'NOT CONFIGURED'}
+                                </span>
+                            </div>
+                            <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${settings.apiKey ? 'bg-success/10 text-success' : 'bg-white/5 text-text-muted'}`}>
+                                {settings.apiKey ? 'Linked' : 'Missing'}
+                            </div>
                         </div>
-                        <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${settings.apiKey ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                            {settings.apiKey ? 'Authenticated' : 'Missing Key'}
-                        </div>
-                    </div>
-
-                    {/* Input & Test */}
-                    <div className="flex gap-2">
-                        <input
-                            type="password"
-                            className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
-                            placeholder="Enter Gemini API Key..."
-                            value={tempKey}
-                            onChange={(e) => setTempKey(e.target.value)}
-                        />
-                        <button
-                            onClick={handleUpdateKey}
-                            disabled={!tempKey}
-                            className="px-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 disabled:opacity-30 transition-all"
-                        >
-                            Update
-                        </button>
-                    </div>
-
-                    {settings.apiKey && (
-                        <button
-                            onClick={handleTestConnection}
-                            disabled={status === 'testing'}
-                            className="w-full py-2.5 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center gap-2 group"
-                        >
-                            <StatusIcon />
-                            <span className="text-[10px] font-bold text-primary group-hover:tracking-widest transition-all">
-                                {status === 'testing' ? 'Handshaking...' : 'Test Connection'}
-                            </span>
-                        </button>
-                    )}
-
-                    {/* Tier Selector */}
-                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/5">
-                        {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
+                        <div className="flex gap-2">
+                            <input
+                                type="password"
+                                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
+                                placeholder="Enter Gemini API Key..."
+                                value={tempKey}
+                                onChange={(e) => setTempKey(e.target.value)}
+                            />
                             <button
-                                key={tier}
-                                onClick={() => updateSettings({ modelTier: tier })}
-                                className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${settings.modelTier === tier
-                                    ? 'bg-secondary/10 border-secondary text-secondary'
-                                    : 'bg-transparent border-transparent hover:bg-white/5 text-text-muted'
-                                    }`}
+                                onClick={handleUpdateKey}
+                                disabled={!tempKey}
+                                className="px-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 disabled:opacity-30 transition-all"
                             >
-                                {tier === 'AUTO' && <Sparkles size={14} />}
-                                {tier === 'LITE' && <Zap size={14} />}
-                                {tier === 'SMART' && <BrainCircuit size={14} />}
-                                <span className="text-[9px] font-bold uppercase">{tier}</span>
+                                Save
                             </button>
-                        ))}
+                        </div>
+                        {settings.apiKey && (
+                            <button
+                                onClick={handleTestConnection}
+                                disabled={status === 'testing'}
+                                className="w-full py-2.5 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center gap-2 group"
+                            >
+                                <StatusIcon />
+                                <span className="text-[10px] font-bold text-primary group-hover:tracking-widest transition-all">
+                                    {status === 'testing' ? 'Handshaking...' : 'Test Connection'}
+                                </span>
+                            </button>
+                        )}
+                        {/* Tier Selector */}
+                        <div className="grid grid-cols-3 gap-2 pt-2">
+                            {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
+                                <button
+                                    key={tier}
+                                    onClick={() => updateSettings({ modelTier: tier })}
+                                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${settings.modelTier === tier
+                                        ? 'bg-secondary/10 border-secondary text-secondary'
+                                        : 'bg-transparent border-transparent hover:bg-white/5 text-text-muted'
+                                        }`}
+                                >
+                                    {tier === 'AUTO' && <Sparkles size={14} />}
+                                    {tier === 'LITE' && <Zap size={14} />}
+                                    {tier === 'SMART' && <BrainCircuit size={14} />}
+                                    <span className="text-[9px] font-bold uppercase">{tier}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    {/* Supabase Configuration */}
+                    <SupabaseConfigSection settings={settings} updateSettings={updateSettings} />
                 </div>
             </Card>
 

@@ -16,19 +16,24 @@ export const SettingsStorage = {
      */
     saveSettings: async (settings: VibeSettings): Promise<void> => {
         try {
-            // 1. Divert Secret to Secure Vault
-            // Only update if key is present/changed.
-            if (settings.apiKey) {
-                // If session is active, save it.
-                // If session is NOT active, this will THROW.
-                // The UI (SecurityGate) guarantees session is active before we get here?
-                // OR SettingsPage handles the error.
-                if (CryptoService.isSessionActive()) {
-                    await CryptoService.saveAPIKey(settings.apiKey);
-                } else {
-                    console.warn("Skipping API Key save: Session Locked.");
-                    // We knowingly skip saving the key if locked to prevent errors,
-                    // but ideally, this shouldn't happen if Gate is working.
+            // 1. Divert Secrets to Secure Vault
+            // Only update if we have an active session to decrypt/encrypt.
+            if (CryptoService.isSessionActive()) {
+                // Fetch current state to avoid overwriting missing keys with null
+                const currentVault = await CryptoService.loadSecrets() || {};
+
+                const nextVault = {
+                    apiKey: settings.apiKey || currentVault.apiKey,
+                    supabase: settings.supabase || currentVault.supabase
+                };
+
+                // Only save if we have something valid to save
+                if (nextVault.apiKey || nextVault.supabase) {
+                    await CryptoService.saveSecrets(nextVault);
+                }
+            } else {
+                if (settings.apiKey || settings.supabase) {
+                    console.warn("Skipping Secrets Save: Session Locked.");
                 }
             }
 
@@ -37,7 +42,7 @@ export const SettingsStorage = {
                 modelTier: settings.modelTier,
                 standards: settings.standards,
                 governance: settings.governance
-                // apiKey is deliberately OMITTED from plaintext storage
+                // Secrets are deliberately OMITTED from plaintext storage
             };
 
             await storage.setItem('VIBE_PREFERENCES', JSON.stringify(preferences));
@@ -66,11 +71,11 @@ export const SettingsStorage = {
                 }
             }
 
-            // 2. Fetch Secret (If Unlocked)
-            let loadedApiKey: string | null = null;
+            // 2. Fetch Secrets (If Unlocked)
+            let loadedSecrets: { apiKey?: string | null; supabase?: { url: string; anonKey: string } | null } | null = null;
             if (CryptoService.isSessionActive()) {
                 try {
-                    loadedApiKey = await CryptoService.loadAPIKey();
+                    loadedSecrets = await CryptoService.loadSecrets();
                 } catch (e) {
                     console.warn("Vault Access Failed during Settings Load:", e);
                 }
@@ -80,7 +85,8 @@ export const SettingsStorage = {
             return {
                 ...DEFAULT_SETTINGS,
                 ...loadedPreferences,
-                apiKey: loadedApiKey,
+                apiKey: loadedSecrets?.apiKey ?? null,
+                supabase: loadedSecrets?.supabase ?? null,
                 // Deep merge standards/governance to ensure no missing keys
                 standards: { ...DEFAULT_SETTINGS.standards, ...loadedPreferences.standards },
                 governance: { ...DEFAULT_SETTINGS.governance, ...loadedPreferences.governance }

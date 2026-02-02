@@ -29,10 +29,21 @@ export class FigmaVariableRepository implements IVariableRepository {
             const allVariables = await figma.variables.getLocalVariablesAsync();
             const collections = await figma.variables.getLocalVariableCollectionsAsync();
 
-            // Create lookup map for collections
+            // ⚡ OPTIMIZATION: Create Lookup Maps (O(1) access)
             const collectionMap = new Map(collections.map(c => [c.id, c]));
+            const variableMap = new Map(allVariables.map(v => [v.id, v]));
+
+            // ⚡ PERFORMANCE: Time Slicing Config
+            const CHUNK_SIZE = 50;
+            let processedCount = 0;
 
             for (const variable of allVariables) {
+                // Yield to main thread every CHUNK_SIZE iterations to prevent UI freeze
+                if (processedCount % CHUNK_SIZE === 0 && processedCount > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+                processedCount++;
+
                 const collection = collectionMap.get(variable.variableCollectionId);
                 if (!collection) continue;
 
@@ -58,7 +69,9 @@ export class FigmaVariableRepository implements IVariableRepository {
                 const resolveValue = (val: VariableValue | VariableAlias): string | number => {
                     if (val && typeof val === 'object' && 'type' in val && val.type === 'VARIABLE_ALIAS') {
                         dependencies.push(val.id);
-                        const target = allVariables.find(v => v.id === val.id);
+                        // ⚡ OPTIMIZED: Use Map Lookup instead of array.find
+                        const target = variableMap.get(val.id);
+
                         if (target) {
                             const targetCollection = collectionMap.get(target.variableCollectionId);
                             const targetModeId = targetCollection?.defaultModeId || (targetCollection?.modes[0]?.modeId);

@@ -28,6 +28,7 @@ root.syncEngine.setCallback(async () => {
         console.log(`[Controller] Synced ${tokens.length} tokens.`);
     } catch (e) {
         console.error('[Controller] Sync Failed:', e);
+        figma.notify("Sync Failed", { error: true });
     }
 });
 
@@ -69,6 +70,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
     } catch (error: unknown) {
         console.error('[Vibe] Controller Error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown Controller Error';
+        figma.notify(errorMessage, { error: true });
         figma.ui.postMessage({ type: 'ERROR', message: errorMessage });
     }
 };
@@ -100,5 +102,6 @@ async function performFullSync() {
 
     } catch (e) {
         console.error('[Controller] Manual Sync Failed:', e);
+        figma.notify("❌ Sync Failed: " + (e instanceof Error ? e.message : String(e)), { error: true });
     }
 }

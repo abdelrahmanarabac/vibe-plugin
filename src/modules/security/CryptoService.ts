@@ -98,16 +98,16 @@ export const CryptoService = {
     },
 
     /**
-     * Stores an API Key encrypted with the current session key.
+     * Stores the Secret Vault (JSON) encrypted with the current session key.
      */
-    async saveAPIKey(apiKey: string): Promise<void> {
-        // Validation: Defense in Depth
-        this.validateKeyFormat(apiKey);
-
+    async saveSecrets(secrets: { apiKey?: string | null; supabase?: { url: string; anonKey: string } | null }): Promise<void> {
         if (!sessionMasterKey) {
             throw new Error("Security Violation: Session not initialized. User must unlock vault.");
         }
         resetSessionTimer();
+
+        // Serialize vault
+        const payload = JSON.stringify(secrets);
 
         const crypto = window.crypto;
         const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
@@ -116,7 +116,7 @@ export const CryptoService = {
         const ciphertext = await crypto.subtle.encrypt(
             { name: ALGORITHM, iv },
             sessionMasterKey,
-            enc.encode(apiKey)
+            enc.encode(payload)
         );
 
         // Packet: IV (12) + Ciphertext
@@ -128,11 +128,11 @@ export const CryptoService = {
     },
 
     /**
-     * Loads the API Key.
+     * Loads the Secret Vault.
+     * Handles backward compatibility for legacy string-only vaults.
      */
-    async loadAPIKey(): Promise<string | null> {
+    async loadSecrets(): Promise<{ apiKey?: string | null; supabase?: { url: string; anonKey: string } | null } | null> {
         if (!sessionMasterKey) {
-            // If no session, we cannot decrypt. Return null (acting as "not logged in").
             return null;
         }
         resetSessionTimer();
@@ -151,7 +151,20 @@ export const CryptoService = {
                 ciphertext
             );
 
-            return new TextDecoder().decode(decrypted);
+            const plaintext = new TextDecoder().decode(decrypted);
+
+            // Attempt JSON Parse (New Vault Format)
+            try {
+                const vault = JSON.parse(plaintext);
+                // Basic structural check
+                if (typeof vault === 'object' && vault !== null) {
+                    return vault;
+                }
+                throw new Error("Invalid Vault Structure");
+            } catch {
+                // Legacy Fallback: Plaintext was just the API Key
+                return { apiKey: plaintext, supabase: null };
+            }
 
         } catch (e) {
             console.error("🔓 Decryption failure. Password might be wrong or data corrupted.");

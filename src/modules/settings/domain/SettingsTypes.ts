@@ -17,6 +17,10 @@ export interface TokenStandards {
 export interface VibeSettings {
     // Engine
     apiKey: string | null;
+    supabase?: {
+        url: string;
+        anonKey: string;
+    } | null;
     modelTier: ModelTier;
 
     // Standards
@@ -28,6 +32,7 @@ export interface VibeSettings {
 
 export const DEFAULT_SETTINGS: VibeSettings = {
     apiKey: null,
+    supabase: null,
     modelTier: 'AUTO',
     standards: {
         namingConvention: 'kebab-case',
