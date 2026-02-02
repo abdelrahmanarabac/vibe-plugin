@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 
 import { AIModelError, AIModelOverloadedError } from '../../shared/errors/AppErrors';
 
-export abstract class BaseAIService {
+export class AIService {
     protected model: GenerativeModel;
     protected modelName: string;
 
@@ -64,5 +64,8 @@ export abstract class BaseAIService {
         return e.status === 429 || e.status === 503 || e.message?.includes('overloaded');
     }
 
-    abstract generate(prompt: string): Promise<string>;
+    // Concrete implementation
+    async generate(prompt: string): Promise<string> {
+        return this.generateWithRetry(prompt);
+    }
 }

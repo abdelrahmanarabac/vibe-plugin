@@ -41,12 +41,12 @@ export function SettingsPage({ apiKey, onSave }: SettingsPageProps) {
         try {
             // Use the purified AI Module instead of legacy infra
             if (modelTier === 'SMART') {
-                const { Flash3Service } = await import('../../../ai/Flash3Service');
-                const ai = new Flash3Service(apiKey);
+                const { AIService } = await import('../../../ai/BaseAIService');
+                const ai = new AIService(apiKey, 'gemini-2.0-flash'); // Using 2.0 Flash as Smart/Standard for now, or update if 3 exists
                 await ai.generate('Respond with OK');
             } else {
-                const { FlashLiteService } = await import('../../../ai/FlashLiteService');
-                const ai = new FlashLiteService(apiKey);
+                const { AIService } = await import('../../../ai/BaseAIService');
+                const ai = new AIService(apiKey, 'gemini-2.0-flash-lite');
                 await ai.generate('Respond with OK');
             }
 

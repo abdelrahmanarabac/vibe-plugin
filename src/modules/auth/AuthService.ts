@@ -43,32 +43,8 @@ export class AuthService {
 
         return count === 0;
     }
-
-    /**
-     * retrieves the Figma User ID from the controller via postMessage bridge.
-     */
-    static async getFigmaUserId(): Promise<string | null> {
-        return new Promise((resolve) => {
-            const handler = (event: MessageEvent) => {
-                const msg = event.data.pluginMessage;
-                if (msg?.type === 'FIGMA_ID_RESPONSE') {
-                    window.removeEventListener('message', handler);
-                    resolve(msg.payload.id);
-                }
-            };
-            window.addEventListener('message', handler);
-            parent.postMessage({ pluginMessage: { type: 'REQUEST_FIGMA_ID' } }, '*');
-
-            setTimeout(() => {
-                window.removeEventListener('message', handler);
-                resolve(null);
-            }, 3000);
-        });
-    }
-
     /**
      * Signs up a new user with email, password, and a unique username.
-     * Enforces Anti-Farming strategy by binding to a unique Figma User ID.
      */
     static async signUp(email: string, password: string, username: string): Promise<AuthResult> {
         const supabase = VibeSupabase.get();
@@ -85,30 +61,13 @@ export class AuthService {
                 };
             }
 
-            // 2. Anti-Farming: Verify Figma Account is not already linked
-            const figmaUserId = await this.getFigmaUserId();
-            if (!figmaUserId) {
-                throw new Error("Security Check Failed: Unable to verify Figma Identity.");
-            }
-
-            const { data: existingProfile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('figma_user_id', figmaUserId)
-                .maybeSingle();
-
-            if (existingProfile) {
-                throw new Error("Anti-Farming Alert: This Figma account is already linked to another Vibe user. Multi-accounting is restricted.");
-            }
-
-            // 3. Create Auth User & Bind Figma ID in metadata for the DB Trigger
+            // 2. Create Auth User with username in metadata for the DB Trigger
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
-                        username: username,
-                        figma_user_id: figmaUserId
+                        username: username
                     },
                 },
             });
@@ -140,6 +99,38 @@ export class AuthService {
         if (!supabase) return { error: null };
 
         const { error } = await supabase.auth.signOut();
+        return { error };
+    }
+
+    /**
+     * Sends a password reset email to the user.
+     * @param email The user's email address.
+     */
+    static async sendResetPasswordEmail(email: string): Promise<{ error: Error | null }> {
+        const supabase = VibeSupabase.get();
+        if (!supabase) return { error: new Error("Supabase disconnected") };
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            // This URL must handle the token and allow the user to input a new password.
+            redirectTo: 'https://vibe-plugin-web.vercel.app/reset-password',
+        });
+
+        return { error };
+    }
+
+    /**
+     * Updates the user's password.
+     * This requires an active session (e.g., after the user has clicked the link and logged in, or if logged in via OTP).
+     * @param newPassword The new password.
+     */
+    static async updatePassword(newPassword: string): Promise<{ error: Error | null }> {
+        const supabase = VibeSupabase.get();
+        if (!supabase) return { error: new Error("Supabase disconnected") };
+
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+
         return { error };
     }
 }

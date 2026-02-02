@@ -17,10 +17,20 @@ import { SystemMessageBar } from './ui/components/system/SystemMessageBar';
 import { AuthGate } from './modules/auth/ui/AuthGate';
 
 export default function App() {
+    const [ready, setReady] = useState(false);
+
     // ⚡ Initialize Supabase Connection
     useEffect(() => {
-        VibeSupabase.connect();
+        const init = async () => {
+            await VibeSupabase.connect();
+            setReady(true);
+        };
+        init();
     }, []);
+
+    if (!ready) return null; // Or a splash screen, but AuthGate has one. 
+    // Actually AuthGate has a loading state, but it fails if Supabase isn't ready.
+    // So we block here.
 
     return (
         <SystemProvider>

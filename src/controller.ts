@@ -57,26 +57,24 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             session: { timestamp: Date.now() }
         };
 
-        // Dispatch
-        await dispatcher.dispatch(msg, context);
-
-        // Storage Bridge Handlers
+        // 1. Initial System Check: Storage Bridge Handlers
+        // These are low-level system messages that shouldn't go through the domain dispatcher.
         if (msg.type === 'STORAGE_GET') {
             const value = await figma.clientStorage.getAsync(msg.key);
             figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value });
+            return; // Handled
         }
         else if (msg.type === 'STORAGE_SET') {
             await figma.clientStorage.setAsync(msg.key, msg.value);
+            return; // Handled
         }
         else if (msg.type === 'STORAGE_REMOVE') {
             await figma.clientStorage.deleteAsync(msg.key);
+            return; // Handled
         }
-        else if (msg.type === 'REQUEST_FIGMA_ID') {
-            figma.ui.postMessage({
-                type: 'FIGMA_ID_RESPONSE',
-                payload: { id: figma.currentUser?.id || null }
-            });
-        }
+
+        // 2. Dispatch Domain Logic
+        await dispatcher.dispatch(msg, context);
 
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
         if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
