@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { FigmaStorageAdapter } from './FigmaStorageAdapter';
 
 export class VibeSupabase {
     private static instance: SupabaseClient | null = null;
@@ -16,6 +17,7 @@ export class VibeSupabase {
                     persistSession: true,
                     autoRefreshToken: true,
                     detectSessionInUrl: false,
+                    storage: new FigmaStorageAdapter(),
                 },
             });
             this.currentConfig = { url, key };

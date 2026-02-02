@@ -60,6 +60,18 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // Dispatch
         await dispatcher.dispatch(msg, context);
 
+        // Storage Bridge Handlers
+        if (msg.type === 'STORAGE_GET') {
+            const value = await figma.clientStorage.getAsync(msg.key);
+            figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value });
+        }
+        else if (msg.type === 'STORAGE_SET') {
+            await figma.clientStorage.setAsync(msg.key, msg.value);
+        }
+        else if (msg.type === 'STORAGE_REMOVE') {
+            await figma.clientStorage.deleteAsync(msg.key);
+        }
+
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
         if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
             // Re-trigger global sync to ensure Graph is up to date:

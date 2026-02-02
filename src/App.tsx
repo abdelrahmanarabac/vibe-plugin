@@ -13,20 +13,21 @@ import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
 import { SystemProvider } from './ui/contexts/SystemContext';
 import { SystemMessageBar } from './ui/components/system/SystemMessageBar';
 
-import { SecurityGate } from './modules/security/ui/SecurityGate';
+import { AuthGate } from './modules/auth/ui/AuthGate';
 
 export default function App() {
     return (
         <SystemProvider>
-            <SecurityGate>
+            <AuthGate>
                 <VibeAppContent />
-            </SecurityGate>
+            </AuthGate>
         </SystemProvider>
     );
 }
 
 function VibeAppContent() {
     const vm = useVibeApp();
+    const [activeTab, setActiveTab] = useState<import('./ui/layouts/MainLayout').ViewType>('dashboard');
     const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
 
     // Fake credits for demo (Matches Dashboard)

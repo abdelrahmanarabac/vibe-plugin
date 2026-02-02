@@ -1,52 +1,22 @@
-import { encryptAPIKey, decryptAPIKey } from './CryptoService';
+import { CryptoService } from './CryptoService';
 
 export const SettingsService = {
     saveApiKey: async (key: string) => {
         try {
-            const encrypted = await encryptAPIKey(key);
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'STORAGE_SET',
-                    key: 'GEMINI_API_KEY',
-                    value: encrypted
-                }
-            }, '*');
+            await CryptoService.saveSecrets({ apiKey: key });
         } catch (error) {
             console.error("Encryption Failed:", error);
             throw new Error("Failed to secure API Key.");
         }
     },
 
-    loadApiKey: (): Promise<string> => {
-        return new Promise((resolve) => {
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'STORAGE_GET',
-                    key: 'GEMINI_API_KEY'
-                }
-            }, '*');
-
-            const listener = (event: MessageEvent) => {
-                const msg = event.data.pluginMessage;
-                if ((msg?.type === 'STORAGE_GET_RESPONSE' || msg?.type === 'STORAGE_GET_SUCCESS') && (msg.key === 'GEMINI_API_KEY' || msg.payload?.key === 'GEMINI_API_KEY')) {
-                    window.removeEventListener('message', listener);
-
-                    const value = msg.value || msg.payload?.value;
-
-                    if (!value) {
-                        resolve("");
-                        return;
-                    }
-
-                    decryptAPIKey(value)
-                        .then(decrypted => resolve(decrypted))
-                        .catch(err => {
-                            console.warn("Key Decryption Failed (Device mismatch or legacy key):", err);
-                            resolve(""); // Treat as logged out if decryption fails
-                        });
-                }
-            };
-            window.addEventListener('message', listener);
-        });
+    loadApiKey: async (): Promise<string> => {
+        try {
+            const secrets = await CryptoService.loadSecrets();
+            return secrets?.apiKey || "";
+        } catch (error) {
+            console.warn("SettingsService: Failed to load secrets", error);
+            return "";
+        }
     }
 };

@@ -47,7 +47,7 @@ export function SecurityGate({ children }: SecurityGateProps) {
         try {
             await CryptoService.initializeSession(password);
             // Verify by trying to load (will throw if password wrong)
-            await CryptoService.loadAPIKey();
+            await CryptoService.loadSecrets();
             // Note: If vault exists but is empty, loadAPIKey returns null but throws if decrypt fails.
             // If decrypt fails -> Wrong password.
 

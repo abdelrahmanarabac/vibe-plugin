@@ -5,7 +5,7 @@
  * Implements strict memory hygiene and binary-safe encoding.
  */
 
-import { storage } from './StorageProxy';
+import { storage } from '../../infrastructure/figma/StorageProxy';
 import { SafeBinary } from './SafeBinary';
 
 const ALGORITHM = 'AES-GCM';

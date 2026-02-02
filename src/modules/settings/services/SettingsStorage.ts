@@ -1,7 +1,7 @@
 import { CryptoService } from '../../security/CryptoService';
 import type { VibeSettings } from '../domain/SettingsTypes';
 import { DEFAULT_SETTINGS } from '../domain/SettingsTypes';
-import { storage } from '../../security/StorageProxy';
+import { storage } from '../../../infrastructure/figma/StorageProxy';
 
 /**
  * 💾 SettingsStorage
