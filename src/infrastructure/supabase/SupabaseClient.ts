@@ -1,9 +1,29 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { FigmaStorageAdapter } from './FigmaStorageAdapter';
+import { getSupabaseConfig } from './SupabaseConfig';
 
 export class VibeSupabase {
     private static instance: SupabaseClient | null = null;
     private static currentConfig: { url: string; key: string } | null = null;
+
+    /**
+     * Bootstraps the Supabase connection using the secured configuration.
+     * This should be called at app startup.
+     */
+    static async connect() {
+        try {
+            const config = await getSupabaseConfig();
+
+            // Simple validation to ensure we have a real key (not the short placeholder)
+            if (config.supabaseKey.length < 20) {
+                console.warn("⚠️ VibeSupabase: Key looks suspicious. Did you encrypt it?");
+            }
+
+            this.initialize(config.supabaseUrl, config.supabaseKey);
+        } catch (error) {
+            console.error("❌ VibeSupabase: Connection Sequence Failed", error);
+        }
+    }
 
     static initialize(url: string, key: string) {
         // Idempotency check to prevent unnecessary re-creation

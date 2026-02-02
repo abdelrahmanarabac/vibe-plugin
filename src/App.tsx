@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { VibeSupabase } from './infrastructure/supabase/SupabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useVibeApp } from './ui/hooks/useVibeApp';
@@ -16,6 +17,11 @@ import { SystemMessageBar } from './ui/components/system/SystemMessageBar';
 import { AuthGate } from './modules/auth/ui/AuthGate';
 
 export default function App() {
+    // ⚡ Initialize Supabase Connection
+    useEffect(() => {
+        VibeSupabase.connect();
+    }, []);
+
     return (
         <SystemProvider>
             <AuthGate>
