@@ -71,6 +71,12 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         else if (msg.type === 'STORAGE_REMOVE') {
             await figma.clientStorage.deleteAsync(msg.key);
         }
+        else if (msg.type === 'REQUEST_FIGMA_ID') {
+            figma.ui.postMessage({
+                type: 'FIGMA_ID_RESPONSE',
+                payload: { id: figma.currentUser?.id || null }
+            });
+        }
 
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
         if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {

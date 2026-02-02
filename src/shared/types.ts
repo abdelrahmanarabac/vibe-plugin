@@ -12,7 +12,7 @@ export type PluginAction =
     | { type: 'RENAME_COLLECTION_BY_ID'; payload: { collectionId: string } }
     | { type: 'PREVIEW_CLASSIFICATIONS' }
     | { type: 'NOTIFY'; message: string }
-
+    | { type: 'REQUEST_FIGMA_ID' }
     | { type: 'STORAGE_GET'; key: string }
     | { type: 'STORAGE_SET'; key: string; value: unknown }
     | { type: 'STORAGE_REMOVE'; key: string }
@@ -38,4 +38,5 @@ export type PluginEvent =
     | { type: 'STORAGE_GET_RESPONSE'; key: string; value: unknown }
     | { type: 'MEMORY_LOAD_RESPONSE'; key: string; data: unknown }
     | { type: 'ERROR'; message: string }
+    | { type: 'FIGMA_ID_RESPONSE'; payload: { id: string | null } }
     | { type: 'IMPACT_REPORT'; payload: unknown };

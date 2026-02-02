@@ -3,11 +3,11 @@
 // ⚠️ IMPORTANT: Replace this with the output from the encryption script
 const ENCRYPTED_KEY = "5a1f2b3c"; // <--- Put the long result here
 
-// 2. نفس كلمة السر اللي استخدمتها في التشفير
+// 2. The salt used for encryption
 const SALT = "VIBE_2026_SECURE";
 
-// 3. الخوارزمية العكسية (The De-scrambler)
-// الوظيفة دي بترجع المفتاح لأصله في الذاكرة بس
+// 3. The De-scrambler (Reverse Algorithm)
+// Restores the key to memory only when needed
 const decrypt = (salt: string, encoded: string): string => {
     const textToChars = (text: string) => text.split('').map(c => c.charCodeAt(0));
     const applySaltToChar = (code: number) => textToChars(salt).reduce((a, b) => a ^ b, code);

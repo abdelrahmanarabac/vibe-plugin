@@ -45,15 +45,37 @@ export class AuthService {
     }
 
     /**
+     * retrieves the Figma User ID from the controller via postMessage bridge.
+     */
+    static async getFigmaUserId(): Promise<string | null> {
+        return new Promise((resolve) => {
+            const handler = (event: MessageEvent) => {
+                const msg = event.data.pluginMessage;
+                if (msg?.type === 'FIGMA_ID_RESPONSE') {
+                    window.removeEventListener('message', handler);
+                    resolve(msg.payload.id);
+                }
+            };
+            window.addEventListener('message', handler);
+            parent.postMessage({ pluginMessage: { type: 'REQUEST_FIGMA_ID' } }, '*');
+
+            setTimeout(() => {
+                window.removeEventListener('message', handler);
+                resolve(null);
+            }, 3000);
+        });
+    }
+
+    /**
      * Signs up a new user with email, password, and a unique username.
-     * Enforces username uniqueness before attempting auth creation.
+     * Enforces Anti-Farming strategy by binding to a unique Figma User ID.
      */
     static async signUp(email: string, password: string, username: string): Promise<AuthResult> {
         const supabase = VibeSupabase.get();
         if (!supabase) return { user: null, session: null, error: new Error("Supabase disconnected") };
 
         try {
-            // 1. Pre-flight Unique Check
+            // 1. Check Username Availability
             const available = await this.isUsernameAvailable(username);
             if (!available) {
                 return {
@@ -63,14 +85,30 @@ export class AuthService {
                 };
             }
 
-            // 2. Create Auth User
-            // We pass username in metadata so the Trigger can pick it up
+            // 2. Anti-Farming: Verify Figma Account is not already linked
+            const figmaUserId = await this.getFigmaUserId();
+            if (!figmaUserId) {
+                throw new Error("Security Check Failed: Unable to verify Figma Identity.");
+            }
+
+            const { data: existingProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('figma_user_id', figmaUserId)
+                .maybeSingle();
+
+            if (existingProfile) {
+                throw new Error("Anti-Farming Alert: This Figma account is already linked to another Vibe user. Multi-accounting is restricted.");
+            }
+
+            // 3. Create Auth User & Bind Figma ID in metadata for the DB Trigger
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
                     data: {
                         username: username,
+                        figma_user_id: figmaUserId
                     },
                 },
             });
@@ -80,6 +118,7 @@ export class AuthService {
             return { user: data.user, session: data.session, error: null };
 
         } catch (e: unknown) {
+            console.error("[AuthService] Signup flow interrupted:", e);
             return { user: null, session: null, error: e instanceof Error ? e : new Error(String(e)) };
         }
     }
