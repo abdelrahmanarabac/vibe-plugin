@@ -1,46 +1,19 @@
-export type NamingConvention = 'kebab-case' | 'camelCase' | 'snake_case' | 'PascalCase';
-export type ColorSpace = 'HSL' | 'RGB' | 'OKLCH' | 'HEX';
-export type OutputFormat = 'JSON' | 'CSS' | 'SCSS' | 'Swift' | 'Kotlin';
+/**
+ * @module SettingsTypes
+ * @description Type definitions for the Vibe Plugin Settings.
+ * @version 2.0.0 - Stripped down after redesign.
+ */
+
 export type ModelTier = 'AUTO' | 'LITE' | 'SMART';
 
-export interface GovernanceSettings {
-    accessibilityLevel: 'AA' | 'AAA';
-    semanticStrictness: number; // 0-100
-}
-
-export interface TokenStandards {
-    namingConvention: NamingConvention;
-    colorSpace: ColorSpace;
-    outputFormat: OutputFormat;
-}
-
 export interface VibeSettings {
-    // Engine
+    /** Gemini API Key for AI-powered features. Encrypted at rest. */
     apiKey: string | null;
-    supabase?: {
-        url: string;
-        anonKey: string;
-    } | null;
+    /** The AI model tier to use for generation. */
     modelTier: ModelTier;
-
-    // Standards
-    standards: TokenStandards;
-
-    // Governance
-    governance: GovernanceSettings;
 }
 
 export const DEFAULT_SETTINGS: VibeSettings = {
     apiKey: null,
-    supabase: null,
     modelTier: 'AUTO',
-    standards: {
-        namingConvention: 'kebab-case',
-        colorSpace: 'HSL',
-        outputFormat: 'CSS'
-    },
-    governance: {
-        accessibilityLevel: 'AA',
-        semanticStrictness: 80
-    }
 };

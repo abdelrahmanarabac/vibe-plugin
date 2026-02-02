@@ -1,3 +1,8 @@
+/**
+ * @module AuthService
+ * @description Authentication service for Vibe Plugin using Supabase.
+ * @version 2.1.0 - OTP-based password recovery flow.
+ */
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { VibeSupabase } from '../../infrastructure/supabase/SupabaseClient';
 
@@ -9,7 +14,7 @@ export interface AuthResult {
 
 export class AuthService {
     /**
-     * persistent session retrieval backed by FigmaStorageAdapter
+     * Persistent session retrieval backed by FigmaStorageAdapter.
      */
     static async getSession(): Promise<Session | null> {
         const supabase = VibeSupabase.get();
@@ -37,12 +42,12 @@ export class AuthService {
 
         if (error) {
             console.error("[Auth] Username check failed:", error);
-            // Fail open or closed? Closed for security.
             throw new Error("Could not validate username availability.");
         }
 
         return count === 0;
     }
+
     /**
      * Signs up a new user with email, password, and a unique username.
      */
@@ -102,25 +107,73 @@ export class AuthService {
         return { error };
     }
 
+    // ==========================================================================
+    // == OTP-BASED PASSWORD RECOVERY ==
+    // ==========================================================================
+
     /**
-     * Sends a password reset email to the user.
+     * Sends an OTP code to the user's email for password recovery.
+     * This replaces the redirect-based flow for a more secure in-plugin experience.
      * @param email The user's email address.
      */
-    static async sendResetPasswordEmail(email: string): Promise<{ error: Error | null }> {
+    static async sendRecoveryOtp(email: string): Promise<{ error: Error | null }> {
         const supabase = VibeSupabase.get();
         if (!supabase) return { error: new Error("Supabase disconnected") };
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            // This URL must handle the token and allow the user to input a new password.
-            redirectTo: 'https://vibe-plugin-web.vercel.app/reset-password',
-        });
+        try {
+            const { error } = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    // This tells Supabase to treat it as a recovery, not a login magic link.
+                    // The user will receive a 6-digit OTP code.
+                    shouldCreateUser: false, // Don't create user if they don't exist.
+                }
+            });
 
-        return { error };
+            if (error) {
+                console.error("[AuthService] OTP Send Failed:", error.message);
+                return { error };
+            }
+
+            return { error: null };
+        } catch (e) {
+            console.error("[AuthService] OTP Send Exception:", e);
+            return { error: e instanceof Error ? e : new Error(String(e)) };
+        }
+    }
+
+    /**
+     * Verifies the OTP code sent to the user's email.
+     * On success, a session is created and the user can update their password.
+     * @param email The user's email address.
+     * @param token The 6-digit OTP code.
+     */
+    static async verifyRecoveryOtp(email: string, token: string): Promise<AuthResult> {
+        const supabase = VibeSupabase.get();
+        if (!supabase) return { user: null, session: null, error: new Error("Supabase disconnected") };
+
+        try {
+            const { data, error } = await supabase.auth.verifyOtp({
+                email,
+                token,
+                type: 'email', // Use 'email' for OTP verification via email
+            });
+
+            if (error) {
+                console.error("[AuthService] OTP Verification Failed:", error.message);
+                return { user: null, session: null, error };
+            }
+
+            return { user: data.user, session: data.session, error: null };
+        } catch (e) {
+            console.error("[AuthService] OTP Verify Exception:", e);
+            return { user: null, session: null, error: e instanceof Error ? e : new Error(String(e)) };
+        }
     }
 
     /**
      * Updates the user's password.
-     * This requires an active session (e.g., after the user has clicked the link and logged in, or if logged in via OTP).
+     * Requires an active session (e.g., after OTP verification).
      * @param newPassword The new password.
      */
     static async updatePassword(newPassword: string): Promise<{ error: Error | null }> {

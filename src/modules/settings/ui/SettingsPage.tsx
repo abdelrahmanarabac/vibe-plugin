@@ -1,112 +1,148 @@
-import React, { useState } from 'react';
+/**
+ * @module SettingsPage
+ * @description Premium settings page for Vibe Plugin.
+ *
+ * Features:
+ * - Account Settings (view email, sign out)
+ * - AI Configuration (Gemini API Key, Model Tier)
+ * - Emergency Reset
+ */
+import React, { useState, useEffect } from 'react';
 import {
-    Settings as SettingsIcon, Key, Zap, CheckCircle, XCircle, Sparkles,
-    Trash2, FileCode, ShieldCheck, BrainCircuit, Database
+    Settings as SettingsIcon,
+    Key,
+    Zap,
+    CheckCircle,
+    XCircle,
+    Sparkles,
+    Trash2,
+    BrainCircuit,
+    User,
+    LogOut,
+    Mail
 } from 'lucide-react';
 import { useSettings } from '../hooks/useSettings';
-import type { NamingConvention, ColorSpace, OutputFormat, VibeSettings } from '../domain/SettingsTypes';
+import type { VibeSettings } from '../domain/SettingsTypes';
 import { GeminiService } from '../../../infrastructure/api/GeminiService';
+import { AuthService } from '../../auth/AuthService';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-// --- UI Components (Locally Scoped) ---
+// ==============================================================================
+// == DESIGN SYSTEM COMPONENTS ==
+// ==============================================================================
 
-const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: React.ComponentType<{ size?: number; className?: string }>, title: string, subtitle: string }) => (
-    <div className="flex items-center gap-3 mb-4">
-        <Icon size={18} className="text-secondary" />
+interface SectionHeaderProps {
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    title: string;
+    subtitle: string;
+}
+
+const SectionHeader: React.FC<SectionHeaderProps> = ({ icon: Icon, title, subtitle }) => (
+    <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center border border-white/5 group-hover:border-primary/30 transition-colors">
+            <Icon size={16} className="text-primary" />
+        </div>
         <div>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
-            <p className="text-[10px] text-text-muted font-mono">{subtitle}</p>
+            <h3 className="text-[11px] font-black text-white uppercase tracking-widest">{title}</h3>
+            <p className="text-[9px] text-text-muted font-mono opacity-70">{subtitle}</p>
         </div>
     </div>
 );
 
-const Card = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-    <section className={`bg-white/[0.02] border border-white/10 p-5 rounded-[24px] backdrop-blur-sm ${className}`}>
+interface CardProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+const Card: React.FC<CardProps> = ({ children, className = '' }) => (
+    <section
+        className={`
+            bg-gradient-to-b from-white/[0.03] to-transparent
+            border border-white/[0.07]
+            p-6 rounded-3xl
+            backdrop-blur-xl
+            hover:border-white/[0.12] transition-all duration-300
+            group
+            ${className}
+        `}
+    >
         {children}
     </section>
 );
 
-const Chip = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all border ${active
-            ? 'bg-primary/20 border-primary text-primary shadow-[0_0_10px_rgba(0,240,255,0.2)]'
-            : 'bg-white/5 border-white/5 text-text-muted hover:bg-white/10 hover:border-white/20'
-            }`}
-    >
-        {label}
-    </button>
-);
+// ==============================================================================
+// == ACCOUNT SECTION ==
+// ==============================================================================
 
-// --- Page Component ---
+interface AccountSectionProps {
+    user: SupabaseUser | null;
+    onSignOut: () => void;
+    isSigningOut: boolean;
+}
 
-const SupabaseConfigSection = ({ settings, updateSettings }: { settings: VibeSettings, updateSettings: (partial: Partial<VibeSettings>) => Promise<void> }) => {
-    const [url, setUrl] = useState('');
-    const [key, setKey] = useState('');
-
-    const isConfigured = !!settings.supabase;
-
-    const handleSave = () => {
-        if (!url || !key) return;
-        updateSettings({ supabase: { url: url.trim(), anonKey: key.trim() } });
-        setUrl('');
-        setKey('');
-        parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '🗄️ Database Linked' } }, '*');
-    };
+const AccountSection: React.FC<AccountSectionProps> = ({ user, onSignOut, isSigningOut }) => {
+    if (!user) {
+        return (
+            <Card>
+                <SectionHeader icon={User} title="Account" subtitle="Not Authenticated" />
+                <p className="text-xs text-text-muted">
+                    Session not found. Please re-open the plugin.
+                </p>
+            </Card>
+        );
+    }
 
     return (
-        <div className="space-y-2 pt-4 border-t border-white/5">
-            <label className="text-[10px] text-text-muted/80 uppercase font-bold flex items-center gap-2">
-                <Database size={10} className="text-secondary" />
-                Supabase Connection (Color Naming)
-            </label>
+        <Card>
+            <SectionHeader icon={User} title="Your Account" subtitle="Identity & Session" />
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5">
+            {/* User Info Display */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 mb-4">
                 <div className="flex items-center gap-3">
-                    <Database size={14} className="text-primary/70" />
-                    <span className="text-[10px] font-mono text-text-muted">
-                        {isConfigured ? `${settings.supabase?.url.slice(8, 20)}...` : 'NOT LINKED'}
-                    </span>
-                </div>
-                <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${isConfigured ? 'bg-success/10 text-success' : 'bg-white/5 text-text-muted'}`}>
-                    {isConfigured ? 'Active' : 'Missing'}
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <input
-                    type="text"
-                    className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
-                    placeholder="Project URL (https://...supabase.co)"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                />
-                <div className="flex gap-2">
-                    <input
-                        type="password"
-                        className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
-                        placeholder="Anon Public Key"
-                        value={key}
-                        onChange={(e) => setKey(e.target.value)}
-                    />
-                    <button
-                        onClick={handleSave}
-                        disabled={!url || !key}
-                        className="px-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 disabled:opacity-30 transition-all"
-                    >
-                        Save
-                    </button>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/40 to-secondary/40 flex items-center justify-center text-white font-black text-sm border border-white/10">
+                        {user.email?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div>
+                        <div className="text-xs font-semibold text-white break-all">{user.email}</div>
+                        <div className="text-[9px] text-text-muted flex items-center gap-1">
+                            <Mail size={9} className="opacity-50" />
+                            Verified Account
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <p className="text-[9px] text-text-muted italic opacity-60">
-                Required for AI Color Naming. Your keys are encrypted locally.
-            </p>
-        </div>
+            {/* Sign Out Button */}
+            <button
+                onClick={onSignOut}
+                disabled={isSigningOut}
+                className="
+                    w-full flex items-center justify-center gap-2.5
+                    p-3 rounded-xl border border-warning/20 bg-warning/5
+                    hover:bg-warning/10 hover:border-warning/40
+                    text-warning transition-all duration-200
+                    disabled:opacity-30 disabled:cursor-not-allowed
+                "
+            >
+                <LogOut size={14} className={isSigningOut ? 'animate-pulse' : ''} />
+                <span className="text-[10px] font-bold uppercase tracking-wider">
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+                </span>
+            </button>
+        </Card>
     );
 };
 
-export function SettingsPage() {
-    const { settings, updateSettings, updateStandard, updateGovernance, wipeMemory } = useSettings();
+// ==============================================================================
+// == AI CONFIGURATION SECTION ==
+// ==============================================================================
+
+interface AIConfigSectionProps {
+    settings: VibeSettings;
+    updateSettings: (partial: Partial<VibeSettings>) => Promise<void>;
+}
+
+const AIConfigSection: React.FC<AIConfigSectionProps> = ({ settings, updateSettings }) => {
     const [status, setStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
     const [tempKey, setTempKey] = useState('');
 
@@ -119,19 +155,15 @@ export function SettingsPage() {
     };
 
     const handleTestConnection = async () => {
-        // Use the key from settings (which might be null if not loaded yet, but UI disables button if so?)
-        // Actually, settings.apiKey is the decrypted key if session is active.
         if (!settings.apiKey) return;
 
         setStatus('testing');
         try {
-            // Use the hardened GeminiService directly
             const ai = new GeminiService(settings.apiKey);
-            // Simple ping prompt
             await ai.generate('Ping. Reply with Pong only.', { tier: 'LITE' });
             setStatus('success');
         } catch (e) {
-            console.error("Connection Test Failed:", e);
+            console.error("[SettingsPage] Connection Test Failed:", e);
             setStatus('error');
         }
     };
@@ -146,223 +178,210 @@ export function SettingsPage() {
     };
 
     return (
-        <div className="p-6 max-w-2xl mx-auto space-y-8 pb-20 fade-in">
+        <Card>
+            <SectionHeader icon={BrainCircuit} title="AI Engine" subtitle="Gemini Configuration" />
+
+            <div className="space-y-4">
+                {/* Current Key Status */}
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/30 border border-white/5">
+                    <div className="flex items-center gap-3">
+                        <Key size={14} className="text-primary/70" />
+                        <span className="text-[10px] font-mono text-text-muted tracking-wider">
+                            {settings.apiKey ? `••••••••${settings.apiKey.slice(-5)}` : 'NOT CONFIGURED'}
+                        </span>
+                    </div>
+                    <div
+                        className={`
+                            px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-wider
+                            ${settings.apiKey ? 'bg-success/10 text-success border border-success/20' : 'bg-white/5 text-text-muted border border-white/5'}
+                        `}
+                    >
+                        {settings.apiKey ? 'Linked' : 'Missing'}
+                    </div>
+                </div>
+
+                {/* API Key Input */}
+                <div className="flex gap-2">
+                    <input
+                        type="password"
+                        className="
+                            flex-1 bg-white/[0.02] border border-white/10 rounded-xl px-4 py-2.5
+                            text-xs text-white placeholder-white/20
+                            focus:border-primary/50 focus:bg-white/[0.04] outline-none transition-all duration-200
+                        "
+                        placeholder="Enter Gemini API Key..."
+                        value={tempKey}
+                        onChange={(e) => setTempKey(e.target.value)}
+                    />
+                    <button
+                        onClick={handleUpdateKey}
+                        disabled={!tempKey}
+                        className="
+                            px-5 bg-primary/10 border border-primary/30 rounded-xl
+                            text-[10px] font-bold uppercase text-primary
+                            hover:bg-primary/20 disabled:opacity-30 transition-all duration-200
+                        "
+                    >
+                        Save
+                    </button>
+                </div>
+
+                {/* Connection Test Button */}
+                {settings.apiKey && (
+                    <button
+                        onClick={handleTestConnection}
+                        disabled={status === 'testing'}
+                        className="
+                            w-full py-2.5 rounded-xl bg-white/[0.03] border border-white/10
+                            hover:bg-white/[0.06] hover:border-white/15
+                            transition-all duration-200 flex items-center justify-center gap-2
+                        "
+                    >
+                        <StatusIcon />
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">
+                            {status === 'testing' ? 'Handshaking...' : 'Test Connection'}
+                        </span>
+                    </button>
+                )}
+
+                {/* Model Tier Selector */}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                    {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
+                        <button
+                            key={tier}
+                            onClick={() => updateSettings({ modelTier: tier })}
+                            className={`
+                                flex flex-col items-center gap-1.5 p-3.5 rounded-xl border transition-all duration-200
+                                ${settings.modelTier === tier
+                                    ? 'bg-secondary/10 border-secondary/50 text-secondary shadow-[0_0_20px_rgba(255,46,224,0.1)]'
+                                    : 'bg-transparent border-white/5 hover:bg-white/[0.03] hover:border-white/10 text-text-muted'
+                                }
+                            `}
+                        >
+                            {tier === 'AUTO' && <Sparkles size={15} />}
+                            {tier === 'LITE' && <Zap size={15} />}
+                            {tier === 'SMART' && <BrainCircuit size={15} />}
+                            <span className="text-[9px] font-black uppercase tracking-wider">{tier}</span>
+                        </button>
+                    ))}
+                </div>
+                <p className="text-[9px] text-text-muted/50 text-center font-mono">
+                    {settings.modelTier === 'AUTO' && 'System will intelligently select the best model.'}
+                    {settings.modelTier === 'LITE' && 'Faster responses, lower cost. Best for simple tasks.'}
+                    {settings.modelTier === 'SMART' && 'Maximum intelligence. Best for complex naming.'}
+                </p>
+            </div>
+        </Card>
+    );
+};
+
+// ==============================================================================
+// == MAIN SETTINGS PAGE ==
+// ==============================================================================
+
+export function SettingsPage() {
+    const { settings, updateSettings, wipeMemory, isLoading: settingsLoading } = useSettings();
+
+    const [user, setUser] = useState<SupabaseUser | null>(null);
+    const [isLoadingUser, setIsLoadingUser] = useState(true);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    // Fetch user on mount
+    useEffect(() => {
+        const fetchUser = async () => {
+            setIsLoadingUser(true);
+            try {
+                const session = await AuthService.getSession();
+                setUser(session?.user ?? null);
+            } catch (e) {
+                console.error("[SettingsPage] Failed to fetch user session:", e);
+            } finally {
+                setIsLoadingUser(false);
+            }
+        };
+        fetchUser();
+    }, []);
+
+    const handleSignOut = async () => {
+        setIsSigningOut(true);
+        try {
+            const { error } = await AuthService.signOut();
+            if (error) {
+                console.error("[SettingsPage] Sign Out Failed:", error);
+                parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '❌ Sign Out Failed' } }, '*');
+            } else {
+                parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '👋 Signed Out Successfully' } }, '*');
+                // Force reload to clear state and show login
+                window.location.reload();
+            }
+        } finally {
+            setIsSigningOut(false);
+        }
+    };
+
+    const isLoading = settingsLoading || isLoadingUser;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-full p-10">
+                <div className="animate-pulse text-primary text-xs font-mono tracking-widest">
+                    LOADING SETTINGS...
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-6 max-w-xl mx-auto space-y-6 pb-24 fade-in">
             {/* Header */}
-            <header className="flex items-center gap-4 mb-8">
-                <div className="w-10 h-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 border border-white/10 shadow-[0_0_30px_rgba(0,240,255,0.15)]">
-                    <SettingsIcon size={20} className="text-white" />
+            <header className="flex items-center gap-4 mb-6">
+                <div
+                    className="
+                        w-11 h-11 flex items-center justify-center
+                        rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20
+                        border border-white/10
+                        shadow-[0_0_40px_rgba(0,240,255,0.15),0_0_20px_rgba(255,46,224,0.1)]
+                    "
+                >
+                    <SettingsIcon size={22} className="text-white" />
                 </div>
                 <div>
                     <h1 className="text-2xl font-black text-white font-display uppercase tracking-tight">
                         Vibe <span className="text-primary">Config</span>
                     </h1>
-                    <p className="text-[10px] text-text-muted font-bold tracking-[0.2em] opacity-60">
-                        System Control Center
+                    <p className="text-[9px] text-text-muted font-bold tracking-[0.25em] opacity-60">
+                        SYSTEM CONTROL CENTER
                     </p>
                 </div>
             </header>
 
-            {/* 1. Connection Center */}
-            <Card>
-                <SectionHeader icon={BrainCircuit} title="Connection Center" subtitle="Third-Party Integrations" />
-
-                <div className="space-y-6">
-                    {/* Gemini Configuration */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] text-text-muted/80 uppercase font-bold flex items-center gap-2">
-                            <Sparkles size={10} className="text-secondary" />
-                            Google Gemini (Generative AI)
-                        </label>
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/5">
-                            <div className="flex items-center gap-3">
-                                <Key size={14} className="text-primary/70" />
-                                <span className="text-[10px] font-mono text-text-muted">
-                                    {settings.apiKey ? `••••••••${settings.apiKey.slice(-5)}` : 'NOT CONFIGURED'}
-                                </span>
-                            </div>
-                            <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${settings.apiKey ? 'bg-success/10 text-success' : 'bg-white/5 text-text-muted'}`}>
-                                {settings.apiKey ? 'Linked' : 'Missing'}
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <input
-                                type="password"
-                                className="flex-1 bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-xs text-white placeholder-white/20 focus:border-primary/50 outline-none transition-all"
-                                placeholder="Enter Gemini API Key..."
-                                value={tempKey}
-                                onChange={(e) => setTempKey(e.target.value)}
-                            />
-                            <button
-                                onClick={handleUpdateKey}
-                                disabled={!tempKey}
-                                className="px-4 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase hover:bg-white/10 disabled:opacity-30 transition-all"
-                            >
-                                Save
-                            </button>
-                        </div>
-                        {settings.apiKey && (
-                            <button
-                                onClick={handleTestConnection}
-                                disabled={status === 'testing'}
-                                className="w-full py-2.5 rounded-xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center gap-2 group"
-                            >
-                                <StatusIcon />
-                                <span className="text-[10px] font-bold text-primary group-hover:tracking-widest transition-all">
-                                    {status === 'testing' ? 'Handshaking...' : 'Test Connection'}
-                                </span>
-                            </button>
-                        )}
-                        {/* Tier Selector */}
-                        <div className="grid grid-cols-3 gap-2 pt-2">
-                            {(['AUTO', 'LITE', 'SMART'] as const).map(tier => (
-                                <button
-                                    key={tier}
-                                    onClick={() => updateSettings({ modelTier: tier })}
-                                    className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${settings.modelTier === tier
-                                        ? 'bg-secondary/10 border-secondary text-secondary'
-                                        : 'bg-transparent border-transparent hover:bg-white/5 text-text-muted'
-                                        }`}
-                                >
-                                    {tier === 'AUTO' && <Sparkles size={14} />}
-                                    {tier === 'LITE' && <Zap size={14} />}
-                                    {tier === 'SMART' && <BrainCircuit size={14} />}
-                                    <span className="text-[9px] font-bold uppercase">{tier}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Supabase Configuration */}
-                    <SupabaseConfigSection settings={settings} updateSettings={updateSettings} />
-                </div>
-            </Card>
-
-            {/* 2. Token Standards */}
-            <Card>
-                <SectionHeader icon={FileCode} title="Token Standards" subtitle="Generation Formats & Conventions" />
-
-                <div className="space-y-6">
-                    {/* Format */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] text-text-muted/80 uppercase font-bold">Output Format</label>
-                        <div className="flex flex-wrap gap-2">
-                            {(['JSON', 'CSS', 'SCSS', 'Swift'] as OutputFormat[]).map(fmt => (
-                                <Chip
-                                    key={fmt}
-                                    label={fmt}
-                                    active={settings.standards.outputFormat === fmt}
-                                    onClick={() => updateStandard('outputFormat', fmt)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Naming */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] text-text-muted/80 uppercase font-bold">Naming Convention</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {(['kebab-case', 'camelCase', 'snake_case', 'PascalCase'] as NamingConvention[]).map(nc => (
-                                <button
-                                    key={nc}
-                                    onClick={() => updateStandard('namingConvention', nc)}
-                                    className={`px-3 py-2 text-xs rounded-lg border text-left font-mono transition-all ${settings.standards.namingConvention === nc
-                                        ? 'bg-primary/10 border-primary/50 text-white'
-                                        : 'bg-black/20 border-white/5 text-text-muted hover:border-white/20'
-                                        }`}
-                                >
-                                    {nc}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Color Space */}
-                    <div className="space-y-2">
-                        <label className="text-[10px] text-text-muted/80 uppercase font-bold">Color Space</label>
-                        <div className="flex p-1 bg-black/40 rounded-lg border border-white/5">
-                            {(['HSL', 'RGB', 'OKLCH'] as ColorSpace[]).map(cs => (
-                                <button
-                                    key={cs}
-                                    onClick={() => updateStandard('colorSpace', cs)}
-                                    className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${settings.standards.colorSpace === cs
-                                        ? 'bg-white/10 text-white shadow-sm'
-                                        : 'text-text-muted hover:text-white'
-                                        }`}
-                                >
-                                    {cs}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
-            {/* 3. Governance */}
-            <Card>
-                <SectionHeader icon={ShieldCheck} title="Governance" subtitle="Consistency & Accessibility Gates" />
-
-                <div className="space-y-6">
-                    {/* WCAG Level */}
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <div className="text-xs text-white font-medium">Accessibility Target</div>
-                            <div className="text-[9px] text-text-muted">Minimum contrast ratio compliance</div>
-                        </div>
-                        <div className="flex p-0.5 bg-black/40 rounded-lg border border-white/5">
-                            {(['AA', 'AAA'] as const).map(level => (
-                                <button
-                                    key={level}
-                                    onClick={() => updateGovernance('accessibilityLevel', level)}
-                                    className={`px-4 py-1.5 rounded-md text-[10px] font-bold transition-all ${settings.governance.accessibilityLevel === level
-                                        ? 'bg-success/20 text-success shadow-sm'
-                                        : 'text-text-muted/50'
-                                        }`}
-                                >
-                                    {level}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Semantic Strictness Slider */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-[10px] uppercase font-bold text-text-muted">
-                            <span>Loose</span>
-                            <span>Semantic Strictness</span>
-                            <span>Strict</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="10"
-                            value={settings.governance.semanticStrictness}
-                            onChange={(e) => updateGovernance('semanticStrictness', parseInt(e.target.value))}
-                            className="w-full h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-secondary [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(255,46,224,0.5)]"
-                        />
-                        <p className="text-[9px] text-text-muted text-center italic">
-                            {settings.governance.semanticStrictness < 30 ? 'Allow raw values (Hex/RGB) in tokens' :
-                                settings.governance.semanticStrictness > 80 ? 'Force strict aliasing (System -> Reference -> Base)' :
-                                    'Balanced aliasing approach'}
-                        </p>
-                    </div>
-                </div>
-            </Card>
+            {/* Sections */}
+            <AccountSection user={user} onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+            <AIConfigSection settings={settings} updateSettings={updateSettings} />
 
             {/* Danger Zone */}
             <button
                 onClick={wipeMemory}
-                className="w-full mt-8 p-4 rounded-2xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 hover:border-red-500/40 transition-all group flex items-center justify-center gap-3"
+                className="
+                    w-full p-4 rounded-2xl
+                    border border-error/20 bg-error/5
+                    hover:bg-error/10 hover:border-error/40
+                    transition-all duration-200 group
+                    flex items-center justify-center gap-3
+                "
             >
-                <Trash2 size={16} className="text-red-500 group-hover:scale-110 transition-transform" />
+                <Trash2 size={16} className="text-error group-hover:scale-110 transition-transform" />
                 <div className="text-left">
-                    <div className="text-xs font-bold text-red-500 uppercase tracking-wide">Emergency Reset</div>
-                    <div className="text-[9px] text-red-400/60">Clear all local storage and cache</div>
+                    <div className="text-[10px] font-bold text-error uppercase tracking-wider">Emergency Reset</div>
+                    <div className="text-[9px] text-error/60">Clear all local storage and cache</div>
                 </div>
             </button>
 
-            <footer className="text-center pt-8 pb-4 opacity-40 hover:opacity-100 transition-opacity">
-                <p className="text-[9px] font-mono text-text-muted">VIBE.SYSTEM.SETTINGS_MODULE // v4.2.0</p>
+            {/* Footer */}
+            <footer className="text-center pt-6 pb-4 opacity-30 hover:opacity-80 transition-opacity duration-500">
+                <p className="text-[8px] font-mono text-text-muted tracking-wider">
+                    VIBE.SYSTEM.SETTINGS_MODULE // v5.0.0
+                </p>
             </footer>
         </div>
     );

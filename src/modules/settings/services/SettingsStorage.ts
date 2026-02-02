@@ -1,13 +1,14 @@
+/**
+ * @module SettingsStorage
+ * @description Persistence adapter for Vibe configuration.
+ * @version 2.0.0 - Stripped down after redesign.
+ * Delegates secret management to CryptoService (Zero-Trust).
+ */
 import { CryptoService } from '../../security/CryptoService';
 import type { VibeSettings } from '../domain/SettingsTypes';
 import { DEFAULT_SETTINGS } from '../domain/SettingsTypes';
 import { storage } from '../../../infrastructure/figma/StorageProxy';
 
-/**
- * 💾 SettingsStorage
- * Persistence adapter for Vibe configuration.
- * Delegates secret management to CryptoService (Zero-Trust).
- */
 export const SettingsStorage = {
     /**
      * Save the full settings object.
@@ -16,39 +17,32 @@ export const SettingsStorage = {
      */
     saveSettings: async (settings: VibeSettings): Promise<void> => {
         try {
-            // 1. Divert Secrets to Secure Vault
-            // Only update if we have an active session to decrypt/encrypt.
+            // 1. Divert API Key to Secure Vault if session is active.
             if (CryptoService.isSessionActive()) {
-                // Fetch current state to avoid overwriting missing keys with null
                 const currentVault = await CryptoService.loadSecrets() || {};
-
                 const nextVault = {
-                    apiKey: settings.apiKey || currentVault.apiKey,
-                    supabase: settings.supabase || currentVault.supabase
+                    ...currentVault,
+                    apiKey: settings.apiKey ?? currentVault.apiKey,
                 };
 
-                // Only save if we have something valid to save
-                if (nextVault.apiKey || nextVault.supabase) {
+                if (nextVault.apiKey) {
                     await CryptoService.saveSecrets(nextVault);
                 }
             } else {
-                if (settings.apiKey || settings.supabase) {
-                    console.warn("Skipping Secrets Save: Session Locked.");
+                if (settings.apiKey) {
+                    console.warn("[SettingsStorage] Skipping Secrets Save: Session Locked.");
                 }
             }
 
-            // 2. Save Preferences (Excluding Secrets)
+            // 2. Save Preferences (modelTier only, secrets omitted)
             const preferences = {
                 modelTier: settings.modelTier,
-                standards: settings.standards,
-                governance: settings.governance
-                // Secrets are deliberately OMITTED from plaintext storage
             };
 
             await storage.setItem('VIBE_PREFERENCES', JSON.stringify(preferences));
 
         } catch (error) {
-            console.error("Settings Save Failed:", error);
+            console.error("[SettingsStorage] Save Failed:", error);
             throw new Error("Failed to persist settings.");
         }
     },
@@ -67,33 +61,30 @@ export const SettingsStorage = {
                 try {
                     loadedPreferences = JSON.parse(rawPrefs);
                 } catch {
-                    console.warn("Corrupt Settings JSON, using defaults.");
+                    console.warn("[SettingsStorage] Corrupt Settings JSON, using defaults.");
                 }
             }
 
             // 2. Fetch Secrets (If Unlocked)
-            let loadedSecrets: { apiKey?: string | null; supabase?: { url: string; anonKey: string } | null } | null = null;
+            let loadedApiKey: string | null = null;
             if (CryptoService.isSessionActive()) {
                 try {
-                    loadedSecrets = await CryptoService.loadSecrets();
+                    const secrets = await CryptoService.loadSecrets();
+                    loadedApiKey = secrets?.apiKey ?? null;
                 } catch (e) {
-                    console.warn("Vault Access Failed during Settings Load:", e);
+                    console.warn("[SettingsStorage] Vault Access Failed:", e);
                 }
             }
 
-            // 3. Merge
+            // 3. Merge and return
             return {
                 ...DEFAULT_SETTINGS,
                 ...loadedPreferences,
-                apiKey: loadedSecrets?.apiKey ?? null,
-                supabase: loadedSecrets?.supabase ?? null,
-                // Deep merge standards/governance to ensure no missing keys
-                standards: { ...DEFAULT_SETTINGS.standards, ...loadedPreferences.standards },
-                governance: { ...DEFAULT_SETTINGS.governance, ...loadedPreferences.governance }
+                apiKey: loadedApiKey,
             };
 
         } catch (error) {
-            console.error("Settings Load Failed:", error);
+            console.error("[SettingsStorage] Load Failed:", error);
             return DEFAULT_SETTINGS;
         }
     }
