@@ -3,18 +3,21 @@ import { VibeSupabase } from './infrastructure/supabase/SupabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVibeApp } from './ui/hooks/useVibeApp';
 import { MainLayout } from './ui/layouts/MainLayout';
-import { EditorView } from './ui/EditorView';
-import { Dashboard } from './ui/Dashboard';
-import { SettingsPage } from './modules/settings/ui/SettingsPage';
-import { CreateTokenPage } from './modules/tokens/ui/pages/CreateTokenPage';
-import { ExportTokensPage } from './modules/export/ui/pages/ExportTokensPage';
-import { OmniboxTrigger, OmniboxModal } from './modules/intelligence/omnibox';
+import { EditorView } from './features/editor/ui/EditorView';
+import { Dashboard } from './features/dashboard/ui/Dashboard';
+import { SettingsPage } from './features/settings/ui/SettingsPage';
+import { CreateTokenPage } from './features/tokens/ui/pages/CreateTokenPage';
+import { ExportTokensPage } from './features/export/ui/pages/ExportTokensPage';
+import { OmniboxTrigger, OmniboxModal } from './features/intelligence/omnibox';
+
 
 // System Messaging
 import { SystemProvider } from './ui/contexts/SystemContext';
-import { SystemMessageBar } from './ui/components/system/SystemMessageBar';
+import { SystemMessageBar } from './components/shared/system/SystemMessageBar';
+import { BootScreen } from './components/shared/system/BootScreen';
+import { AmbientBackground } from './components/shared/system/AmbientBackground';
 
-import { AuthGate } from './modules/auth/ui/AuthGate';
+import { AuthGate } from './features/auth/ui/AuthGate';
 
 export default function App() {
     const [ready, setReady] = useState(false);
@@ -51,25 +54,7 @@ function VibeAppContent() {
 
     // 1. Boot Sequence (Premium Initialization)
     if (vm.settings.isLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-void text-white select-none cursor-wait">
-                <div className="flex flex-col items-center gap-6">
-                    <div className="relative">
-                        <div className="w-16 h-16 border border-white/10 rounded-full animate-[spin_3s_linear_infinite]" />
-                        <div className="absolute inset-0 border-t border-primary rounded-full animate-[spin_2s_linear_infinite]" />
-                        <div className="absolute inset-4 bg-primary/20 blur-xl rounded-full animate-pulse" />
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <span className="text-xs font-mono font-bold tracking-[0.3em] text-white/50 uppercase">
-                            VIBE // SYNC_ENGINE
-                        </span>
-                        <span className="text-[10px] font-mono text-primary/80 animate-pulse">
-                            ESTABLISHING CONNECTION...
-                        </span>
-                    </div>
-                </div>
-            </div>
-        );
+        return <BootScreen />;
     }
 
     return (
@@ -147,13 +132,13 @@ function VibeAppContent() {
             />
 
             {/* Ambient Atmosphere */}
-            <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-30">
-                <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[150px] rounded-full mix-blend-screen" />
-                <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-secondary/5 blur-[150px] rounded-full mix-blend-screen" />
-            </div>
+            <AmbientBackground />
 
             {/* System Message Overlay */}
             <SystemMessageBar />
+
+            {/* Global Feedback Omnibox */}
+
         </div>
     );
 }

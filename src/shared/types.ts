@@ -1,6 +1,7 @@
 export type PluginAction =
     | { type: 'REQUEST_GRAPH' }
     | { type: 'REQUEST_STATS' }
+    | { type: 'PING' }
     | { type: 'SCAN_VARS' }
     | { type: 'SYNC_GRAPH' }
     | { type: 'SYNC_VARIABLES' }
@@ -21,6 +22,7 @@ export type PluginAction =
     | { type: 'CREATE_TOKEN'; payload: { name: string; type: 'color' | 'number' | 'string'; value: string | number | { r: number; g: number; b: number; a?: number } } }
     | { type: 'UPDATE_TOKEN'; id: string; newValue: string | number | { r: number; g: number; b: number; a?: number } }
     | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } }
+    | { type: 'CREATE_COLLECTION'; payload: { name: string } }
     | { type: 'CREATE_STYLE'; payload: { name: string; type: 'typography' | 'effect' | 'grid'; value: string | number | { r: number; g: number; b: number; a?: number } } };
 
 export type PluginEvent =

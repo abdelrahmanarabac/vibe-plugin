@@ -95,7 +95,7 @@ export const NAMED_COLORS: Record<string, string> = {};
 
 export const getColorName = async (hex: string): Promise<string> => {
     try {
-        const { CloudColorNamer } = await import('../../modules/intelligence/CloudColorNamer');
+        const { CloudColorNamer } = await import('../../features/intelligence/CloudColorNamer');
         return await CloudColorNamer.findColor(hex);
     } catch (error) {
         console.error('[Shared ColorUtils] Cloud naming failed:', error);

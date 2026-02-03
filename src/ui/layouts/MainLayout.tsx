@@ -1,5 +1,6 @@
 import React from 'react';
 import { Settings, LayoutGrid, Cpu, Wallet } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token' | 'export-tokens';
 
@@ -8,93 +9,90 @@ interface MainLayoutProps {
     activeTab: ViewType;
     onTabChange: (tab: ViewType) => void;
     credits?: number;
-
 }
 
 /**
  * 🛸 MainLayout (The Vibe Vessel)
- * The primary layout wrapper for the Vibe Plugin.
- * Features a bento-styled header with glassmorphism and organic animations.
+ * Refactored for Google-Level Polish:
+ * - Cleaner Typography (Inter/Sans)
+ * - System Primary Colors (Purple/Indigo) instead of "Green"
+ * - High Contrast & Professional Spacing
+ * - Fluid "Sliding Pill" Navigation
  */
 export const MainLayout: React.FC<MainLayoutProps> = ({
     children,
     activeTab,
     onTabChange,
     credits = 0,
-
 }) => {
     return (
-        <div className="h-full w-full flex flex-col bg-void text-text-primary overflow-hidden font-sans transition-all duration-500">
+        <div className="h-full w-full flex flex-col bg-[#050505] text-text-primary overflow-hidden font-sans transition-all duration-500">
             {/* 🛸 Bento Header */}
-            <header className="flex-none px-6 flex items-center justify-between z-40 bg-surface-0/80 backdrop-blur-xl border-b border-white/5 h-[72px] shadow-glass">
+            <header className="flex-none px-5 flex items-center justify-between z-40 bg-surface-0/90 backdrop-blur-xl border-b border-white/5 h-[64px] shadow-sm">
 
                 {/* 1. Left: System Identity */}
-                <div className="flex items-center gap-2 min-w-[200px]">
+                <div className="flex items-center gap-3 min-w-[200px]">
                     <SystemPulse />
-                    <div className="flex flex-col justify-center">
-                        <div className="flex items-baseline gap-2">
-                            <span className="font-display font-semibold text-sm tracking-tighter text-white uppercase leading-none">Vibe Tokens Manager</span>
-                            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">V1.0</span>
-                        </div>
+                    <div className="flex flex-col justify-center gap-0.5">
+                        <span className="font-semibold text-[13px] tracking-tight text-white leading-none">Vibe Token Manager</span>
+                        <span className="text-[10px] text-text-muted font-medium">Workspace Active</span>
                     </div>
                 </div>
 
-                {/* 2. Center: Navigation Tabs */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-void/40 rounded-2xl border border-white/10 shadow-inner backdrop-blur-md">
+                {/* 2. Center: Navigation Tabs (Sliding Pill) */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-surface-1/50 rounded-lg border border-white/5 shadow-inner backdrop-blur-md gap-1">
                     <TabButton
                         active={activeTab === 'dashboard'}
                         onClick={() => onTabChange('dashboard')}
-                        icon={<LayoutGrid size={14} />}
+                        icon={<LayoutGrid size={14} strokeWidth={2} />}
                         label="Dashboard"
                     />
                     <TabButton
                         active={activeTab === 'graph'}
                         onClick={() => onTabChange('graph')}
-                        icon={<Cpu size={14} />}
+                        icon={<Cpu size={14} strokeWidth={2} />}
                         label="Graph"
                     />
                 </div>
 
                 {/* 3. Right: Intelligence & Credits */}
-                <div className="flex items-center justify-end gap-4 min-w-[200px]">
-
-
+                <div className="flex items-center justify-end gap-3 min-w-[200px]">
 
                     {/* Settings Trigger */}
                     <button
                         onClick={() => onTabChange('settings')}
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${activeTab === 'settings'
-                            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-500 shadow-glow-primary'
-                            : 'bg-white/5 border-white/5 text-text-dim hover:text-white hover:bg-emerald-500/10 hover:border-emerald-500/20'
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all border ${activeTab === 'settings'
+                            ? 'bg-primary/20 border-primary/40 text-primary shadow-sm'
+                            : 'bg-transparent border-transparent text-text-muted hover:text-white hover:bg-white/5'
                             }`}
                     >
-                        <Settings size={18} />
+                        <Settings size={16} />
                     </button>
 
-                    <div className="w-px h-6 bg-white/10" />
+                    <div className="w-px h-5 bg-white/10" />
 
                     {/* Credits Identity */}
-                    <div className="flex items-center gap-3 pl-4 pr-1.5 py-1.5 bg-white/5 border border-white/5 rounded-2xl">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-1 border border-white/5 rounded-lg hover:border-white/10 transition-colors">
                         <div className="flex flex-col items-end">
-                            <span className="text-[9px] font-black text-text-dim uppercase tracking-tighter leading-none">Credits</span>
-                            <span className="text-xs font-mono font-bold text-white leading-none mt-1">{credits.toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider leading-none mb-0.5">Credits</span>
+                            <span className="text-xs font-mono font-medium text-white leading-none">{credits.toLocaleString()}</span>
                         </div>
-                        <div className="w-8 h-8 rounded-xl bg-secondary/20 border border-secondary/30 flex items-center justify-center text-secondary shadow-glow-secondary">
-                            <Wallet size={16} />
+                        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-primary shadow-sm">
+                            <Wallet size={14} />
                         </div>
                     </div>
                 </div>
             </header>
 
             {/* Content Area */}
-            <main className="flex-1 overflow-y-auto relative custom-scrollbar">
+            <main className="flex-1 overflow-y-auto relative custom-scrollbar bg-void/50">
                 {children}
             </main>
 
-            {/* Background Atmosphere */}
-            <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 blur-[120px] rounded-full -translate-x-1/2 translate-y-1/2" />
+            {/* Background Atmosphere - Toned Down */}
+            <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden opacity-20">
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full translate-x-1/3 -translate-y-1/3" />
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 blur-[150px] rounded-full -translate-x-1/3 translate-y-1/3" />
             </div>
         </div>
     );
@@ -105,33 +103,34 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 const TabButton = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
     <button
         onClick={onClick}
-        className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 relative group ${active
-            ? 'bg-white/10 text-white shadow-lg'
-            : 'text-text-dim hover:text-text-primary hover:bg-white/5'
+        className={`relative px-4 py-1.5 rounded-md text-[11px] font-medium transition-colors flex items-center gap-2 outline-none ${active ? 'text-white' : 'text-text-muted hover:text-text-primary'
             }`}
     >
-        {icon}
-        {label}
         {active && (
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-primary rounded-full shadow-glow-primary" />
+            <motion.div
+                layoutId="active-tab-pill"
+                className="absolute inset-0 bg-surface-2 border border-white/10 rounded-md shadow-sm z-0"
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
         )}
+        <span className="relative z-10 flex items-center gap-2">
+            {icon}
+            {label}
+        </span>
     </button>
 );
 
 const SystemPulse = () => {
     return (
-        <div className="relative w-10 h-10 flex items-center justify-center">
+        <div className="relative w-8 h-8 flex items-center justify-center">
             {/* Core Node */}
-            <div className="w-3.5 h-3.5 bg-gradient-to-tr from-primary to-secondary rounded-full z-10 shadow-glow-primary relative">
-                <div className="absolute inset-0 bg-white opacity-40 rounded-full animate-ping" />
+            <div className="w-2.5 h-2.5 bg-primary rounded-full z-10 shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)] relative">
+                <div className="absolute inset-0 bg-white opacity-20 rounded-full animate-pulse" />
             </div>
 
-            {/* Orbiting Rings */}
-            <div className="absolute inset-0 border border-primary/20 rounded-full animate-[spin_10s_linear_infinite]"
+            {/* Orbiting Rings - Subtle */}
+            <div className="absolute inset-0 border border-primary/20 rounded-full animate-[spin_8s_linear_infinite]"
                 style={{ borderRadius: '40% 60% 70% 30% / 40% 50% 60% 50%' }}
-            />
-            <div className="absolute inset-2 border border-secondary/10 rounded-full animate-[spin_15s_linear_infinite_reverse]"
-                style={{ borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%' }}
             />
         </div>
     );

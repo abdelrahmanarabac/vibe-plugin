@@ -1,0 +1,34 @@
+import type { ICapability } from '../../../../core/interfaces/ICapability';
+import type { AgentContext } from '../../../../core/AgentContext';
+import { Result } from '../../../../shared/utils/Result';
+import type { VariableManager } from '../../../../features/governance/VariableManager';
+
+export class SyncTokensCapability implements ICapability {
+    readonly id = 'sync-tokens-v1';
+    readonly commandId = 'SYNC_TOKENS';
+    readonly description = 'Synchronizes all local variables from Figma to the Token Repository.';
+
+    private variableManager: VariableManager;
+
+    constructor(variableManager: VariableManager) {
+        this.variableManager = variableManager;
+    }
+
+    canExecute(_context: AgentContext): boolean {
+        return true; // Always allowed
+    }
+
+    async execute(_payload: unknown, _context: AgentContext): Promise<Result<{ tokens: ReturnType<VariableManager['syncFromFigma']> extends Promise<infer T> ? T : never; count: number; timestamp: number }>> {
+        try {
+            const tokens = await this.variableManager.syncFromFigma();
+            return Result.ok({
+                tokens,
+                count: tokens.length,
+                timestamp: Date.now()
+            });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error during sync';
+            return Result.fail(message);
+        }
+    }
+}

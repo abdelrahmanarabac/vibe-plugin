@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { omnibox } from '../managers/OmniboxManager';
-import { IntentEngine } from '../../modules/intelligence/IntentEngine';
+import { IntentEngine } from '../../features/intelligence/IntentEngine';
 import { AIFactory } from '../../core/services/AIFactory';
 
 export interface AIViewModel {
@@ -51,7 +51,7 @@ export function useAI(apiKey: string | null, onNavigate?: (view: 'dashboard' | '
             }
 
             // Fallback: Default Conversational Response
-            const prompt = `You are Vibe Token OS. User request: "${command}". Provide a brief, actionable response. Ensure you sound professional but high-tech.`;
+            const prompt = `You are Vibe Token OS.User request: "${command}".Provide a brief, actionable response.Ensure you sound professional but high - tech.`;
             const response = await aiService.generate(prompt, { tier: 'LITE' });
 
             omnibox.show(`💡 ${response.substring(0, 100)}...`, { type: 'info' });

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { IAIService, AIOptions } from '../../core/interfaces/IAIService';
-import { SafeBinary } from '../../modules/security/SafeBinary';
+import { SafeBinary } from '../../features/security/SafeBinary';
 
 /**
  * 🤖 GeminiService

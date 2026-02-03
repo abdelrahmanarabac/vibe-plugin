@@ -4,26 +4,28 @@ import { SyncEngine } from './SyncEngine';
 import { SyncService } from './services/SyncService';
 
 // Core Modules
-import { VariableManager } from '../modules/governance/VariableManager';
-import { DocsRenderer } from '../modules/documentation/DocsRenderer';
-import { CollectionRenamer } from '../modules/collections/adapters/CollectionRenamer';
+import { VariableManager } from '../features/governance/VariableManager';
+import { DocsRenderer } from '../features/documentation/DocsRenderer';
+import { CollectionRenamer } from '../features/collections/adapters/CollectionRenamer';
 
 // Infrastructure
 import { FigmaVariableRepository } from '../infrastructure/repositories/FigmaVariableRepository';
 
 // Capabilities
-import { ScanSelectionCapability } from '../modules/perception/capabilities/scanning/ScanSelectionCapability';
-import { SyncTokensCapability } from '../modules/tokens/capabilities/sync/SyncTokensCapability';
-import { CreateVariableCapability } from '../modules/tokens/capabilities/management/CreateVariableCapability';
-import { UpdateVariableCapability } from '../modules/tokens/capabilities/management/UpdateVariableCapability';
-import { RenameVariableCapability } from '../modules/tokens/capabilities/management/RenameVariableCapability';
-import { GenerateDocsCapability } from '../modules/documentation/capabilities/GenerateDocsCapability';
-import { GetAnatomyCapability } from '../modules/perception/capabilities/scanning/GetAnatomyCapability';
-import { RenameCollectionsCapability } from '../modules/collections/capabilities/RenameCollectionsCapability';
-import { CreateCollectionCapability } from '../modules/collections/capabilities/CreateCollectionCapability';
-import { TraceLineageCapability } from '../modules/intelligence/capabilities/TraceLineageCapability';
-import { CheckHealthCapability } from '../modules/intelligence/capabilities/CheckHealthCapability';
-import { CreateStyleCapability } from '../modules/styles/capabilities/CreateStyleCapability';
+import { ScanSelectionCapability } from '../features/perception/capabilities/scanning/ScanSelectionCapability';
+import { SyncTokensCapability } from '../features/tokens/capabilities/sync/SyncTokensCapability';
+import { CreateVariableCapability } from '../features/tokens/capabilities/management/CreateVariableCapability';
+import { UpdateVariableCapability } from '../features/tokens/capabilities/management/UpdateVariableCapability';
+import { RenameVariableCapability } from '../features/tokens/capabilities/management/RenameVariableCapability';
+import { GenerateDocsCapability } from '../features/documentation/capabilities/GenerateDocsCapability';
+import { GetAnatomyCapability } from '../features/perception/capabilities/scanning/GetAnatomyCapability';
+import { RenameCollectionsCapability } from '../features/collections/capabilities/RenameCollectionsCapability';
+import { CreateCollectionCapability } from '../features/collections/capabilities/CreateCollectionCapability';
+import { RenameCollectionCapability } from '../features/collections/capabilities/RenameCollectionCapability';
+import { DeleteCollectionCapability } from '../features/collections/capabilities/DeleteCollectionCapability';
+import { TraceLineageCapability } from '../features/intelligence/capabilities/TraceLineageCapability';
+import { CheckHealthCapability } from '../features/intelligence/capabilities/CheckHealthCapability';
+import { CreateStyleCapability } from '../features/styles/capabilities/CreateStyleCapability';
 
 // System Capabilities
 import {
@@ -34,14 +36,31 @@ import {
     StorageGetCapability,
     StorageSetCapability,
     SyncVariablesCapability
-} from '../modules/system/capabilities';
+} from '../features/system/capabilities';
 
+/**
+ * 🏗️ CompositionRoot
+ * 
+ * The Dependency Injection (DI) container for the application.
+ * responsible for wiring up all services, managers, and capabilities.
+ * 
+ * @singleton
+ */
 export class CompositionRoot {
+    private static instance: CompositionRoot;
+
     // Public Services
     public readonly registry: CapabilityRegistry;
     public readonly syncEngine: SyncEngine;
     public readonly repository: TokenRepository;
     public readonly syncService: SyncService;
+
+    public static getInstance(): CompositionRoot {
+        if (!CompositionRoot.instance) {
+            CompositionRoot.instance = new CompositionRoot();
+        }
+        return CompositionRoot.instance;
+    }
 
     constructor() {
         console.log('[CompositionRoot] Wiring dependencies...');
@@ -84,6 +103,8 @@ export class CompositionRoot {
             new GenerateDocsCapability(docsRenderer, variableManager),
             new RenameCollectionsCapability(collectionRenamer),
             new CreateCollectionCapability(),
+            new RenameCollectionCapability(),
+            new DeleteCollectionCapability(),
             new GetAnatomyCapability(),
             new TraceLineageCapability(),
             new CheckHealthCapability(this.repository),

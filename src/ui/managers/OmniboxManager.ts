@@ -1,3 +1,5 @@
+import { generateUUID } from '../../shared/utils/uuid';
+
 export type OmniboxType = 'info' | 'success' | 'error' | 'warning' | 'loading';
 
 export interface OmniboxMessage {
@@ -39,7 +41,7 @@ class OmniboxManager {
         this.clearTimer();
 
         this.currentMessage = {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             message,
             type: options.type || 'info',
             duration: options.duration || this.defaultDuration,

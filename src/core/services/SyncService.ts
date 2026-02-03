@@ -1,5 +1,5 @@
 import { TokenRepository } from '../TokenRepository';
-import { VariableManager } from '../../modules/governance/VariableManager';
+import { VariableManager } from '../../features/governance/VariableManager';
 import type { TokenEntity } from '../types';
 
 export interface SyncStats {
@@ -8,6 +8,12 @@ export interface SyncStats {
     styles: number;
 }
 
+/**
+ * 🔄 SyncService
+ * 
+ * Orchestrates the synchronization between the Plugin UI and the Figma Main thread.
+ * Handles variable creation, updates, and feedback loops.
+ */
 export class SyncService {
     private readonly variableManager: VariableManager;
     private readonly repository: TokenRepository;

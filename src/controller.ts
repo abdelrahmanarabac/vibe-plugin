@@ -11,25 +11,12 @@ const root = new CompositionRoot();
 const dispatcher = new Dispatcher(root.registry);
 
 // === 2. Bind Background Services ===
+// === 2. Bind Background Services ===
 root.syncEngine.setCallback(async () => {
-    try {
-        const tokens = await root.syncService.sync();
-
-        // Broadcast to UI
-        figma.ui.postMessage({
-            type: 'GRAPH_UPDATED',
-            payload: tokens,
-            timestamp: Date.now()
-        });
-
-        // Broadcast Stats
-        await root.registry.getByCommand('REQUEST_STATS')?.execute({}, {} as AgentContext);
-
-        console.log(`[Controller] Synced ${tokens.length} tokens.`);
-    } catch (e) {
-        console.error('[Controller] Sync Failed:', e);
-        figma.notify("Sync Failed", { error: true });
-    }
+    // We found a drift! Re-run the full sync protocol.
+    // This ensures both GRAPH (Tokens) and STATS (Collections) are updated in the UI.
+    // "Momentary" sync restored.
+    await performFullSync();
 });
 
 // === 3. Setup UI ===
@@ -57,9 +44,15 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             session: { timestamp: Date.now() }
         };
 
+        console.log(`[Controller] Received: ${msg.type}`);
+
         // 1. Initial System Check: Storage Bridge Handlers
         // These are low-level system messages that shouldn't go through the domain dispatcher.
-        if (msg.type === 'STORAGE_GET') {
+        if (msg.type === 'PING') {
+            figma.ui.postMessage({ type: 'PONG', timestamp: Date.now() });
+            return;
+        }
+        else if (msg.type === 'STORAGE_GET') {
             const value = await figma.clientStorage.getAsync(msg.key);
             figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value });
             return; // Handled
@@ -77,7 +70,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         await dispatcher.dispatch(msg, context);
 
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
-        if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
+        if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTION', 'DELETE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
             // Re-trigger global sync to ensure Graph is up to date:
             console.log('[Controller] Action requires sync, triggering...');
             await performFullSync();
@@ -86,7 +79,10 @@ figma.ui.onmessage = async (msg: PluginAction) => {
     } catch (error: unknown) {
         console.error('[Vibe] Controller Error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown Controller Error';
-        figma.notify(errorMessage, { error: true });
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: { message: errorMessage, type: 'error' }
+        });
         figma.ui.postMessage({ type: 'ERROR', message: errorMessage });
     }
 };
@@ -112,12 +108,19 @@ async function performFullSync() {
             payload: {
                 totalVariables: variables.length,
                 collections: collections.length,
-                styles: styles.length
+                styles: styles.length,
+                collectionNames: collections.map(c => c.name)
             }
         });
 
     } catch (e) {
         console.error('[Controller] Manual Sync Failed:', e);
-        figma.notify("❌ Sync Failed: " + (e instanceof Error ? e.message : String(e)), { error: true });
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: {
+                message: "Sync Failed: " + (e instanceof Error ? e.message : String(e)),
+                type: 'error'
+            }
+        });
     }
 }

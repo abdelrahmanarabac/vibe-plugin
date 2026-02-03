@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { omnibox } from '../managers/OmniboxManager';
-import { type TokenEntity } from '../../core/types';
-import { type SceneNodeAnatomy } from '../../modules/perception/visitors/HierarchyVisitor';
-import type { TokenFormData } from '../../modules/tokens/domain/ui-types';
+import type { TokenEntity } from '../../core/types';
+import { type SceneNodeAnatomy } from '../../features/perception/visitors/HierarchyVisitor';
+import type { TokenFormData } from '../../features/tokens/domain/ui-types';
 
 interface TokenStats {
     totalVariables: number;
     collections: number;
     styles: number;
+    collectionNames: string[];
     lastSync: number;
 }
 
@@ -20,7 +21,9 @@ export interface TokensViewModel {
     updateToken: (id: string, value: string) => void;
     createToken: (data: TokenFormData) => Promise<boolean>;
     scanAnatomy: () => void;
-    createCollection: (name: string) => void;
+    createCollection: (name: string) => Promise<string | null>;
+    renameCollection: (oldName: string, newName: string) => void;
+    deleteCollection: (name: string) => void;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
@@ -36,6 +39,7 @@ export function useTokens(): TokensViewModel {
         totalVariables: 0,
         collections: 0,
         styles: 0,
+        collectionNames: [],
         lastSync: 0
     });
     const [isSynced, setIsSynced] = useState(false);
@@ -43,6 +47,7 @@ export function useTokens(): TokensViewModel {
 
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
+    const collectionPromise = useRef<((id: string | null) => void) | null>(null);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -68,6 +73,7 @@ export function useTokens(): TokensViewModel {
                     totalVariables: payload.totalVariables ?? 0,
                     collections: payload.collections ?? 0,
                     styles: payload.styles ?? 0,
+                    collectionNames: payload.collectionNames ?? [],
                     lastSync: Date.now()
                 });
             }
@@ -80,6 +86,7 @@ export function useTokens(): TokensViewModel {
                         totalVariables: payload.stats.totalVariables ?? 0,
                         collections: payload.stats.collections ?? 0,
                         styles: payload.stats.styles ?? 0,
+                        collectionNames: payload.stats.collectionNames ?? [],
                         lastSync: Date.now()
                     });
                 }
@@ -108,6 +115,22 @@ export function useTokens(): TokensViewModel {
                 if (creationPromise.current) {
                     creationPromise.current(false);
                     creationPromise.current = null;
+                }
+            }
+
+            if (type === 'CREATE_COLLECTION_SUCCESS') {
+                omnibox.show(`Collection created`, { type: 'success' });
+                if (collectionPromise.current) {
+                    collectionPromise.current(payload.collectionId);
+                    collectionPromise.current = null;
+                }
+            }
+
+            if (type === 'CREATE_COLLECTION_ERROR') {
+                omnibox.show(payload.message || 'Failed to create collection', { type: 'error' });
+                if (collectionPromise.current) {
+                    collectionPromise.current(null);
+                    collectionPromise.current = null;
                 }
             }
         };
@@ -153,9 +176,33 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const createCollection = useCallback((name: string) => {
+        return new Promise<string | null>((resolve) => {
+            omnibox.show(`Creating ${name}...`, { type: 'loading', duration: 0 });
+            collectionPromise.current = resolve;
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'CREATE_COLLECTION',
+                    payload: { name }
+                }
+            }, '*');
+        });
+    }, []);
+
+    const renameCollection = useCallback((oldName: string, newName: string) => {
+        omnibox.show(`Renaming ${oldName}...`, { type: 'loading', duration: 0 });
         parent.postMessage({
             pluginMessage: {
-                type: 'CREATE_COLLECTION',
+                type: 'RENAME_COLLECTION',
+                payload: { oldName, newName }
+            }
+        }, '*');
+    }, []);
+
+    const deleteCollection = useCallback((name: string) => {
+        omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
+        parent.postMessage({
+            pluginMessage: {
+                type: 'DELETE_COLLECTION',
                 payload: { name }
             }
         }, '*');
@@ -171,6 +218,8 @@ export function useTokens(): TokensViewModel {
         updateToken,
         createToken,
         createCollection,
+        renameCollection,
+        deleteCollection,
         scanAnatomy,
         traceLineage
     };

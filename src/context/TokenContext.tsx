@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { TokenEntity } from '../core/types';
-import { SemanticMapper } from '../modules/tokens/domain/services/SemanticMapper';
+import { SemanticMapper } from '../features/tokens/domain/services/SemanticMapper';
 
 // 1. Valid Interface Separation
 interface TokenState {
