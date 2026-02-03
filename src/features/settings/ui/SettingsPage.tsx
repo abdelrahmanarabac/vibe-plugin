@@ -25,6 +25,7 @@ import { useSettings } from '../hooks/useSettings';
 import type { VibeSettings } from '../domain/SettingsTypes';
 import { GeminiService } from '../../../infrastructure/api/GeminiService';
 import { AuthService } from '../../auth/AuthService';
+import { ConfirmDialog } from '../../../components/shared/base/ConfirmDialog';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ==============================================================================
@@ -285,6 +286,7 @@ export function SettingsPage() {
     const [user, setUser] = useState<SupabaseUser | null>(null);
     const [isLoadingUser, setIsLoadingUser] = useState(true);
     const [isSigningOut, setIsSigningOut] = useState(false);
+    const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
     // Fetch user on mount
     useEffect(() => {
@@ -302,7 +304,11 @@ export function SettingsPage() {
         fetchUser();
     }, []);
 
-    const handleSignOut = async () => {
+    const handleSignOutClick = () => {
+        setShowSignOutDialog(true);
+    };
+
+    const handleConfirmSignOut = async () => {
         setIsSigningOut(true);
         try {
             const { error } = await AuthService.signOut();
@@ -311,11 +317,11 @@ export function SettingsPage() {
                 parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '❌ Sign Out Failed' } }, '*');
             } else {
                 parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '👋 Signed Out Successfully' } }, '*');
-                // Force reload to clear state and show login
-                window.location.reload();
+                // AuthGate will detect the session change and switch to Login Screen
             }
         } finally {
             setIsSigningOut(false);
+            setShowSignOutDialog(false);
         }
     };
 
@@ -356,8 +362,19 @@ export function SettingsPage() {
             </header>
 
             {/* Sections */}
-            <AccountSection user={user} onSignOut={handleSignOut} isSigningOut={isSigningOut} />
+            <AccountSection user={user} onSignOut={handleSignOutClick} isSigningOut={isSigningOut} />
             <AIConfigSection settings={settings} updateSettings={updateSettings} />
+
+            <ConfirmDialog
+                isOpen={showSignOutDialog}
+                title="Sign Out"
+                message="Are you sure you want to sign out? You will need to sign in again to manage your tokens."
+                confirmText="Sign Out"
+                variant="danger"
+                isLoading={isSigningOut}
+                onConfirm={handleConfirmSignOut}
+                onCancel={() => setShowSignOutDialog(false)}
+            />
 
             {/* Danger Zone */}
             <button

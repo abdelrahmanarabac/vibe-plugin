@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Tablet, Monitor, Scaling, ArrowLeftRight } from 'lucide-react';
 import type { TokenType, ColorScope } from '../../domain/ui-types';
-import { Select } from '../../../../components/ui/atoms/Select';
+import { VibeSelect } from '../../../../components/shared/base/VibeSelect';
 
 interface TokenScopeConfigProps {
     type: TokenType;
@@ -72,9 +72,9 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                                 <div className="flex gap-2 items-center px-1 pb-1 pt-2">
                                     <div className="flex-1 space-y-1.5">
                                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider ml-1 block">Start</label>
-                                        <Select
+                                        <VibeSelect<number>
                                             value={customRange[0]}
-                                            onChange={(val) => onCustomRangeChange([Number(val), customRange[1]])}
+                                            onChange={(val) => onCustomRangeChange([val, customRange[1]])}
                                             options={SCALE_OPTIONS}
                                             size="sm"
                                         />
@@ -82,9 +82,9 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                                     <div className="text-text-dim/20 pt-5">→</div>
                                     <div className="flex-1 space-y-1.5">
                                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider ml-1 block">End</label>
-                                        <Select
+                                        <VibeSelect<number>
                                             value={customRange[1]}
-                                            onChange={(val) => onCustomRangeChange([customRange[0], Number(val)])}
+                                            onChange={(val) => onCustomRangeChange([customRange[0], val])}
                                             options={SCALE_OPTIONS}
                                             size="sm"
                                         />

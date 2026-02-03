@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AuthService } from '../AuthService';
 import { LoginScreen } from './LoginScreen';
 import type { Session } from '@supabase/supabase-js';
+import { VibeSupabase } from '../../../infrastructure/supabase/SupabaseClient';
 
 // We need a simple loading component that matches Vibe style
 const LoadingVoid = () => (
@@ -37,13 +38,22 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     };
 
     useEffect(() => {
+        // 1. Initial Check
         checkSession();
 
-        // Listen for Auth changes if possible.
-        // AuthService doesn't expose subscription yet, but Supabase client does.
-        // For simplicity in Phase 1, we rely on checkSession on mount, 
-        // and force re-mount or reload on login success.
-        // Ideally, LoginScreen calls a callback that updates this state.
+        // 2. Real-time Subscription
+        const supabase = VibeSupabase.get();
+        if (supabase) {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+                console.log(`[AuthGate] Auth State Change: ${_event}`, session?.user?.email);
+                setSession(session);
+                setLoading(false);
+            });
+
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
     }, []);
 
     // Callback to be passed to LoginScreen if we were passing props, 

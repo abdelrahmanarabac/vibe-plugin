@@ -2,7 +2,6 @@ import type { TokenEntity } from './types';
 
 /**
  * 📦 TokenRepository
- * 
  * In-memory graph database for Design Tokens.
  * Maintains dependency graphs (ancestry/impact) and ensures O(1) lookup.
  */
