@@ -50,7 +50,17 @@ class OmniboxManager {
 
         this.notifyListeners();
 
-        if (this.currentMessage && this.currentMessage.type !== 'loading' && (this.currentMessage.duration || 0) > 0) {
+        // Safety Mechanism: If loading, set a "Dead Man's Switch" to prevent hanging UI
+        if (this.currentMessage.type === 'loading') {
+            this.timer = setTimeout(() => {
+                // If still loading after 8 seconds, assume failure/deadlock
+                if (this.currentMessage?.type === 'loading') {
+                    this.show('Operation likely timed out', { type: 'error' });
+                }
+            }, 8000); // 8 seconds max wait
+        }
+        // Normal auto-dismiss for non-loading messages
+        else if ((this.currentMessage.duration || 0) > 0) {
             this.timer = setTimeout(() => {
                 this.hide();
             }, this.currentMessage.duration);

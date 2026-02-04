@@ -100,7 +100,7 @@ export const CryptoService = {
     /**
      * Stores the Secret Vault (JSON) encrypted with the current session key.
      */
-    async saveSecrets(secrets: { apiKey?: string | null; supabase?: { url: string; anonKey: string } | null }): Promise<void> {
+    async saveSecrets(secrets: { supabase?: { url: string; anonKey: string } | null }): Promise<void> {
         if (!sessionMasterKey) {
             throw new Error("Security Violation: Session not initialized. User must unlock vault.");
         }
@@ -131,7 +131,7 @@ export const CryptoService = {
      * Loads the Secret Vault.
      * Handles backward compatibility for legacy string-only vaults.
      */
-    async loadSecrets(): Promise<{ apiKey?: string | null; supabase?: { url: string; anonKey: string } | null } | null> {
+    async loadSecrets(): Promise<{ supabase?: { url: string; anonKey: string } | null } | null> {
         if (!sessionMasterKey) {
             return null;
         }
@@ -163,7 +163,8 @@ export const CryptoService = {
                 throw new Error("Invalid Vault Structure");
             } catch {
                 // Legacy Fallback: Plaintext was just the API Key
-                return { apiKey: plaintext, supabase: null };
+                // Return null as we no longer support legacy API keys
+                return null;
             }
 
         } catch (e) {
@@ -172,34 +173,7 @@ export const CryptoService = {
         }
     },
 
-    /**
-     * Validates API Key format strictly.
-     * Starts with "AIza" (Google) is common but we check regex.
-     */
-    validateKeyFormat(key: string) {
-        // Google API keys usually: 39 chars, alphanumeric + underscores/dashes?
-        // Actually they can vary. A robust check is ensuring it *looks* like a high-entropy string
-        // and doesn't contain spaces.
-        // Google AI Studio keys often start with AIza.
 
-        const GOOGLE_API_KEY_REGEX = /^AIza[0-9A-Za-z-_]{35}$/;
-
-        // If we strictly enforce Google Keys:
-        if (!GOOGLE_API_KEY_REGEX.test(key)) {
-            // If valid key but different format (e.g. newer keys), we might relax or add other regexes.
-            // For now, strict validation as requested.
-            // If stricter is needed: Real validation request.
-        }
-
-        if (key.length < 20) {
-            throw new Error("Key rejected: Too short (Entropy Check).");
-        }
-
-        // Basic Check
-        if (/\s/.test(key)) {
-            throw new Error("Key rejected: Contains whitespace.");
-        }
-    },
 
     // --- Internal Helpers ---
 

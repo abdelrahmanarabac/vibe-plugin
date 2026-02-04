@@ -1,50 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
-import { SettingsService } from '../SettingsService';
+import { useState } from 'react';
 
 export interface SettingsViewModel {
-    apiKey: string | null;
     isLoading: boolean;
-    saveApiKey: (key: string) => Promise<void>;
+    // Keeping interface minimal for now as we stripped API Key logic
 }
 
 /**
  * 🔒 useSettings
- * ViewModel for managing application settings within the Security domain.
- * Handles loading and saving the API key from persistent storage.
+ * ViewModel for managing application settings.
+ * UPDATE: API Key management removed.
  */
 export function useSettings(): SettingsViewModel {
-    const [apiKey, setApiKey] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Load settings on mount
-    useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const key = await SettingsService.loadApiKey();
-                setApiKey(key);
-            } catch (error) {
-                console.error('Failed to load settings:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadSettings();
-    }, []);
-
-    // Action to save API key
-    const saveApiKey = useCallback(async (key: string) => {
-        try {
-            await SettingsService.saveApiKey(key);
-            setApiKey(key);
-        } catch (error) {
-            console.error('Failed to save API key:', error);
-            throw error;
-        }
-    }, []);
+    const [isLoading] = useState(false);
 
     return {
-        apiKey,
-        isLoading,
-        saveApiKey
+        isLoading
     };
 }

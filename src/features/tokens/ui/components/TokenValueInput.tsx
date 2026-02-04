@@ -40,7 +40,7 @@ export const TokenValueInput: React.FC<TokenValueInputProps> = ({
                     {colorScope.startsWith('scale') && (
                         <div className="px-3 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold whitespace-nowrap">
                             {colorScope === 'scale-custom'
-                                ? `+${Math.floor((customRange[1] - customRange[0]) / 100) + 1} Variants`
+                                ? `+${Math.floor(Math.abs(customRange[1] - customRange[0]) / 100) + 1} Variants`
                                 : '+11 Variants'}
                         </div>
                     )}

@@ -23,7 +23,7 @@ export interface TokensViewModel {
     scanAnatomy: () => void;
     createCollection: (name: string) => Promise<string | null>;
     renameCollection: (oldName: string, newName: string) => void;
-    deleteCollection: (name: string) => void;
+    deleteCollection: (name: string) => Promise<void>;
     traceLineage: (tokenId: string) => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
@@ -48,6 +48,7 @@ export function useTokens(): TokensViewModel {
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
+    const deletePromise = useRef<{ resolve: () => void, reject: (reason?: any) => void } | null>(null);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -133,6 +134,26 @@ export function useTokens(): TokensViewModel {
                     collectionPromise.current = null;
                 }
             }
+
+            if (type === 'DELETE_COLLECTION_SUCCESS') {
+                const deletedName = payload.deletedName || 'Collection';
+                omnibox.show(`${deletedName} deleted`, { type: 'success' });
+
+                if (deletePromise.current) {
+                    deletePromise.current.resolve();
+                    deletePromise.current = null;
+                }
+            }
+
+            if (type === 'DELETE_COLLECTION_ERROR' || (type === 'OMNIBOX_NOTIFY' && payload.type === 'error' && deletePromise.current)) {
+                // If we get a generic error while deletion is pending, assume it's ours
+                omnibox.show(payload.message || 'Failed to delete collection', { type: 'error' });
+
+                if (deletePromise.current) {
+                    deletePromise.current.reject(payload.message);
+                    deletePromise.current = null;
+                }
+            }
         };
 
         window.addEventListener('message', handleMessage);
@@ -199,13 +220,16 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const deleteCollection = useCallback((name: string) => {
-        omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
-        parent.postMessage({
-            pluginMessage: {
-                type: 'DELETE_COLLECTION',
-                payload: { name }
-            }
-        }, '*');
+        return new Promise<void>((resolve, reject) => {
+            omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
+            deletePromise.current = { resolve, reject };
+            parent.postMessage({
+                pluginMessage: {
+                    type: 'DELETE_COLLECTION',
+                    payload: { name }
+                }
+            }, '*');
+        });
     }, []);
 
     return {

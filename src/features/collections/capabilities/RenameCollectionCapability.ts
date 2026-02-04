@@ -22,10 +22,20 @@ export class RenameCollectionCapability implements ICapability<RenameCollectionP
                 return Result.fail("Both oldName and newName are required");
             }
 
-            const collections = await figma.variables.getLocalVariableCollectionsAsync();
-            const collection = collections.find(c => c.name === oldName);
+            let collections = await figma.variables.getLocalVariableCollectionsAsync();
+            let collection = collections.find(c => c.name === oldName);
+
+            // Double Check Strategy: Force Refetch if not found (Race Condition Guard)
+            if (!collection) {
+                console.log(`[RenameCollectionCapability] Collection '${oldName}' not found in cache. Refetching...`);
+                // Wait a tick to allow Figma internal state to settle
+                await new Promise(resolve => setTimeout(resolve, 50));
+                collections = await figma.variables.getLocalVariableCollectionsAsync();
+                collection = collections.find(c => c.name === oldName);
+            }
 
             if (!collection) {
+                console.warn(`[RenameCollectionCapability] Collection '${oldName}' vanished.`);
                 return Result.fail(`Collection '${oldName}' not found`);
             }
 

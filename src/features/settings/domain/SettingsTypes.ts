@@ -1,19 +1,17 @@
 /**
  * @module SettingsTypes
  * @description Type definitions for the Vibe Plugin Settings.
- * @version 2.0.0 - Stripped down after redesign.
+ * @version 2.1.0 - Cleaned up for V2 Architecture.
  */
 
-export type ModelTier = 'AUTO' | 'LITE' | 'SMART';
-
 export interface VibeSettings {
-    /** Gemini API Key for AI-powered features. Encrypted at rest. */
-    apiKey: string | null;
-    /** The AI model tier to use for generation. */
-    modelTier: ModelTier;
+    // Add future settings here (e.g. theme preference, notifications)
+    // For now, it might be empty or used for legacy compatibility if we want to avoid breaking too much,
+    // but the requirement is to remove logic.
+    // Let's keep it defined but empty-ish to allow future expansion without breaking `useSettings`.
+    _version?: number;
 }
 
 export const DEFAULT_SETTINGS: VibeSettings = {
-    apiKey: null,
-    modelTier: 'AUTO',
+    _version: 2,
 };

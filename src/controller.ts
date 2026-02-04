@@ -11,7 +11,6 @@ const root = new CompositionRoot();
 const dispatcher = new Dispatcher(root.registry);
 
 // === 2. Bind Background Services ===
-// === 2. Bind Background Services ===
 root.syncEngine.setCallback(async () => {
     // We found a drift! Re-run the full sync protocol.
     // This ensures both GRAPH (Tokens) and STATS (Collections) are updated in the UI.
@@ -72,8 +71,11 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
         if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTION', 'DELETE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
             // Re-trigger global sync to ensure Graph is up to date:
-            console.log('[Controller] Action requires sync, triggering...');
-            await performFullSync();
+            console.log('[Controller] Action requires sync, triggering stabilization delay...');
+            // Wait 100ms to allow Figma's internal cache to settle (Anti-Phantom Fix)
+            setTimeout(async () => {
+                await performFullSync();
+            }, 100);
         }
 
     } catch (error: unknown) {
@@ -89,16 +91,21 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 
 // Helper: extracted sync logic
 async function performFullSync() {
+    // 1. Sync Graph (Tokens)
     try {
         const tokens = await root.syncService.sync();
-
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
             payload: tokens,
             timestamp: Date.now()
         });
+    } catch (e) {
+        console.error('[Controller] Token Sync Failed:', e);
+        // Continue to stats...
+    }
 
-        // Also update stats
+    // 2. Sync Stats (Collections/Styles)
+    try {
         const collections = await figma.variables.getLocalVariableCollectionsAsync();
         const variables = await figma.variables.getLocalVariablesAsync();
         const styles = await figma.getLocalPaintStylesAsync();
@@ -112,13 +119,12 @@ async function performFullSync() {
                 collectionNames: collections.map(c => c.name)
             }
         });
-
     } catch (e) {
-        console.error('[Controller] Manual Sync Failed:', e);
+        console.error('[Controller] Stats Sync Failed:', e);
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
             payload: {
-                message: "Sync Failed: " + (e instanceof Error ? e.message : String(e)),
+                message: "Sync Partial Failure: Check Console",
                 type: 'error'
             }
         });

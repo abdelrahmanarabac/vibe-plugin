@@ -1,7 +1,7 @@
 /**
  * @module useSettings
  * @description Hook for accessing and updating Vibe Plugin settings.
- * @version 2.0.0 - Stripped down after redesign.
+ * @version 2.1.0 - Removed API Key logic.
  */
 import { useState, useEffect, useCallback } from 'react';
 import type { VibeSettings } from '../domain/SettingsTypes';
@@ -45,6 +45,8 @@ export function useSettings(): SettingsViewModel {
     const wipeMemory = useCallback(() => {
         parent.postMessage({ pluginMessage: { type: 'STORAGE_REMOVE', key: 'VIBE_MEMORY' } }, '*');
         parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: '🗑️ Memory Wiped' } }, '*');
+        // We might want to reload settings here or clear local state
+        setSettings(DEFAULT_SETTINGS);
     }, []);
 
     return {

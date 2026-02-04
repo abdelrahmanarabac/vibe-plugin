@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Smartphone, Tablet, Monitor, Scaling, ArrowLeftRight } from 'lucide-react';
+import { Smartphone, Tablet, Monitor, Scaling, ArrowLeftRight, ChevronDown } from 'lucide-react';
 import type { TokenType, ColorScope } from '../../domain/ui-types';
-import { VibeSelect } from '../../../../components/shared/base/VibeSelect';
+
 
 interface TokenScopeConfigProps {
     type: TokenType;
@@ -69,25 +69,43 @@ export const TokenScopeConfig: React.FC<TokenScopeConfigProps> = ({
                                 }}
                                 exit={{ height: 0, opacity: 0, overflow: 'hidden' }}
                             >
-                                <div className="flex gap-2 items-center px-1 pb-1 pt-2">
-                                    <div className="flex-1 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider ml-1 block">Start</label>
-                                        <VibeSelect<number>
+                                <div className="flex bg-surface-1 rounded-xl p-1 border border-surface-2 h-11 items-center">
+                                    <div className="relative flex-1 h-full group">
+                                        <div className="absolute inset-0 flex items-center px-3 rounded-lg group-hover:bg-surface-2 transition-colors pointer-events-none">
+                                            <span className="text-[10px] uppercase font-bold text-text-dim mr-2">Start</span>
+                                            <span className="text-sm font-mono text-text-primary flex-1 text-center">{customRange[0]}</span>
+                                            <ChevronDown size={14} className="text-text-dim ml-2" />
+                                        </div>
+                                        <select
                                             value={customRange[0]}
-                                            onChange={(val) => onCustomRangeChange([val, customRange[1]])}
-                                            options={SCALE_OPTIONS}
-                                            size="sm"
-                                        />
+                                            onChange={(e) => onCustomRangeChange([Number(e.target.value), customRange[1]])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            style={{ colorScheme: 'dark' }}
+                                        >
+                                            {SCALE_OPTIONS.map(opt => (
+                                                <option key={opt.value} value={opt.value} className="bg-surface-1 text-text-primary">{opt.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <div className="text-text-dim/20 pt-5">→</div>
-                                    <div className="flex-1 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider ml-1 block">End</label>
-                                        <VibeSelect<number>
+
+                                    <div className="w-px h-4 bg-surface-3 mx-1" />
+
+                                    <div className="relative flex-1 h-full group">
+                                        <div className="absolute inset-0 flex items-center px-3 rounded-lg group-hover:bg-surface-2 transition-colors pointer-events-none">
+                                            <span className="text-[10px] uppercase font-bold text-text-dim mr-2">End</span>
+                                            <span className="text-sm font-mono text-text-primary flex-1 text-center">{customRange[1]}</span>
+                                            <ChevronDown size={14} className="text-text-dim ml-2" />
+                                        </div>
+                                        <select
                                             value={customRange[1]}
-                                            onChange={(val) => onCustomRangeChange([customRange[0], val])}
-                                            options={SCALE_OPTIONS}
-                                            size="sm"
-                                        />
+                                            onChange={(e) => onCustomRangeChange([customRange[0], Number(e.target.value)])}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            style={{ colorScheme: 'dark' }}
+                                        >
+                                            {SCALE_OPTIONS.map(opt => (
+                                                <option key={opt.value} value={opt.value} className="bg-surface-1 text-text-primary">{opt.label}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             </motion.div>

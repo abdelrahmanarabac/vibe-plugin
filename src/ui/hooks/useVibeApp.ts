@@ -23,7 +23,7 @@ export function useVibeApp() {
     const settings = useSettings();
     const tokens = useTokens();
     const styles = useStyles();
-    const ai = useAI(settings.settings.apiKey, setActiveTab);
+    const ai = useAI(null, setActiveTab); // API Key handled internally by useAI or via Vault
 
     // ⚡ Diagnostics: Connectivity Check
     const [isConnected, setIsConnected] = useState(false);

@@ -4,7 +4,7 @@
  * @version 2.0.0 - Stripped down after redesign.
  * Delegates secret management to CryptoService (Zero-Trust).
  */
-import { CryptoService } from '../../security/CryptoService';
+
 import type { VibeSettings } from '../domain/SettingsTypes';
 import { DEFAULT_SETTINGS } from '../domain/SettingsTypes';
 import { storage } from '../../../infrastructure/figma/StorageProxy';
@@ -17,29 +17,9 @@ export const SettingsStorage = {
      */
     saveSettings: async (settings: VibeSettings): Promise<void> => {
         try {
-            // 1. Divert API Key to Secure Vault if session is active.
-            if (CryptoService.isSessionActive()) {
-                const currentVault = await CryptoService.loadSecrets() || {};
-                const nextVault = {
-                    ...currentVault,
-                    apiKey: settings.apiKey ?? currentVault.apiKey,
-                };
-
-                if (nextVault.apiKey) {
-                    await CryptoService.saveSecrets(nextVault);
-                }
-            } else {
-                if (settings.apiKey) {
-                    console.warn("[SettingsStorage] Skipping Secrets Save: Session Locked.");
-                }
-            }
-
-            // 2. Save Preferences (modelTier only, secrets omitted)
-            const preferences = {
-                modelTier: settings.modelTier,
-            };
-
-            await storage.setItem('VIBE_PREFERENCES', JSON.stringify(preferences));
+            // Preferences are saved as standard JSON.
+            // Currently VibeSettings is empty/internal, but we keep the structure.
+            await storage.setItem('VIBE_PREFERENCES', JSON.stringify(settings));
 
         } catch (error) {
             console.error("[SettingsStorage] Save Failed:", error);
@@ -49,13 +29,13 @@ export const SettingsStorage = {
 
     /**
      * Load settings.
-     * Rehydrates secrets from Secure Vault if Session is Active.
+     * Rehydrates preferences from storage.
      */
     loadSettings: async (): Promise<VibeSettings> => {
         try {
             // 1. Fetch Preferences
             const rawPrefs = await storage.getItem('VIBE_PREFERENCES');
-            let loadedPreferences: Partial<VibeSettings> = {};
+            let loadedPreferences: VibeSettings = DEFAULT_SETTINGS;
 
             if (rawPrefs) {
                 try {
@@ -65,22 +45,9 @@ export const SettingsStorage = {
                 }
             }
 
-            // 2. Fetch Secrets (If Unlocked)
-            let loadedApiKey: string | null = null;
-            if (CryptoService.isSessionActive()) {
-                try {
-                    const secrets = await CryptoService.loadSecrets();
-                    loadedApiKey = secrets?.apiKey ?? null;
-                } catch (e) {
-                    console.warn("[SettingsStorage] Vault Access Failed:", e);
-                }
-            }
-
-            // 3. Merge and return
             return {
                 ...DEFAULT_SETTINGS,
                 ...loadedPreferences,
-                apiKey: loadedApiKey,
             };
 
         } catch (error) {
@@ -88,4 +55,4 @@ export const SettingsStorage = {
             return DEFAULT_SETTINGS;
         }
     }
-};
+}

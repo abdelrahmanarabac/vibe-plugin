@@ -77,13 +77,24 @@ const TokenTypeIcon = ({ type, value }: { type: string, value: string | number |
     return <Box size={13} className="text-text-dim flex-shrink-0" />;
 };
 
-export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Select path...', className = '', existingTokens = [], existingCollections = [], onCreateCollection, onRenameCollection, onDeleteCollection }: VibePathPickerProps) {
+export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Select path...', className = '', existingTokens = [], existingCollections = [], onRenameCollection, onDeleteCollection }: VibePathPickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [currentViewPath, setCurrentViewPath] = useState<string[]>([]);
     const [customPaths, setCustomPaths] = useState<string[]>([]);
     const [editingFolder, setEditingFolder] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
+
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; target: string } | null>(null);
+
+    // Optimistic UI State
+    const [optimisticRenames, setOptimisticRenames] = useState<Record<string, string>>({});
+    const [optimisticDeletes, setOptimisticDeletes] = useState<Set<string>>(new Set());
+
+    // Clear optimistic state when source of truth updates (Sync Complete)
+    useEffect(() => {
+        setOptimisticRenames({});
+        setOptimisticDeletes(new Set());
+    }, [existingCollections, existingTokens]);
 
     // Search & Inspection State
     const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +103,36 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const folderTree = useMemo(() => buildFolderTree(existingTokens, existingCollections), [existingTokens, existingCollections]);
+    // Derive Effective Data (Optimistic)
+    const effectiveCollections = useMemo(() => {
+        return existingCollections
+            .filter(c => !optimisticDeletes.has(c) && !optimisticDeletes.has(optimisticRenames[c] || c))
+            .map(c => optimisticRenames[c] || c);
+    }, [existingCollections, optimisticRenames, optimisticDeletes]);
+
+    const effectiveTokens = useMemo(() => {
+        return existingTokens
+            .filter(t => {
+                const root = t.path[0];
+                const actualRoot = optimisticRenames[root] || root;
+                return !optimisticDeletes.has(root) && !optimisticDeletes.has(actualRoot);
+            })
+            .map(t => {
+                const root = t.path[0];
+                if (optimisticRenames[root]) {
+                    const newRoot = optimisticRenames[root];
+                    const newPath = [newRoot, ...t.path.slice(1)];
+                    return {
+                        ...t,
+                        path: newPath,
+                        fullPath: [newRoot, ...t.path.slice(1), t.name].join('/')
+                    };
+                }
+                return t;
+            });
+    }, [existingTokens, optimisticRenames, optimisticDeletes]);
+
+    const folderTree = useMemo(() => buildFolderTree(effectiveTokens, effectiveCollections), [effectiveTokens, effectiveCollections]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -166,6 +206,60 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
     const actionLabel = isRoot ? "New Collection" : "Add Group";
     const currentFolderName = isRoot ? 'Collections' : currentViewPath[currentViewPath.length - 1];
 
+    // Optimistic Handlers
+    const handleRenameSubmitInternal = () => {
+        if (!editingFolder || !editValue.trim()) { setEditingFolder(null); return; }
+        const oldFolderName = editingFolder;
+        const newFolderName = editValue.trim();
+        if (oldFolderName === newFolderName) { setEditingFolder(null); return; }
+
+        // If we are renaming a ROOT collection
+        if (currentViewPath.length === 0) {
+            // Check if it's a real collection
+            if (onRenameCollection && (existingCollections.includes(oldFolderName) || optimisticRenames[oldFolderName])) {
+                onRenameCollection(oldFolderName, newFolderName);
+                setOptimisticRenames(prev => ({ ...prev, [oldFolderName]: newFolderName }));
+                setEditingFolder(null);
+
+                // If the selected value was in this collection, update it
+                if (value.startsWith(oldFolderName + '/')) {
+                    onChange(value.replace(oldFolderName + '/', newFolderName + '/'));
+                }
+                return;
+            }
+        }
+
+        // Just a local folder (Group) rename or eager creation
+        const parentPathStr = currentViewPath.join('/');
+        const oldPathFull = parentPathStr ? `${parentPathStr}/${oldFolderName}` : oldFolderName;
+        const newPathFull = parentPathStr ? `${parentPathStr}/${newFolderName}` : newFolderName;
+
+        setCustomPaths(prev => prev.map(p => {
+            if (p === oldPathFull) return newPathFull;
+            if (p.startsWith(`${oldPathFull}/`)) return p.replace(oldPathFull, newPathFull);
+            return p;
+        }));
+
+        // Update value if selected
+        if (value.startsWith(oldPathFull + '/')) {
+            onChange(value.replace(oldPathFull, newPathFull));
+        }
+
+        setEditingFolder(null);
+    };
+
+    const handleDeleteCollectionInternal = (name: string) => {
+        if (onDeleteCollection) {
+            onDeleteCollection(name);
+            setOptimisticDeletes(prev => new Set(prev).add(name));
+
+            // If we are currently inside this collection or selected a token in it, clear selection?
+            if (value.startsWith(name + '/')) {
+                onChange('');
+            }
+        }
+    };
+
     // ... (Keep existing handlers: handleCreateCollection, handleRenameStart, handleRenameSubmit, handleContextMenu)
     // I will abbreviate them for brevity in this replace, but in real code they MUST be present.
     // Since I'm using write_to_file, I MUST include them fully.
@@ -183,46 +277,7 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
     };
 
     const handleRenameStart = (folder: string) => { setEditingFolder(folder); setEditValue(folder); };
-    const handleRenameSubmit = () => {
-        if (!editingFolder || !editValue.trim()) { setEditingFolder(null); return; }
-        const oldFolderName = editingFolder;
-        const newFolderName = editValue.trim();
-        if (oldFolderName === newFolderName) { setEditingFolder(null); return; }
 
-        const parentPathStr = currentViewPath.join('/');
-        const oldPathFull = parentPathStr ? `${parentPathStr}/${oldFolderName}` : oldFolderName;
-        const newPathFull = parentPathStr ? `${parentPathStr}/${newFolderName}` : newFolderName;
-
-        if (currentViewPath.length === 0) {
-            if (onRenameCollection && existingCollections.includes(oldFolderName)) {
-                onRenameCollection(oldFolderName, newFolderName);
-                setEditingFolder(null);
-                return;
-            }
-        }
-
-        if (currentViewPath.length === 0 && onCreateCollection && !existingCollections.includes(oldFolderName)) {
-            onCreateCollection(newFolderName).then((id) => {
-                if (id) {
-                    setCustomPaths(prev => prev.map(p => {
-                        if (p === oldPathFull) return newPathFull;
-                        if (p.startsWith(`${oldPathFull}/`)) return p.replace(oldPathFull, newPathFull);
-                        return p;
-                    }));
-                    onChange(newFolderName + '/');
-                } else {
-                    setCustomPaths(prev => prev.filter(p => p !== oldPathFull));
-                }
-            });
-        } else {
-            setCustomPaths(prev => prev.map(p => {
-                if (p === oldPathFull) return newPathFull;
-                if (p.startsWith(`${oldPathFull}/`)) return p.replace(oldPathFull, newPathFull);
-                return p;
-            }));
-        }
-        setEditingFolder(null);
-    };
 
     const handleContextMenu = (e: React.MouseEvent, folder: string) => {
         if (!isRoot) return;
@@ -240,7 +295,8 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
                     x={contextMenu.x}
                     y={contextMenu.y}
                     onRename={() => { if (contextMenu.target) handleRenameStart(contextMenu.target); setContextMenu(null); }}
-                    onDelete={() => { if (onDeleteCollection && contextMenu.target) onDeleteCollection(contextMenu.target); setContextMenu(null); }}
+
+                    onDelete={() => { if (contextMenu.target) handleDeleteCollectionInternal(contextMenu.target); setContextMenu(null); }}
                     onClose={() => setContextMenu(null)}
                 />
             )}
@@ -324,7 +380,7 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
                                     {editingFolder === folder ? (
                                         <div className="w-full flex items-center px-3 py-2 bg-surface-2 rounded-lg border border-primary/30 mx-px mb-0.5">
                                             <Folder size={14} className="text-primary mr-2 flex-shrink-0" />
-                                            <input autoFocus type="text" value={editValue} onFocus={(e) => e.target.select()} onChange={(e) => setEditValue(e.target.value)} onBlur={handleRenameSubmit} onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSubmit(); if (e.key === 'Escape') setEditingFolder(null); }} className="bg-transparent border-none outline-none text-text-primary text-xs w-full font-medium" />
+                                            <input autoFocus type="text" value={editValue} onFocus={(e) => e.target.select()} onChange={(e) => setEditValue(e.target.value)} onBlur={handleRenameSubmitInternal} onKeyDown={(e) => { if (e.key === 'Enter') handleRenameSubmitInternal(); if (e.key === 'Escape') setEditingFolder(null); }} className="bg-transparent border-none outline-none text-text-primary text-xs w-full font-medium" />
                                         </div>
                                     ) : (
                                         <button

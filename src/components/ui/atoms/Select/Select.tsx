@@ -98,7 +98,7 @@ export const Select: React.FC<SelectProps> = ({
 
     const sizeClasses = {
         sm: 'h-8 text-xs px-2',
-        md: 'h-[42px] text-sm px-3',
+        md: 'h-11 text-sm px-4', // Increased to 44px (h-11) to match Inputs
         lg: 'h-12 text-base px-4'
     };
 
