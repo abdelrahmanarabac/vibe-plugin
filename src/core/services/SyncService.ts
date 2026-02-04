@@ -6,6 +6,7 @@ export interface SyncStats {
     totalVariables: number;
     collections: number;
     styles: number;
+    collectionMap: Record<string, string>; // Name -> ID
 }
 
 /**
@@ -48,10 +49,17 @@ export class SyncService {
         const variables = await figma.variables.getLocalVariablesAsync();
         const styles = await figma.getLocalPaintStylesAsync();
 
+        // Build Name -> ID Map
+        const collectionMap: Record<string, string> = {};
+        collections.forEach(c => {
+            collectionMap[c.name] = c.id;
+        });
+
         return {
             totalVariables: variables.length,
             collections: collections.length,
-            styles: styles.length
+            styles: styles.length,
+            collectionMap
         };
     }
 }

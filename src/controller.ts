@@ -105,18 +105,18 @@ async function performFullSync() {
     }
 
     // 2. Sync Stats (Collections/Styles)
+    // 2. Sync Stats (Collections/Styles)
     try {
-        const collections = await figma.variables.getLocalVariableCollectionsAsync();
-        const variables = await figma.variables.getLocalVariablesAsync();
-        const styles = await figma.getLocalPaintStylesAsync();
+        const stats = await root.syncService.getStats();
 
         figma.ui.postMessage({
             type: 'STATS_UPDATED',
             payload: {
-                totalVariables: variables.length,
-                collections: collections.length,
-                styles: styles.length,
-                collectionNames: collections.map(c => c.name)
+                totalVariables: stats.totalVariables,
+                collections: stats.collections,
+                styles: stats.styles,
+                collectionNames: Object.keys(stats.collectionMap),
+                collectionMap: stats.collectionMap
             }
         });
     } catch (e) {

@@ -9,6 +9,7 @@ interface TokenStats {
     collections: number;
     styles: number;
     collectionNames: string[];
+    collectionMap?: Record<string, string>;
     lastSync: number;
 }
 
@@ -75,6 +76,7 @@ export function useTokens(): TokensViewModel {
                     collections: payload.collections ?? 0,
                     styles: payload.styles ?? 0,
                     collectionNames: payload.collectionNames ?? [],
+                    collectionMap: payload.collectionMap ?? {},
                     lastSync: Date.now()
                 });
             }
@@ -88,6 +90,7 @@ export function useTokens(): TokensViewModel {
                         collections: payload.stats.collections ?? 0,
                         styles: payload.stats.styles ?? 0,
                         collectionNames: payload.stats.collectionNames ?? [],
+                        collectionMap: payload.stats.collectionMap ?? {},
                         lastSync: Date.now()
                     });
                 }
@@ -121,6 +124,15 @@ export function useTokens(): TokensViewModel {
 
             if (type === 'CREATE_COLLECTION_SUCCESS') {
                 omnibox.show(`Collection created`, { type: 'success' });
+                if (payload.collectionMap) {
+                    setStats(prev => ({
+                        ...prev,
+                        collections: payload.collections ? payload.collections.length : prev.collections,
+                        collectionNames: payload.collections || prev.collectionNames,
+                        collectionMap: payload.collectionMap,
+                        lastSync: Date.now()
+                    }));
+                }
                 if (collectionPromise.current) {
                     collectionPromise.current(payload.collectionId);
                     collectionPromise.current = null;
@@ -138,6 +150,16 @@ export function useTokens(): TokensViewModel {
             if (type === 'DELETE_COLLECTION_SUCCESS') {
                 const deletedName = payload.deletedName || 'Collection';
                 omnibox.show(`${deletedName} deleted`, { type: 'success' });
+
+                if (payload.collectionMap) {
+                    setStats(prev => ({
+                        ...prev,
+                        collections: Object.keys(payload.collectionMap).length,
+                        collectionNames: Object.keys(payload.collectionMap),
+                        collectionMap: payload.collectionMap,
+                        lastSync: Date.now()
+                    }));
+                }
 
                 if (deletePromise.current) {
                     deletePromise.current.resolve();
@@ -223,14 +245,18 @@ export function useTokens(): TokensViewModel {
         return new Promise<void>((resolve, reject) => {
             omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
             deletePromise.current = { resolve, reject };
+
+            // Smart Deletion: Lookup ID if available
+            const id = stats.collectionMap?.[name];
+
             parent.postMessage({
                 pluginMessage: {
                     type: 'DELETE_COLLECTION',
-                    payload: { name }
+                    payload: { name, id }
                 }
             }, '*');
         });
-    }, []);
+    }, [stats.collectionMap]);
 
     return {
         tokens,

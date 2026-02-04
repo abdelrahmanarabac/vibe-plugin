@@ -77,7 +77,7 @@ const TokenTypeIcon = ({ type, value }: { type: string, value: string | number |
     return <Box size={13} className="text-text-dim flex-shrink-0" />;
 };
 
-export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Select path...', className = '', existingTokens = [], existingCollections = [], onRenameCollection, onDeleteCollection }: VibePathPickerProps) {
+export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Select path...', className = '', existingTokens = [], existingCollections = [], onCreateCollection, onRenameCollection, onDeleteCollection }: VibePathPickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [currentViewPath, setCurrentViewPath] = useState<string[]>([]);
     const [customPaths, setCustomPaths] = useState<string[]>([]);
@@ -207,29 +207,53 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
     const currentFolderName = isRoot ? 'Collections' : currentViewPath[currentViewPath.length - 1];
 
     // Optimistic Handlers
-    const handleRenameSubmitInternal = () => {
+    // Optimistic Handlers
+    const handleRenameSubmitInternal = async () => {
         if (!editingFolder || !editValue.trim()) { setEditingFolder(null); return; }
         const oldFolderName = editingFolder;
         const newFolderName = editValue.trim();
-        if (oldFolderName === newFolderName) { setEditingFolder(null); return; }
 
-        // If we are renaming a ROOT collection
+        // If we are renaming a ROOT collection (Creation or Rename)
         if (currentViewPath.length === 0) {
-            // Check if it's a real collection
-            if (onRenameCollection && (existingCollections.includes(oldFolderName) || optimisticRenames[oldFolderName])) {
-                onRenameCollection(oldFolderName, newFolderName);
-                setOptimisticRenames(prev => ({ ...prev, [oldFolderName]: newFolderName }));
-                setEditingFolder(null);
+            const isExisting = existingCollections.includes(oldFolderName) || optimisticRenames[oldFolderName];
 
-                // If the selected value was in this collection, update it
-                if (value.startsWith(oldFolderName + '/')) {
-                    onChange(value.replace(oldFolderName + '/', newFolderName + '/'));
+            if (isExisting) {
+                // RENAME EXISTING
+                if (oldFolderName !== newFolderName) {
+                    onRenameCollection?.(oldFolderName, newFolderName);
+                    setOptimisticRenames(prev => ({ ...prev, [oldFolderName]: newFolderName }));
+
+                    if (value.startsWith(oldFolderName + '/')) {
+                        onChange(value.replace(oldFolderName + '/', newFolderName + '/'));
+                    }
                 }
-                return;
+            } else {
+                // CREATE NEW
+                // It was a temporary folder (e.g. "New Collection"), now being "named".
+                // Trigger Creation.
+                if (onCreateCollection) {
+                    // Remove the temporary folder from customPaths to avoid duplicates
+                    // The backend will send the real collection list via Sync
+                    setCustomPaths(prev => prev.filter(p => p !== oldFolderName)); // Clear temp
+
+                    // Call Backend - PURE NAME ONLY (Context Detached)
+                    await onCreateCollection(newFolderName);
+
+                    // We rely on the backend Sync to repopulate the list. 
+                    // But for immediate feedback, we can add it to optmistic? 
+                    // Actually, CreateCollectionCapability now returns the full list quickly.
+                    // But to be safe for UI flicker, we can temporarily assume it exists?
+                    // Let's rely on the Aggressive Sync of the Capability. 
+                    // Just clear the temp folder.
+                }
             }
+            setEditingFolder(null);
+            return;
         }
 
-        // Just a local folder (Group) rename or eager creation
+        // Just a local folder (Group) rename
+        if (oldFolderName === newFolderName) { setEditingFolder(null); return; }
+
         const parentPathStr = currentViewPath.join('/');
         const oldPathFull = parentPathStr ? `${parentPathStr}/${oldFolderName}` : oldFolderName;
         const newPathFull = parentPathStr ? `${parentPathStr}/${newFolderName}` : newFolderName;
