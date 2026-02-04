@@ -273,6 +273,11 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
     };
 
     const handleDeleteCollectionInternal = (name: string) => {
+        // Confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete "${name}" collection?\n\nThis will remove the collection and all its tokens.`);
+
+        if (!confirmed) return;
+
         if (onDeleteCollection) {
             onDeleteCollection(name);
             setOptimisticDeletes(prev => new Set(prev).add(name));
@@ -388,7 +393,7 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
                                     )}
                                 </div>
                                 <div className="px-3 pb-3 pt-0 w-full">
-                                    <button onClick={handleCreateCollection} className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white text-xxs font-bold uppercase tracking-wide py-2 rounded-lg transition-all shadow-md shadow-primary/10 border border-white/10">
+                                    <button type="button" onClick={handleCreateCollection} className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white text-xxs font-bold uppercase tracking-wide py-2 rounded-lg transition-all shadow-md shadow-primary/10 border border-white/10">
                                         <Plus size={12} strokeWidth={3} />
                                         <span>{actionLabel}</span>
                                     </button>

@@ -149,26 +149,33 @@ export class FigmaVariableRepository implements IVariableRepository {
             // Standard Single Mode
             const collections = await figma.variables.getLocalVariableCollectionsAsync();
 
-            // 🧠 INTELLIGENT PATH PARSING
-            // Format: "CollectionName/Group/TokenName"
+            // 🧠 STRICT PATH ENFORCEMENT
+            // Format: "CollectionName/Group/TokenName" or "CollectionName/TokenName"
+            // We NO LONGER support bare token names without collections.
             const parts = name.split('/');
 
-            // If we have at least "Collection/Token", we treat the first part as Collection Name
-            // If just "Token", we default to "Vibe Tokens"
-            let targetCollectionName = 'Vibe Tokens';
-            let finalTokenName = name;
-
-            if (parts.length > 1) {
-                targetCollectionName = parts[0];
-                // The Figma API uses "/" for grouping WITHIN a collection.
-                // So if we have "Brand/Colors/Primary", 
-                // Collection = "Brand"
-                // Valid Variable Name = "Colors/Primary"
-                finalTokenName = parts.slice(1).join('/');
+            if (parts.length < 2) {
+                throw new Error(
+                    `Invalid token path: "${name}". ` +
+                    `Expected format: "Collection/TokenName" or "Collection/Group/TokenName". ` +
+                    `Please specify a collection path.`
+                );
             }
 
-            collection = collections.find(c => c.name === targetCollectionName)
-                || await figma.variables.createVariableCollection(targetCollectionName);
+            const targetCollectionName = parts[0];
+            // The Figma API uses "/" for grouping WITHIN a collection.
+            // So if we have "Brand/Colors/Primary", 
+            // Collection = "Brand"
+            // Valid Variable Name = "Colors/Primary"
+            const finalTokenName = parts.slice(1).join('/');
+
+            // Find existing collection or create it with user-provided name
+            let foundCollection = collections.find(c => c.name === targetCollectionName);
+            if (!foundCollection) {
+                foundCollection = figma.variables.createVariableCollection(targetCollectionName);
+                console.log(`[Repo] Auto-created collection: "${targetCollectionName}"`);
+            }
+            collection = foundCollection;
 
             // Update the name to be relative to the collection
             name = finalTokenName;

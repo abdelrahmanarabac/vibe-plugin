@@ -34,16 +34,14 @@ export class CreateCollectionCapability implements ICapability<CreateCollectionP
                 return Result.fail("Collection name cannot be empty");
             }
 
-            // 2. ISOLATION: Explicitly ignore Active Context
-            figma.currentPage.selection = [];
+            // 2. STRICT: Ignores current selection to prevent side-effects.
+            // We do NOT touch figma.currentPage.selection. 
+            // We utilize figma.variables.createVariableCollection which spawns an empty collection.
 
-            // 3. Create collection via Figma API
+            // 3. Create collection via Figma API (Blind Creation)
             const collection = figma.variables.createVariableCollection(name);
 
-            // Restore selection? User said "Clear the selection", so we leave it cleared or restore if we want to be nice.
-            // "Ensure it clears the selection or passes null". I'll leave it cleared to be safe against "Context Leak".
-
-            // 4. Ensure a default mode exists for better UX
+            // 4. Default Mode
             if (collection.modes.length === 0) {
                 collection.addMode("Default");
             }
@@ -51,12 +49,7 @@ export class CreateCollectionCapability implements ICapability<CreateCollectionP
             console.log(`[Vibe] Created Collection: ${collection.name} (ID: ${collection.id})`);
 
             // 5. AGGRESSIVE SYNC: Fetch fresh state immediately
-            // The user said: "Chain Sync... Trigger a data refresh."
             const stats = await this.syncService.getStats();
-
-            // We also trigger a token sync just in case, though strictly not needed for just a collection.
-            // asking syncService to sync() usually sends a message, but here we just want the data.
-            // We will return the updated collection names directly.
 
             return Result.ok({
                 message: `✅ Collection '${name}' Created`,

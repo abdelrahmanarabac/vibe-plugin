@@ -38,8 +38,14 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
 
         if (!formState.name.trim()) return;
 
+        // ✅ VALIDATION: Require Collection Path
+        if (!place || place.trim() === '') {
+            omnibox.show('Please select a collection path', { type: 'error' });
+            return;
+        }
+
         const baseData = actions.getSubmissionData();
-        const cleanPath = place.endsWith('/') ? place : (place ? `${place}/` : '');
+        const cleanPath = place.endsWith('/') ? place : `${place}/`;
         const fullName = `${cleanPath}${baseData.name}`;
 
         const finalData = {

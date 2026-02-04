@@ -99,26 +99,26 @@ export class CreateVariableCapability implements ICapability<CreatePayload, Crea
         console.log(`[CreateVariable] Generating Scale for: ${baseName} (${hex})`);
 
         try {
-            const scale = ColorPalette.generateScale(hex);
-            const createdNames: string[] = [];
-
-            // Defaults: standard tailwind-like scale
+            // Determine range
             let min = 50;
             let max = 950;
 
             if (extensions.scope === 'scale-custom' && extensions.range) {
                 [min, max] = extensions.range;
+                console.log(`[CreateVariable] Custom range detected: ${min}-${max}`);
             }
 
-            // Create steps sequentially to ensure order (Figma sometimes weird with parallelism)
+            // Generate scale with custom range support
+            const scale = ColorPalette.generateScale(hex, min, max);
+            const createdNames: string[] = [];
+
+            // Create all stops from the generated scale
             for (const [stop, stopHex] of Object.entries(scale)) {
-                const stopNum = parseInt(stop);
-                if (stopNum >= min && stopNum <= max) {
-                    const tokenName = `${baseName}/${stop}`;
-                    await this.variableManager.createVariable(tokenName, 'color', stopHex);
-                    createdNames.push(tokenName);
-                }
+                const tokenName = `${baseName}/${stop}`;
+                await this.variableManager.createVariable(tokenName, 'color', stopHex);
+                createdNames.push(tokenName);
             }
+
 
             return Result.ok({
                 created: true,
