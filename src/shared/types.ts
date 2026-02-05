@@ -4,6 +4,7 @@ export type PluginAction =
     | { type: 'PING' }
     | { type: 'SCAN_VARS' }
     | { type: 'SCAN_VARS' }
+    | { type: 'STARTUP' }
     | { type: 'SYNC_GRAPH' }
     | { type: 'SYNC_VARIABLES' }
     // 🛑 Manual Sync Control

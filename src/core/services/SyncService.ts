@@ -43,7 +43,7 @@ export class SyncService {
      * 🧠 Lazy Usage Analysis
      * Should be called ONLY when user requests it or on idle.
      */
-    async scanUsage(): Promise<void> {
+    async scanUsage(): Promise<any> { // Using any or specific type if import available, prefer weak typing here to avoid circular dep issues in signature if types aren't purely shared
         try {
             // Lazy load analyzer to avoid circular deps
             const { TokenUsageAnalyzer } = await import('../../features/tokens/domain/TokenUsageAnalyzer');
@@ -63,8 +63,11 @@ export class SyncService {
                     // core/TokenRepository is in-memory graph usually.
                 }
             }
+
+            return usageMap;
         } catch (e) {
             console.error('Failed to analyze usage:', e);
+            return new Map();
         }
     }
 

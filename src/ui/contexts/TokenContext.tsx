@@ -1,5 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useMemo } from 'react';
+import { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { TokenEntity } from '../../core/types';
 import { SemanticMapper } from '../../features/tokens/domain/services/SemanticMapper';
@@ -8,6 +7,7 @@ import { SemanticMapper } from '../../features/tokens/domain/services/SemanticMa
 interface TokenState {
     collectionName: string;
     tokens: TokenEntity[];
+    tokenUsage: Record<string, number>; // 🆕
     isGenerating: boolean;
 }
 
@@ -24,8 +24,29 @@ const TokenActionsCtx = createContext<TokenActions | undefined>(undefined);
 
 export const TokenProvider = ({ children }: { children: ReactNode }) => {
     const [tokens, setTokens] = useState<TokenEntity[]>([]);
+    const [tokenUsage, setTokenUsage] = useState<Record<string, number>>({});
     const [collectionName, setCollectionName] = useState("Vibe System");
     const [isGenerating, setIsGenerating] = useState(false);
+
+    // 👂 Listen for Sync/Cache Data
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const { type, payload } = event.data.pluginMessage || {};
+
+            if (type === 'SCAN_COMPLETE') {
+                // 📥 Hydrate from Cache or Live Scan
+                setTokenUsage(payload.usage || {});
+                console.log("[TokenContext] Usage data updated:", payload.isCached ? '(Cached)' : '(Live)');
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        // 🚀 Trigger Startup Load
+        parent.postMessage({ pluginMessage: { type: 'STARTUP' } }, '*');
+
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     // 3. Memoize Actions (Stable References)
     const actions = useMemo<TokenActions>(() => ({
@@ -63,9 +84,10 @@ export const TokenProvider = ({ children }: { children: ReactNode }) => {
 
     const state = useMemo(() => ({
         tokens,
+        tokenUsage,
         collectionName,
         isGenerating
-    }), [tokens, collectionName, isGenerating]);
+    }), [tokens, tokenUsage, collectionName, isGenerating]); // Added tokenUsage dep
 
     return (
         <TokenActionsCtx.Provider value={actions}>

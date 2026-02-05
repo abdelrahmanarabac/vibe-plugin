@@ -12,9 +12,17 @@ import { logger } from '../../../core/services/Logger';
  * 2. No String Matching. ID only.
  * 3. Separate Source Usage vs Instance Impact.
  * 4. QUALITATIVE METRICS ONLY. No raw "Usage Counts".
+ * 
+ * ⚡ PERFORMANCE UPDATE:
+ * - Uses iterative traversal (Stack-based) instead of recursion.
+ * - Yields to main thread every X nodes to prevent UI freezing.
  */
+
 // Helper Types for Figma API which might be missing in environment
 type VariableBindings = { [key: string]: VariableAlias | VariableAlias[] };
+
+// ⏳ Non-Blocking Yield Utility
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 export class TokenUsageAnalyzer {
 
@@ -88,7 +96,7 @@ export class TokenUsageAnalyzer {
             stats.affectedInstancesCount++;
         };
 
-        // === PHASE 1: STYLES (Styles consume Variables) ===
+        // === PHASE 1: STYLES (Fast) ===
         // Traverse all local paint styles
         const styles = await figma.getLocalPaintStylesAsync();
         for (const style of styles) {
@@ -118,17 +126,36 @@ export class TokenUsageAnalyzer {
             }
         }
 
-        // === PHASE 2 & 3: NODES (Components & Instances) ===
+        await yieldToMain(); // Breathe after styles
+
+        // === PHASE 2 & 3: NODES (Iterative & Yielding) ===
         // We traverse the document *once* to handle both.
 
         const instanceMap: { instanceId: string, componentId: string }[] = [];
 
-        const processNode = (node: SceneNode | PageNode) => {
+        // ⚡ ITERATIVE STACK 
+        // Start with pages
+        const stack: (SceneNode | PageNode)[] = [...figma.root.children];
+
+        let nodesProcessed = 0;
+        // const YIELD_THRESHOLD = 500; // Legacy Count-based logic
+        const TIME_BUDGET_MS = 12; // 12ms active work per frame (leaves 4ms for UI)
+        let frameStartTime = Date.now();
+
+        while (stack.length > 0) {
+            const node = stack.pop()!;
+            nodesProcessed++;
+
+            // 🛑 BREATHE CHECK (Time-Based)
+            const currentTime = Date.now();
+            if (currentTime - frameStartTime > TIME_BUDGET_MS) {
+                await yieldToMain();
+                frameStartTime = Date.now(); // Reset timer after yielding
+            }
 
             // 1. Check Binding on THIS node (Source Usage)
-            // PageNode does not have boundVariables, only SceneNode types do.
             if ('boundVariables' in node) {
-                const n = node as any; // Cast to any to access boundVariables if type definition is partial
+                const n = node as any;
                 const bindings = n.boundVariables as VariableBindings;
                 if (bindings) {
                     for (const key in bindings) {
@@ -151,27 +178,21 @@ export class TokenUsageAnalyzer {
 
             if (node.type === 'INSTANCE') {
                 // An instance *inherits* usage from its Main Component.
-
-                // Strategy: Collect Instance -> Component mappings. Resolve later.
-                const mainComponentId = node.mainComponent?.id;
+                const mainComponentId = node.mainComponent?.id; // Note: accessing mainComponent might be slow if not loaded? usually fine in plugin api.
                 if (mainComponentId) {
                     instanceMap.push({ instanceId: node.id, componentId: mainComponentId });
                 }
             }
 
-            // Recurse (Optimization: Skip hidden if needed, but Mandate says strictness)
+            // Push children to stack
             if ('children' in node) {
+                // We optimize by NOT pushing if children is empty or if it's a huge group we might want to check visibility?
+                // For now, strict traversal.
+                // Reverse loop push to maintain order? (Not critical for usage count, but nice for logic)
                 for (const child of node.children) {
-                    processNode(child);
+                    stack.push(child);
                 }
             }
-        };
-
-        // Start Traversal
-        // We iterate pages to be safe.
-        // figma.root.children is pages.
-        for (const page of figma.root.children) {
-            processNode(page);
         }
 
         // === PHASE 4: RESOLVE INSTANCE IMPACT ===
@@ -182,9 +203,11 @@ export class TokenUsageAnalyzer {
         for (const [tokenId, stats] of usageMap.entries()) {
             for (const comp of stats.usedInComponents) {
                 if (!componentToTokens.has(comp.id)) {
-                    componentToTokens.set(comp.id, []);
+                    if (!componentToTokens.has(comp.id)) {
+                        componentToTokens.set(comp.id, []);
+                    }
+                    componentToTokens.get(comp.id)?.push(tokenId);
                 }
-                componentToTokens.get(comp.id)?.push(tokenId);
             }
         }
 
@@ -199,7 +222,7 @@ export class TokenUsageAnalyzer {
         }
 
         const duration = Date.now() - startTime;
-        logger.info('analyzer', `Analysis complete in ${duration}ms. Tracked ${usageMap.size} active tokens.`, { count: usageMap.size });
+        logger.info('analyzer', `Analysis complete in ${duration}ms. Tracked ${usageMap.size} active tokens. Processed ${nodesProcessed} nodes.`, { count: usageMap.size });
 
         this.usageCache = usageMap;
         this.lastAnalysisTimestamp = Date.now();

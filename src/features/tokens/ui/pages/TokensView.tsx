@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTokens } from '../../../../ui/hooks/useTokens';
 import { Search, ChevronRight, Layers, Activity } from 'lucide-react';
 import type { TokenEntity } from '../../../../core/types';
@@ -10,14 +10,13 @@ import type { TokenEntity } from '../../../../core/types';
  * Zero Graph Terminology. Pure List/Tree Explorer.
  */
 export function TokensView({ onBack: _ }: { onBack?: () => void }) {
-    const { tokens, scanUsage } = useTokens();
+    const { tokens } = useTokens();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
-    // 🌊 Lazy Load Usage Data on Enter
-    useEffect(() => {
-        scanUsage();
-    }, []);
+    // 🛑 PERF FIX: AUTO-SCAN REMOVED
+    // We do NOT scan on mount. Tokens load from cache instantly.
+    // Usage data is "Lazy" - User must click refresh to get deep stats.
 
     // 🔍 Filter Logic
     const filteredTokens = useMemo(() => {
@@ -39,8 +38,8 @@ export function TokensView({ onBack: _ }: { onBack?: () => void }) {
             {/* 👈 Left Panel: Token List (Explorer) */}
             <div className="w-80 flex flex-col border-r border-white/5 bg-surface-1/50">
                 {/* Search Header */}
-                <div className="p-4 border-b border-white/5">
-                    <div className="relative group">
+                <div className="p-4 border-b border-white/5 flex items-center gap-2">
+                    <div className="relative group flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
                         <input
                             type="text"
@@ -96,10 +95,13 @@ export function TokensView({ onBack: _ }: { onBack?: () => void }) {
                     )}
                 </div>
 
-                {/* Footer Stats */}
-                <div className="p-3 border-t border-white/5 text-[10px] text-text-dim flex justify-between">
+                {/* Footer Stats & Actions */}
+                <div className="p-3 border-t border-white/5 flex justify-between items-center text-[10px] text-text-dim bg-surface-0/30">
                     <span>{filteredTokens.length} Tokens</span>
-                    <span>All Collections</span>
+
+                    {/* 🕵️ Manual Usage Scan Button REMOVED as per request */}
+                    {/* The place is left empty */}
+                    <div className="w-4 h-4" /> {/* Spacer */}
                 </div>
             </div>
 

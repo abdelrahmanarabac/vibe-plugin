@@ -1,5 +1,5 @@
 import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
 import { useState } from 'react';
@@ -61,35 +61,40 @@ export function Dashboard({
                         <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
-                        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-20 flex flex-col items-end gap-2">
-                            {/* 🌊 Progressive Status Label */}
-                            {isSyncing && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
-                                >
-                                    {syncStatus || 'Syncing...'}
-                                </motion.div>
-                            )}
+                        <div className="absolute top-[60%] right-6 -translate-y-1/2 z-20 flex flex-col items-end">
+                            {/* 🌊 Progressive Status Label (Absolute Positioned to prevent layout shift) */}
+                            <div className="relative">
+                                <AnimatePresence>
+                                    {isSyncing && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 5 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 5 }}
+                                            className="absolute bottom-full right-0 mb-3 whitespace-nowrap text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
+                                        >
+                                            {syncStatus || 'Syncing...'}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
-                            <SyncToggle
-                                isActive={isToggleActive}
-                                isSyncing={isSyncing}
-                                onClick={() => {
-                                    // Logic:
-                                    // 1. If currently Syncing -> Cancel (Reset)
-                                    // 2. If Active (Synced) -> Reset (Turn Off)
-                                    // 3. If Inactive -> Sync (Turn On)
-                                    if (isSyncing) {
-                                        onResetSync?.();
-                                    } else if (isToggleActive) {
-                                        onResetSync?.();
-                                    } else {
-                                        onSync?.();
-                                    }
-                                }}
-                            />
+                                <SyncToggle
+                                    isActive={isToggleActive}
+                                    isSyncing={isSyncing}
+                                    onClick={() => {
+                                        // Logic:
+                                        // 1. If currently Syncing -> Cancel (Reset)
+                                        // 2. If Active (Synced) -> Reset (Turn Off)
+                                        // 3. If Inactive -> Sync (Turn On)
+                                        if (isSyncing) {
+                                            onResetSync?.();
+                                        } else if (isToggleActive) {
+                                            onResetSync?.();
+                                        } else {
+                                            onSync?.();
+                                        }
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
 

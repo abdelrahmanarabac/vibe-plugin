@@ -4,6 +4,28 @@ import { CompositionRoot } from './core/CompositionRoot';
 import { Dispatcher } from './core/Dispatcher';
 import { logger } from './core/services/Logger';
 
+// 🛑 POLYFILL: AbortController for Figma Sandbox
+if (typeof globalThis.AbortController === 'undefined') {
+    class SimpleAbortSignal {
+        aborted = false;
+        onabort: (() => void) | null = null;
+        _listeners: (() => void)[] = [];
+        addEventListener(_type: string, listener: () => void) { this._listeners.push(listener); }
+        removeEventListener(_type: string, listener: () => void) { this._listeners = this._listeners.filter(l => l !== listener); }
+        dispatchEvent(_event: any) { return true; }
+    }
+    class SimpleAbortController {
+        signal = new SimpleAbortSignal();
+        abort() {
+            this.signal.aborted = true;
+            this.signal._listeners.forEach(l => l());
+            if (this.signal.onabort) this.signal.onabort();
+        }
+    }
+    (globalThis as any).AbortController = SimpleAbortController;
+    (globalThis as any).AbortSignal = SimpleAbortSignal;
+}
+
 
 logger.clear();
 logger.info('system', 'System booting...');
@@ -51,6 +73,25 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             figma.ui.postMessage({ type: 'PONG', timestamp: Date.now() });
             return;
         }
+
+        // 🚀 STARTUP: Load Cached Data Instantaneously
+        if (msg.type === 'STARTUP') {
+            const cachedUsage = await figma.clientStorage.getAsync('internal_usage_cache');
+            if (cachedUsage) {
+                logger.info('sync', 'Loaded cached usage data.');
+                figma.ui.postMessage({
+                    type: 'SCAN_COMPLETE',
+                    payload: {
+                        timestamp: Date.now(),
+                        usage: cachedUsage,
+                        isCached: true
+                    }
+                });
+            }
+            return;
+        }
+
+        // Bridge Handlers
         else if (msg.type === 'STORAGE_GET') {
             const value = await figma.clientStorage.getAsync(msg.key);
             figma.ui.postMessage({ type: 'STORAGE_GET_RESPONSE', key: msg.key, value });
@@ -140,7 +181,8 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 // Helper: extracted sync logic
 async function performFullSync(abortSignal: AbortSignal) {
     // 🌊 Progressive Protocol
-    const allTokens: any[] = [];
+    // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
+    // const allTokens: any[] = []; // Removed to save memory
     let progress = 0;
 
     if (abortSignal.aborted) return;
@@ -156,7 +198,7 @@ async function performFullSync(abortSignal: AbortSignal) {
                 throw new Error('Sync Aborted');
             }
 
-            allTokens.push(...chunk);
+            // allTokens.push(...chunk); // Removed
             progress += chunk.length;
 
             figma.ui.postMessage({
@@ -173,9 +215,10 @@ async function performFullSync(abortSignal: AbortSignal) {
         figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'definitions' });
 
         // 🔄 Final Consistency Event (Backward Compat)
+        // 🛑 PAYLOAD REMOVED: prevents freezing on large docs.
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
-            payload: allTokens,
+            payload: [], // Empty payload. UI has already built state from chunks.
             timestamp: Date.now()
         });
 
@@ -218,6 +261,35 @@ async function performFullSync(abortSignal: AbortSignal) {
         });
     }
 
-    // 3. Lazy Usage Scan (Optional / Background)
-    // Disabled in manual sync unless requested.
+    // 3. Lazy Usage Scan (Now Manual & Instant & Non-Blocking)
+    if (abortSignal.aborted) return;
+
+    try {
+        logger.info('sync', 'Starting non-blocking usage scan...');
+        const usageMap = await root.syncService.scanUsage();
+
+        // Convert Map to Record for transport
+        const usageReport = Object.fromEntries(usageMap);
+
+        if (abortSignal.aborted) return;
+
+        // Persist for next startup
+        await figma.clientStorage.setAsync('internal_usage_cache', usageReport);
+
+        // Broadcast results
+        figma.ui.postMessage({
+            type: 'SCAN_COMPLETE',
+            payload: {
+                timestamp: Date.now(),
+                // We're essentially sending back stats, but specialized for usage
+                usage: usageReport
+            }
+        });
+
+        logger.info('sync', 'Manual usage scan complete & saved.');
+        figma.notify("✅ Data Synced & Saved Internally");
+
+    } catch (e) {
+        logger.error('controller:sync', 'Usage scan failed', { error: e });
+    }
 }

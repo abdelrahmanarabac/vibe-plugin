@@ -66,6 +66,7 @@ export function useTokens(): TokensViewModel {
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
     const deletePromise = useRef<{ resolve: () => void, reject: (reason?: Error | string) => void } | null>(null);
+    const syncStartTime = useRef<number | null>(null);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -78,6 +79,7 @@ export function useTokens(): TokensViewModel {
                     setTokens([]); // Clear previous to prevent stale mix
                     setSyncStatus('Fetching definitions...');
                     setSyncProgress(0);
+                    if (!syncStartTime.current) syncStartTime.current = Date.now();
                 }
             }
 
@@ -96,14 +98,32 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
+            const MIN_DURATION = 1000; // 1 second minimum "Vibe" delay
+
+            const finishSync = (fn: () => void) => {
+                if (!syncStartTime.current) {
+                    fn();
+                    return;
+                }
+                const elapsed = Date.now() - syncStartTime.current;
+                const remaining = Math.max(0, MIN_DURATION - elapsed);
+
+                setTimeout(() => {
+                    fn();
+                    syncStartTime.current = null;
+                }, remaining);
+            };
+
             if (type === 'GRAPH_UPDATED' || type === 'REQUEST_GRAPH_SUCCESS' || type === 'SYNC_VARIABLES_SUCCESS') {
                 if (Array.isArray(payload)) {
-                    setTokens(payload);
-                    setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
-                    setIsSyncing(false); // Stop spinner
-                    setSyncStatus('Idle');
-                    setLiveIndicator(true);
-                    setTimeout(() => setLiveIndicator(false), 2000);
+                    finishSync(() => {
+                        setTokens(payload);
+                        setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
+                        setIsSyncing(false); // Stop spinner
+                        setSyncStatus('Idle');
+                        setLiveIndicator(true);
+                        setTimeout(() => setLiveIndicator(false), 2000);
+                    });
                 }
             }
 
@@ -125,21 +145,23 @@ export function useTokens(): TokensViewModel {
             }
 
             if (type === 'SCAN_COMPLETE') {
-                if (payload.tokens) setTokens(payload.tokens);
-                if (payload.anatomy) setAnatomy(payload.anatomy);
-                if (payload.stats) {
-                    setStats({
-                        totalVariables: payload.stats.totalVariables ?? 0,
-                        collections: payload.stats.collections ?? 0,
-                        styles: payload.stats.styles ?? 0,
-                        collectionNames: payload.stats.collectionNames ?? [],
-                        collectionMap: payload.stats.collectionMap ?? {},
-                        lastSync: Date.now()
-                    });
-                }
-                setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
-                setLiveIndicator(true);
-                setTimeout(() => setLiveIndicator(false), 2000);
+                finishSync(() => {
+                    if (payload.tokens) setTokens(payload.tokens);
+                    if (payload.anatomy) setAnatomy(payload.anatomy);
+                    if (payload.stats) {
+                        setStats({
+                            totalVariables: payload.stats.totalVariables ?? 0,
+                            collections: payload.stats.collections ?? 0,
+                            styles: payload.stats.styles ?? 0,
+                            collectionNames: payload.stats.collectionNames ?? [],
+                            collectionMap: payload.stats.collectionMap ?? {},
+                            lastSync: Date.now()
+                        });
+                    }
+                    setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
+                    setLiveIndicator(true);
+                    setTimeout(() => setLiveIndicator(false), 2000);
+                });
             }
 
             if (type === 'TRACE_LINEAGE_SUCCESS') {
@@ -312,6 +334,7 @@ export function useTokens(): TokensViewModel {
     }, [stats.collectionMap]);
 
     const scanUsage = useCallback(() => {
+        setIsSyncing(true); // 🛑 Immediate Feedback
         setSyncStatus('Scanning usage...');
         parent.postMessage({ pluginMessage: { type: 'SCAN_USAGE' } }, '*');
     }, []);
@@ -321,6 +344,7 @@ export function useTokens(): TokensViewModel {
         setIsSynced(false);
         setIsSyncing(true); // Immediate UI feedback
         setSyncStatus('Starting engine...');
+        syncStartTime.current = Date.now();
 
         parent.postMessage({ pluginMessage: { type: 'SYNC_START' } }, '*');
     }, []);
