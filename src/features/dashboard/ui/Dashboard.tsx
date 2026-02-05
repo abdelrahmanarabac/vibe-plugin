@@ -79,7 +79,6 @@ export function Dashboard({
 
                                 <SyncToggle
                                     isActive={isToggleActive}
-                                    isSyncing={isSyncing}
                                     onClick={() => {
                                         // Logic:
                                         // 1. If currently Syncing -> Cancel (Reset)

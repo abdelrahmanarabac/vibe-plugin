@@ -167,12 +167,13 @@ export class ProgressiveSyncCoordinator {
 
     /**
      * Yield control to main thread
+     * 🟢 CORE MECHANISM: Breaking the execution loop
      */
     private async yieldToMain(): Promise<void> {
         return new Promise(resolve => {
             // setTimeout(resolve, 0) breaks the synchronous execution chain 
             // and allows the Figma sandbox to handle other messages/events.
-            setTimeout(resolve, 0);
+            setTimeout(resolve, 5); // Increased to 5ms to guarantee UI repaint breathing room
         });
     }
 
