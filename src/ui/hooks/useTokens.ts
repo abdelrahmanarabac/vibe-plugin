@@ -115,9 +115,14 @@ export function useTokens(): TokensViewModel {
             };
 
             if (type === 'GRAPH_UPDATED' || type === 'REQUEST_GRAPH_SUCCESS' || type === 'SYNC_VARIABLES_SUCCESS') {
+                const { isIncremental } = event.data.pluginMessage;
+
                 if (Array.isArray(payload)) {
                     finishSync(() => {
-                        setTokens(payload);
+                        // 🛑 OPTIMIZATION: If incremental sync, DO NOT overwrite bits we just chunk-loaded
+                        if (!isIncremental) {
+                            setTokens(payload);
+                        }
                         setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
                         setIsSyncing(false); // Stop spinner
                         setSyncStatus('Idle');

@@ -219,6 +219,7 @@ async function performFullSync(abortSignal: AbortSignal) {
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
             payload: [], // Empty payload. UI has already built state from chunks.
+            isIncremental: true, // 🚩 Signal UI to keep chunked data
             timestamp: Date.now()
         });
 
