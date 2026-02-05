@@ -25,6 +25,13 @@ export class FigmaVariableRepository implements IVariableRepository {
 
     async sync(): Promise<TokenEntity[]> {
         const tokens: TokenEntity[] = [];
+        for await (const chunk of this.syncGenerator()) {
+            tokens.push(...chunk);
+        }
+        return tokens;
+    }
+
+    async *syncGenerator(): AsyncGenerator<TokenEntity[]> {
         try {
             const allVariables = await figma.variables.getLocalVariablesAsync();
             const collections = await figma.variables.getLocalVariableCollectionsAsync();
@@ -35,15 +42,9 @@ export class FigmaVariableRepository implements IVariableRepository {
 
             // ⚡ PERFORMANCE: Time Slicing Config
             const CHUNK_SIZE = 50;
-            let processedCount = 0;
+            let currentChunk: TokenEntity[] = [];
 
             for (const variable of allVariables) {
-                // Yield to main thread every CHUNK_SIZE iterations to prevent UI freeze
-                if (processedCount % CHUNK_SIZE === 0 && processedCount > 0) {
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                }
-                processedCount++;
-
                 const collection = collectionMap.get(variable.variableCollectionId);
                 if (!collection) continue;
 
@@ -57,7 +58,7 @@ export class FigmaVariableRepository implements IVariableRepository {
                 let w3cType: TokenEntity['$type'] = 'color';
                 if (variable.resolvedType === 'FLOAT') w3cType = 'dimension';
                 if (variable.resolvedType === 'STRING') w3cType = 'fontFamily';
-                if (variable.resolvedType === 'BOOLEAN') continue; // Skip booleans for now
+                if (variable.resolvedType === 'BOOLEAN') continue; // Skip booleans
 
                 // Hierarchical Path Construction
                 const fullPath = `${collection.name}/${variable.name}`;
@@ -66,17 +67,26 @@ export class FigmaVariableRepository implements IVariableRepository {
                 // Extract dependencies (aliases) and value resolution
                 const dependencies: string[] = [];
 
-                const resolveValue = (val: VariableValue | VariableAlias): string | number => {
+                const resolveValue = (val: VariableValue | VariableAlias, visited: Set<string> = new Set()): string | number => {
                     if (val && typeof val === 'object' && 'type' in val && val.type === 'VARIABLE_ALIAS') {
-                        dependencies.push(val.id);
+                        const aliasId = val.id;
+
+                        // 🛑 CYCLE DETECTION
+                        if (visited.has(aliasId)) {
+                            console.warn(`[Repo] Cycle detected for alias ${aliasId}`);
+                            return 'CYCLE_DETECTED';
+                        }
+                        visited.add(aliasId);
+
+                        dependencies.push(aliasId);
                         // ⚡ OPTIMIZED: Use Map Lookup instead of array.find
-                        const target = variableMap.get(val.id);
+                        const target = variableMap.get(aliasId);
 
                         if (target) {
                             const targetCollection = collectionMap.get(target.variableCollectionId);
                             const targetModeId = targetCollection?.defaultModeId || (targetCollection?.modes[0]?.modeId);
                             if (targetModeId) {
-                                return resolveValue(target.valuesByMode[targetModeId]);
+                                return resolveValue(target.valuesByMode[targetModeId], visited);
                             }
                         }
                         return 'ALIAS_ERROR';
@@ -111,11 +121,24 @@ export class FigmaVariableRepository implements IVariableRepository {
                         }
                     },
                     dependencies: dependencies,
-                    dependents: [] // Will be populated by Graph algorithm
+                    dependents: []
                 };
-                tokens.push(token);
+
+                currentChunk.push(token);
+
+                // Yield to main thread every CHUNK_SIZE
+                if (currentChunk.length >= CHUNK_SIZE) {
+                    yield currentChunk;
+                    currentChunk = [];
+                    await new Promise(resolve => setTimeout(resolve, 1)); // Yield
+                }
             }
-            return tokens;
+
+            // Yield remaining
+            if (currentChunk.length > 0) {
+                yield currentChunk;
+            }
+
         } catch (error) {
             console.error('[Repository] Failed to sync variables:', error);
             throw error;

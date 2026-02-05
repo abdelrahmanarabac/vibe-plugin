@@ -1,4 +1,5 @@
 import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
 import { useState } from 'react';
@@ -14,6 +15,11 @@ interface DashboardProps {
     onResetSync?: () => void;
     isSyncing?: boolean;
     isSynced?: boolean;
+
+    // 🌊 Progressive Feedback
+    syncStatus?: string;
+    syncProgress?: number;
+
     onCreateStyle?: (data: { name: string; type: string; value: string | number | { r: number; g: number; b: number; a?: number } }) => void;
 }
 
@@ -21,7 +27,18 @@ interface DashboardProps {
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateStyle, onSync, onResetSync, isSyncing, isSynced }: DashboardProps) {
+export function Dashboard({
+    tokens: _tokens = [],
+    stats,
+    onTabChange,
+    onCreateStyle,
+    onSync,
+    onResetSync,
+    isSyncing,
+    isSynced,
+    syncStatus,
+    syncProgress: _swallowedProgress // 🗑️ Unused for now, status has the text
+}: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
 
     // Toggle is "Active" if we are consistently synced OR currently syncing
@@ -44,12 +61,29 @@ export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateSt
                         <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
-                        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-20">
+                        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-20 flex flex-col items-end gap-2">
+                            {/* 🌊 Progressive Status Label */}
+                            {isSyncing && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
+                                >
+                                    {syncStatus || 'Syncing...'}
+                                </motion.div>
+                            )}
+
                             <SyncToggle
                                 isActive={isToggleActive}
                                 isSyncing={isSyncing}
                                 onClick={() => {
-                                    if (isToggleActive) {
+                                    // Logic:
+                                    // 1. If currently Syncing -> Cancel (Reset)
+                                    // 2. If Active (Synced) -> Reset (Turn Off)
+                                    // 3. If Inactive -> Sync (Turn On)
+                                    if (isSyncing) {
+                                        onResetSync?.();
+                                    } else if (isToggleActive) {
                                         onResetSync?.();
                                     } else {
                                         onSync?.();
@@ -62,7 +96,7 @@ export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateSt
                     <div className="z-10">
                         <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.totalVariables ?? 0}</div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isSyncing ? 'bg-primary animate-ping' : 'bg-primary'}`} />
                             Total Design Tokens
                         </div>
                     </div>

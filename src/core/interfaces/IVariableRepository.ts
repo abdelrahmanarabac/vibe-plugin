@@ -9,6 +9,7 @@ export interface IVariableRepository {
      * Syncs all tokens from the external source (Figma)
      */
     sync(): Promise<TokenEntity[]>;
+    syncGenerator?(): AsyncGenerator<TokenEntity[]>; // 🌊 Progressive Sync
 
     /**
      * Creates a new variable in the external source

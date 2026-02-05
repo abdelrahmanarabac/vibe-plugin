@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTokens } from '../../../../ui/hooks/useTokens';
 import { Search, ChevronRight, Layers, Activity } from 'lucide-react';
 import type { TokenEntity } from '../../../../core/types';
@@ -10,9 +10,14 @@ import type { TokenEntity } from '../../../../core/types';
  * Zero Graph Terminology. Pure List/Tree Explorer.
  */
 export function TokensView({ onBack: _ }: { onBack?: () => void }) {
-    const { tokens } = useTokens();
+    const { tokens, scanUsage } = useTokens();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
+
+    // 🌊 Lazy Load Usage Data on Enter
+    useEffect(() => {
+        scanUsage();
+    }, []);
 
     // 🔍 Filter Logic
     const filteredTokens = useMemo(() => {

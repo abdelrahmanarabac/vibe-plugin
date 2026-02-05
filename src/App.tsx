@@ -85,8 +85,12 @@ function VibeAppContent() {
                                 onTabChange={(tab) => setActiveTab(tab)}
                                 onSync={vm.tokens.syncVariables}
                                 onResetSync={vm.tokens.resetSync}
-                                isSyncing={vm.tokens.liveIndicator}
+                                isSyncing={vm.tokens.isSyncing}
                                 isSynced={vm.tokens.isSynced}
+
+                                // 🌊 Progressive Feedback
+                                syncStatus={vm.tokens.syncStatus}
+                                syncProgress={vm.tokens.syncProgress}
                             />
                         )}
 

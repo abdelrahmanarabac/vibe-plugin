@@ -36,9 +36,8 @@ export const SyncToggle: React.FC<SyncToggleProps> = ({
             )}
             onClick={(e) => {
                 e.stopPropagation();
-                // If not strictly syncing, allow interaction.
-                // Even if active, clicking again triggers re-sync (Refresh).
-                if (!isSyncing) onClick?.();
+                // 🛑 Allow interaction during sync to enable Cancellation
+                onClick?.();
             }}
         >
             {/* 🏷️ Labels (Background) */}

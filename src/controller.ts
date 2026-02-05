@@ -13,12 +13,9 @@ const root = new CompositionRoot();
 const dispatcher = new Dispatcher(root.registry);
 
 // === 2. Bind Background Services ===
-root.syncEngine.setCallback(async () => {
-    // We found a drift! Re-run the full sync protocol.
-    // This ensures both GRAPH (Tokens) and STATS (Collections) are updated in the UI.
-    // "Momentary" sync restored.
-    await performFullSync();
-});
+// === 2. Bind Background Services ===
+// 🛑 CORE RULE: No auto-sync callback. Sync is triggered purely by UI message.
+// root.syncEngine.setCallback(...) -> REMOVED.
 
 // === 3. Setup UI ===
 figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
@@ -27,7 +24,7 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 (async () => {
     try {
         logger.info('system', 'Initializing architecture...');
-        root.syncEngine.start();
+        // root.syncEngine.start(); // 🛑 DISABLED: No background loop.
         logger.info('system', 'System ready');
     } catch (e) {
         logger.error('system', 'Bootstrap failed', { error: e });
@@ -35,6 +32,8 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 })();
 
 // === 5. Message Handling ===
+let currentSyncAbortController: AbortController | null = null;
+
 figma.ui.onmessage = async (msg: PluginAction) => {
     try {
         // Build Context on-the-fly
@@ -48,7 +47,6 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         logger.debug('controller:message', `Received: ${msg.type}`);
 
         // 1. Initial System Check: Storage Bridge Handlers
-        // These are low-level system messages that shouldn't go through the domain dispatcher.
         if (msg.type === 'PING') {
             figma.ui.postMessage({ type: 'PONG', timestamp: Date.now() });
             return;
@@ -67,17 +65,65 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             return; // Handled
         }
 
-        // 2. Dispatch Domain Logic
-        await dispatcher.dispatch(msg, context);
+        // 🛑 MANUAL SYNC TRIGGER
+        else if (msg.type === 'SYNC_START') {
+            if (currentSyncAbortController) {
+                logger.warn('sync', 'Sync already in progress, ignoring start request.');
+                return;
+            }
+            currentSyncAbortController = new AbortController();
+            logger.info('sync', 'Manual Sync Initiated');
+            await performFullSync(currentSyncAbortController.signal);
+            currentSyncAbortController = null; // Reset after completion
+            return;
+        }
 
-        // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
-        if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTION', 'DELETE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
-            // Re-trigger global sync to ensure Graph is up to date:
-            logger.debug('controller:sync', 'Action requires sync, triggering stabilization delay');
-            // Wait 100ms to allow Figma's internal cache to settle (Anti-Phantom Fix)
-            setTimeout(async () => {
-                await performFullSync();
-            }, 100);
+        // 🛑 MANUAL SYNC CANCEL
+        else if (msg.type === 'SYNC_CANCEL') {
+            if (currentSyncAbortController) {
+                logger.info('sync', 'Cancelling sync process...');
+                currentSyncAbortController.abort();
+                currentSyncAbortController = null;
+                figma.ui.postMessage({ type: 'SYNC_CANCELLED' }); // Feedback to UI
+            } else {
+                logger.debug('sync', 'No active sync to cancel.');
+            }
+            return;
+        }
+
+        // 2. Dispatch Domain Logic
+        // 🛡️ Guard: Do NOT dispatch invalid commands to the registry
+        // Type assertion needed because SYNC_START/CANCEL are handled above and TS narrows the type
+        const type = msg.type as string;
+        if (type !== 'SCAN_USAGE' && type !== 'SYNC_START' && type !== 'SYNC_CANCEL') {
+            await dispatcher.dispatch(msg, context);
+        }
+
+        // Global Post-Dispatch Side Effects
+        if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'CREATE_COLLECTION', 'RENAME_COLLECTION', 'DELETE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
+            // 🛑 CORE RULE: NO IMPLICIT SYNC.
+            logger.debug('controller:sync', 'Action completed. Auto-sync suppressed (Manual Mode).');
+        } else if (msg.type === 'SCAN_USAGE') {
+            // Usage scan logic remains but only if triggered explicitly
+            logger.debug('controller:usage', 'Starting lazy usage scan...');
+            try {
+                await root.syncService.scanUsage();
+            } catch (err) {
+                logger.error('controller:usage', 'Scan usage failed', { error: err });
+            }
+
+            // Re-emit graph with updated usage info
+            try {
+                const tokens = root.repository.getAllNodes(); // Access via Composition Root
+                figma.ui.postMessage({
+                    type: 'GRAPH_UPDATED',
+                    payload: tokens,
+                    timestamp: Date.now()
+                });
+                logger.debug('controller:usage', 'Usage scan complete & broadcasted.');
+            } catch (err) {
+                logger.error('controller:usage', 'Failed to broadcast graph update', { error: err });
+            }
         }
 
     } catch (error: unknown) {
@@ -92,24 +138,64 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 };
 
 // Helper: extracted sync logic
-async function performFullSync() {
-    // 1. Sync Graph (Tokens)
+async function performFullSync(abortSignal: AbortSignal) {
+    // 🌊 Progressive Protocol
+    const allTokens: any[] = [];
+    let progress = 0;
+
+    if (abortSignal.aborted) return;
+
+    // 1. Start Phase: Definitions
+    figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
+
     try {
-        const tokens = await root.syncService.sync();
+        // Stream Chunks
+        for await (const chunk of root.syncService.syncDefinitionsGenerator()) {
+            if (abortSignal.aborted) {
+                logger.info('sync', 'Aborted during definitions stream.');
+                throw new Error('Sync Aborted');
+            }
+
+            allTokens.push(...chunk);
+            progress += chunk.length;
+
+            figma.ui.postMessage({
+                type: 'SYNC_CHUNK',
+                tokens: chunk,
+                progress: progress // Simple count for now, or we could estimate % if we knew total
+            });
+
+            // Allow event loop to breathe and process aborts
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        // Phase Complete
+        figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'definitions' });
+
+        // 🔄 Final Consistency Event (Backward Compat)
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
-            payload: tokens,
+            payload: allTokens,
             timestamp: Date.now()
         });
+
     } catch (e) {
-        logger.error('controller:sync', 'Token sync failed', { error: e });
-        // Continue to stats...
+        if (e instanceof Error && e.message === 'Sync Aborted') {
+            logger.info('sync', 'Sync process aborted gracefully.');
+            return; // Exit cleanly
+        }
+        logger.error('controller:sync', 'Progressive sync failed', { error: e });
+        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Interrupted' });
+        return; // Stop if failed
     }
 
-    // 2. Sync Stats (Collections/Styles)
+    if (abortSignal.aborted) return;
+
     // 2. Sync Stats (Collections/Styles)
     try {
         const stats = await root.syncService.getStats();
+
+        if (abortSignal.aborted) return;
 
         figma.ui.postMessage({
             type: 'STATS_UPDATED',
@@ -126,9 +212,12 @@ async function performFullSync() {
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
             payload: {
-                message: "Sync Partial Failure: Check Console",
+                message: "Stats Sync Partial Failure",
                 type: 'error'
             }
         });
     }
+
+    // 3. Lazy Usage Scan (Optional / Background)
+    // Disabled in manual sync unless requested.
 }

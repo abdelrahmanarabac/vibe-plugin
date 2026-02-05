@@ -3,8 +3,13 @@ export type PluginAction =
     | { type: 'REQUEST_STATS' }
     | { type: 'PING' }
     | { type: 'SCAN_VARS' }
+    | { type: 'SCAN_VARS' }
     | { type: 'SYNC_GRAPH' }
     | { type: 'SYNC_VARIABLES' }
+    // 🛑 Manual Sync Control
+    | { type: 'SYNC_START' }
+    | { type: 'SYNC_CANCEL' }
+    | { type: 'SCAN_USAGE' }
     | { type: 'GENERATE_DOCS' }
     | { type: 'CREATE_VARIABLE'; payload: { name: string; type: 'color' | 'number' | 'string'; value: string | number | { r: number; g: number; b: number; a?: number } } }
     | { type: 'UPDATE_VARIABLE'; id: string; newValue: string | number | { r: number; g: number; b: number; a?: number } }
@@ -39,4 +44,9 @@ export type PluginEvent =
     | { type: 'STORAGE_GET_RESPONSE'; key: string; value: unknown }
     | { type: 'MEMORY_LOAD_RESPONSE'; key: string; data: unknown }
     | { type: 'ERROR'; message: string }
-    | { type: 'IMPACT_REPORT'; payload: unknown };
+    | { type: 'IMPACT_REPORT'; payload: unknown }
+    | { type: 'SYNC_CANCELLED' }
+    // 🌊 Progressive Sync Events
+    | { type: 'SYNC_PHASE_START'; phase: 'definitions' | 'usage' }
+    | { type: 'SYNC_CHUNK'; tokens: unknown[]; progress: number }
+    | { type: 'SYNC_PHASE_COMPLETE'; phase: 'definitions' | 'usage' };

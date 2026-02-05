@@ -19,6 +19,15 @@ export interface TokensViewModel {
     stats: TokenStats;
     isSynced: boolean;
     liveIndicator: boolean;
+
+    // 🌊 Progressive State
+    isSyncing: boolean;
+    syncProgress: number;
+    syncStatus: string;
+
+    // 🌊 Lazy Triggers
+    scanUsage: () => void;
+
     updateToken: (id: string, value: string) => void;
     createToken: (data: TokenFormData) => Promise<boolean>;
     scanAnatomy: () => void;
@@ -48,6 +57,11 @@ export function useTokens(): TokensViewModel {
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
 
+    // 🌊 Progressive Sync State
+    const [syncProgress, setSyncProgress] = useState(0);
+    const [syncStatus, setSyncStatus] = useState<string>('Idle');
+    const [isSyncing, setIsSyncing] = useState(false);
+
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
@@ -55,12 +69,39 @@ export function useTokens(): TokensViewModel {
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            const { type, payload } = event.data.pluginMessage || {};
+            const { type, payload, progress, phase, tokens: chunkTokens } = event.data.pluginMessage || {};
+
+            // 🌊 Progressive Protocol Handlers
+            if (type === 'SYNC_PHASE_START') {
+                if (phase === 'definitions') {
+                    setIsSyncing(true);
+                    setTokens([]); // Clear previous to prevent stale mix
+                    setSyncStatus('Fetching definitions...');
+                    setSyncProgress(0);
+                }
+            }
+
+            if (type === 'SYNC_CHUNK') {
+                if (Array.isArray(chunkTokens)) {
+                    setTokens(prev => [...prev, ...chunkTokens]);
+                    setSyncProgress(progress || 0);
+                    setSyncStatus(`Loaded ${progress} tokens...`);
+                }
+            }
+
+            if (type === 'SYNC_PHASE_COMPLETE') {
+                if (phase === 'definitions') {
+                    setSyncStatus('Finalizing...');
+                    // Don't set isSyncing false yet, wait for Stats or GraphUpdated
+                }
+            }
 
             if (type === 'GRAPH_UPDATED' || type === 'REQUEST_GRAPH_SUCCESS' || type === 'SYNC_VARIABLES_SUCCESS') {
                 if (Array.isArray(payload)) {
                     setTokens(payload);
-                    setIsSynced(true);
+                    setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
+                    setIsSyncing(false); // Stop spinner
+                    setSyncStatus('Idle');
                     setLiveIndicator(true);
                     setTimeout(() => setLiveIndicator(false), 2000);
                 }
@@ -96,7 +137,7 @@ export function useTokens(): TokensViewModel {
                         lastSync: Date.now()
                     });
                 }
-                setIsSynced(true);
+                setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
                 setLiveIndicator(true);
                 setTimeout(() => setLiveIndicator(false), 2000);
             }
@@ -169,6 +210,14 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
+            // 🛡️ GENERIC ERROR HANDLER (Fixes Stuck Loading)
+            if (type === 'ERROR') {
+                setIsSyncing(false);
+                setSyncStatus('Error');
+                setIsSynced(false);
+                omnibox.show(payload.message || 'An error occurred', { type: 'error' });
+            }
+
             if (type === 'DELETE_COLLECTION_ERROR' || (type === 'OMNIBOX_NOTIFY' && payload.type === 'error' && deletePromise.current)) {
                 // If we get a generic error while deletion is pending, assume it's ours
                 omnibox.show(payload.message || 'Failed to delete collection', { type: 'error' });
@@ -178,18 +227,16 @@ export function useTokens(): TokensViewModel {
                     deletePromise.current = null;
                 }
             }
+
+            // 🛑 Manual Sync Cancelled Confirmation
+            if (type === 'SYNC_CANCELLED') {
+                setIsSyncing(false);
+                setSyncStatus('Idle');
+                setIsSynced(false); // Force "No" state on toggle
+            }
         };
 
         window.addEventListener('message', handleMessage);
-
-        // Auto-sync removed as per user request.
-        // Sync is now triggered manually via the SyncToggle in Dashboard.
-        /*
-        setTimeout(() => {
-            parent.postMessage({ pluginMessage: { type: 'REQUEST_GRAPH' } }, '*');
-            parent.postMessage({ pluginMessage: { type: 'REQUEST_STATS' } }, '*');
-        }, 100);
-        */
 
         return () => {
             window.removeEventListener('message', handleMessage);
@@ -264,18 +311,28 @@ export function useTokens(): TokensViewModel {
         });
     }, [stats.collectionMap]);
 
+    const scanUsage = useCallback(() => {
+        setSyncStatus('Scanning usage...');
+        parent.postMessage({ pluginMessage: { type: 'SCAN_USAGE' } }, '*');
+    }, []);
+
     const syncVariables = useCallback(() => {
+        // 🛑 Explicit Manual Start
         setIsSynced(false);
-        setLiveIndicator(true);
-        omnibox.show('Syncing tokens from Figma...', { type: 'loading', duration: 0 });
+        setIsSyncing(true); // Immediate UI feedback
+        setSyncStatus('Starting engine...');
 
-        // Trigger generic sync which should update graph and stats
-        parent.postMessage({ pluginMessage: { type: 'SYNC_VARIABLES' } }, '*');
+        parent.postMessage({ pluginMessage: { type: 'SYNC_START' } }, '*');
+    }, []);
 
-        // Redundant explicit request just in case
-        setTimeout(() => {
-            parent.postMessage({ pluginMessage: { type: 'REQUEST_STATS' } }, '*');
-        }, 500);
+    const resetSync = useCallback(() => {
+        // 🛑 Explicit Manual Cancel
+        parent.postMessage({ pluginMessage: { type: 'SYNC_CANCEL' } }, '*');
+
+        // Optimistic UI update (Controller will send SYNC_CANCELLED to confirm)
+        setIsSyncing(false);
+        setSyncStatus('Cancelling...');
+        setIsSynced(false);
     }, []);
 
     return {
@@ -285,6 +342,14 @@ export function useTokens(): TokensViewModel {
         isSynced,
         liveIndicator,
         lineageData,
+        // 🌊 Exposed State
+        isSyncing,
+        syncProgress,
+        syncStatus,
+
+        // 🌊 Lazy Triggers
+        scanUsage,
+
         updateToken,
         createToken,
         createCollection,
@@ -294,7 +359,7 @@ export function useTokens(): TokensViewModel {
 
         traceLineage,
         syncVariables,
-        resetSync: () => setIsSynced(false)
+        resetSync
     };
 }
 

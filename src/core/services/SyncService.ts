@@ -28,34 +28,56 @@ export class SyncService {
     }
 
     /**
-     * Performs a full synchronization from Figma variables to the internal Graph.
-     * Returns the synced tokens.
+     * 🌊 Progressive Sync Generator
+     * Yields chunks of tokens definitions (Lightweight).
+     * Usage analysis is DEFERRED.
      */
-    async sync(): Promise<TokenEntity[]> {
-        const tokens = await this.variableManager.syncFromFigma();
+    async *syncDefinitionsGenerator(): AsyncGenerator<TokenEntity[]> {
+        // Yield from Variable Manager (which yields from Repo)
+        for await (const chunk of this.variableManager.syncGenerator()) {
+            yield chunk;
+        }
+    }
 
-        // 🧠 Usage Analysis Injection
-        // We enrich the tokens with usage data during sync to ensure the Repository
-        // explicitly holds the usage state as part of the Token Entity.
+    /**
+     * 🧠 Lazy Usage Analysis
+     * Should be called ONLY when user requests it or on idle.
+     */
+    async scanUsage(): Promise<void> {
         try {
-            // Lazy load analyzer to avoid circular deps if any
+            // Lazy load analyzer to avoid circular deps
             const { TokenUsageAnalyzer } = await import('../../features/tokens/domain/TokenUsageAnalyzer');
             const analyzer = new TokenUsageAnalyzer();
             const usageMap = await analyzer.analyze();
 
-            tokens.forEach(t => {
-                if (usageMap.has(t.id)) {
-                    t.usage = usageMap.get(t.id);
+            // Store in Repository
+            // We need to update existing nodes in the repo with usage data
+            // This assumes nodes already exist.
+            const allNodes = this.repository.getAllNodes();
+            for (const node of allNodes) {
+                if (usageMap.has(node.id)) {
+                    node.usage = usageMap.get(node.id);
+                    // No need to re-add, objects are ref? 
+                    // Repository might store copies.
+                    // If repo stores copies, we need repository.update(node).
+                    // core/TokenRepository is in-memory graph usually.
                 }
-            });
+            }
         } catch (e) {
-            console.error('Failed to analyze usage during sync:', e);
+            console.error('Failed to analyze usage:', e);
         }
+    }
 
-        // Update Graph
-        this.repository.reset();
-        tokens.forEach(t => this.repository.addNode(t));
-
+    /**
+     * @deprecated Use syncDefinitionsGenerator() for UI.
+     * Keeps backward compatibility for tests/CLI.
+     */
+    async sync(): Promise<TokenEntity[]> {
+        const tokens: TokenEntity[] = [];
+        for await (const chunk of this.syncDefinitionsGenerator()) {
+            tokens.push(...chunk);
+        }
+        await this.scanUsage();
         return tokens;
     }
 

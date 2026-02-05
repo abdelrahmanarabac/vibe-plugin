@@ -6,108 +6,33 @@ import { logger } from './services/Logger';
  * Monitors for external changes (Figma variables, collections) and triggers updates.
  */
 export class SyncEngine {
-    private syncIntervalId: number | null = null;
-    private lastVariableHash: string = '';
-    private lastCollectionHash: string = '';
-    private readonly INTERVAL_MS = 1000;
+    // 🧠 Core Principle: Passive Execution Only
+    // No setInterval. No auto-tick. No background polling.
 
-    private onSyncNeeded: () => Promise<void>;
-
-    constructor(onSyncNeeded: () => Promise<void>) {
-        this.onSyncNeeded = onSyncNeeded;
+    // 💀 neutered: callback is no longer stored or used.
+    constructor(_onSyncNeeded: () => Promise<void>) {
+        // no-op
     }
 
-    public setCallback(callback: () => Promise<void>) {
-        this.onSyncNeeded = callback;
+    public setCallback(_callback: () => Promise<void>) {
+        // no-op
     }
 
     /**
-     * Ignatius the background synchronization engine.
+     * @deprecated Background polling is BANNED by Core Directive.
+     * This method is kept for interface compatibility but is a NO-OP.
      */
     public start(): void {
-        if (this.syncIntervalId !== null) return;
-
-        logger.info('sync', 'Ignition sequence started');
-
-        this.syncIntervalId = setInterval(async () => {
-            await this.tick();
-        }, this.INTERVAL_MS) as unknown as number;
+        logger.debug('sync', 'SyncEngine.start() called but neutralized (Manual Sync Only).');
     }
 
     /**
-     * Halts the synchronization engine.
+     * @deprecated Background polling is BANNED by Core Directive.
      */
     public stop(): void {
-        if (this.syncIntervalId !== null) {
-            clearInterval(this.syncIntervalId);
-            this.syncIntervalId = null;
-            logger.info('sync', 'Engine shutting down');
-        }
+        // No-op
     }
 
-    /**
-     * Execution tick.
-     */
-    private async tick(): Promise<void> {
-        try {
-            // Check for potential changes in Figma variables and Collections
-            const vars = await figma.variables.getLocalVariablesAsync();
-            const collections = await figma.variables.getLocalVariableCollectionsAsync();
-
-            const currentHash = this.computeVariableHash(vars);
-            const currentCollectionHash = this.computeCollectionHash(collections);
-
-            let hasChanges = false;
-
-            if (currentHash !== this.lastVariableHash) {
-                if (this.lastVariableHash !== '') {
-                    logger.debug('sync:drift', 'Variable drift detected');
-                    hasChanges = true;
-                }
-                this.lastVariableHash = currentHash;
-            }
-
-            if (currentCollectionHash !== this.lastCollectionHash) {
-                if (this.lastCollectionHash !== '') {
-                    logger.debug('sync:drift', 'Collection drift detected');
-                    hasChanges = true;
-                }
-                this.lastCollectionHash = currentCollectionHash;
-            }
-
-            if (hasChanges) {
-                logger.debug('sync', 'Triggering synchronization protocol');
-                await this.onSyncNeeded();
-            }
-
-        } catch (error) {
-            logger.error('sync', 'Critical tick failure', { error });
-        }
-    }
-
-    /**
-     * Generates a structural fingerprint for variables.
-     */
-    private computeVariableHash(variables: Variable[]): string {
-        return variables.map(v => {
-            try {
-                return `${v.id}:${v.name}:${v.resolvedType}:${JSON.stringify(v.valuesByMode)}`;
-            } catch {
-                return v.id;
-            }
-        }).join('|');
-    }
-
-    /**
-     * Generates a structural fingerprint for collections.
-     */
-    private computeCollectionHash(collections: VariableCollection[]): string {
-        return collections.map(c => {
-            try {
-                return `${c.id}:${c.name}:${c.modes.length}`;
-            } catch {
-                return c.id;
-            }
-        }).join('|');
-    }
+    // 💀 Dead Code Removal: tick(), computeVariableHash(), computeCollectionHash()
+    // We do NOT check for drift. We Wait for the Switch.
 }
