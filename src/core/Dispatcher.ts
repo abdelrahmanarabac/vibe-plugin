@@ -1,16 +1,19 @@
 import type { PluginAction } from '../shared/types';
 import type { AgentContext } from './AgentContext';
 import type { CapabilityRegistry } from './CapabilityRegistry';
+import { CompositionRoot } from './CompositionRoot'; // ⚡ STATIC IMPORT
 import { logger } from './services/Logger';
 import { ProgressiveSyncCoordinator } from './services/ProgressiveSyncCoordinator';
 
 export class Dispatcher {
     private readonly registry: CapabilityRegistry;
     private readonly syncCoordinator: ProgressiveSyncCoordinator;
+    private readonly root: CompositionRoot; // ⚡ CACHED REFERENCE
 
     constructor(registry: CapabilityRegistry) {
         this.registry = registry;
         this.syncCoordinator = new ProgressiveSyncCoordinator();
+        this.root = CompositionRoot.getInstance(); // ⚡ GET ONCE - NO DELAYS
     }
 
     /**
@@ -65,35 +68,29 @@ export class Dispatcher {
     /**
      * 🚀 Handle progressive sync with streaming
      */
-    private async handleProgressiveSync(msg: PluginAction, context: AgentContext): Promise<void> {
-        // Get the sync capability
-        const capability = this.registry.getByCommand(msg.type);
-        if (!capability) {
-            logger.error('dispatcher', 'Sync capability not found');
-            return;
-        }
-
-        // Check if we can execute
-        if (!capability.canExecute(context)) {
-            figma.ui.postMessage({
-                type: 'OMNIBOX_NOTIFY',
-                payload: { message: '⚠️ Cannot sync in current context', type: 'warning' }
-            });
-            return;
-        }
+    private async handleProgressiveSync(_msg: PluginAction, context: AgentContext): Promise<void> {
+        // ⚡ IMMEDIATE UI FEEDBACK - Don't wait for anything!
+        figma.ui.postMessage({
+            type: 'SYNC_PHASE_START',
+            payload: { phase: 'definitions' }
+        });
 
         try {
-            // Get the sync generator from SyncService
-            // Note: Assuming CompositionRoot is available via dynamic import or similar mechanism 
-            // if we want to avoid circular deps, OR if context provides access to services.
-            // Using dynamic import for CompositionRoot to access the singleton.
-            const { CompositionRoot } = await import('./CompositionRoot');
-            const root = CompositionRoot.getInstance();
-            const generator = root.syncService.syncDefinitionsGenerator();
-
-            // Estimate total (optional, can be passed from UI)
-            const stats = await root.syncService.getStats();
+            // ⚡ Use cached reference - NO dynamic import delay
+            const generator = this.root.syncService.syncDefinitionsGenerator();
+            const stats = await this.root.syncService.getStats();
             const estimatedTotal = stats.totalVariables;
+
+            // ⚡ Notify UI immediately with estimate
+            figma.ui.postMessage({
+                type: 'SYNC_PROGRESS',
+                payload: {
+                    phase: 'definitions',
+                    current: 0,
+                    total: estimatedTotal,
+                    percentage: 0
+                }
+            });
 
             // Start progressive sync
             await this.syncCoordinator.start(generator, {
@@ -155,9 +152,6 @@ export class Dispatcher {
      */
     private async lazyLoadUsageAnalysis(): Promise<void> {
         try {
-            const { CompositionRoot } = await import('./CompositionRoot');
-            const root = CompositionRoot.getInstance();
-
             // Notify UI that usage analysis started
             figma.ui.postMessage({
                 type: 'USAGE_ANALYSIS_STARTED',
@@ -165,7 +159,7 @@ export class Dispatcher {
             });
 
             // Run usage analysis (can be slow, but runs after UI is already populated)
-            await root.syncService.scanUsage();
+            await this.root.syncService.scanUsage();
 
             // Notify completion
             figma.ui.postMessage({

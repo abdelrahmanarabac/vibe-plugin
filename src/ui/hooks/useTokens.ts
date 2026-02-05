@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { omnibox } from '../managers/OmniboxManager';
+import { uiSyncManager } from '../services/UISyncManager'; // ⚡ USE THE MANAGER!
 import type { TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../features/perception/visitors/HierarchyVisitor';
 import type { TokenFormData } from '../../features/tokens/domain/ui-types';
@@ -41,11 +42,18 @@ export interface TokensViewModel {
 }
 
 /**
- * ViewModel for managing token state and synchronization.
- * Listens for messages from the Figma controller and updates local state.
+ * ⚡ OPTIMIZED useTokens Hook
+ * 
+ * Key Changes:
+ * 1. Uses UISyncManager for progressive updates
+ * 2. Immediate UI feedback (no blocking)
+ * 3. Subscribes to token updates from manager
  */
 export function useTokens(): TokensViewModel {
+    // ⚡ Subscribe to UISyncManager
     const [tokens, setTokens] = useState<TokenEntity[]>([]);
+    const [syncState, setSyncState] = useState(uiSyncManager.getState());
+
     const [anatomy, setAnatomy] = useState<SceneNodeAnatomy[]>([]);
     const [stats, setStats] = useState<TokenStats>({
         totalVariables: 0,
@@ -57,80 +65,25 @@ export function useTokens(): TokensViewModel {
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
 
-    // 🌊 Progressive Sync State
-    const [syncProgress, setSyncProgress] = useState(0);
-    const [syncStatus, setSyncStatus] = useState<string>('Idle');
-    const [isSyncing, setIsSyncing] = useState(false);
-
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
     const deletePromise = useRef<{ resolve: () => void, reject: (reason?: Error | string) => void } | null>(null);
-    const syncStartTime = useRef<number | null>(null);
+
+    // ⚡ Subscribe to UISyncManager
+    useEffect(() => {
+        const unsubState = uiSyncManager.onStateChange(setSyncState);
+        const unsubTokens = uiSyncManager.onTokensUpdate(setTokens);
+
+        return () => {
+            unsubState();
+            unsubTokens();
+        };
+    }, []);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            const { type, payload, progress, phase, tokens: chunkTokens } = event.data.pluginMessage || {};
-
-            // 🌊 Progressive Protocol Handlers
-            if (type === 'SYNC_PHASE_START') {
-                if (phase === 'definitions') {
-                    setIsSyncing(true);
-                    setTokens([]); // Clear previous to prevent stale mix
-                    setSyncStatus('Fetching definitions...');
-                    setSyncProgress(0);
-                    if (!syncStartTime.current) syncStartTime.current = Date.now();
-                }
-            }
-
-            if (type === 'SYNC_CHUNK') {
-                if (Array.isArray(chunkTokens)) {
-                    setTokens(prev => [...prev, ...chunkTokens]);
-                    setSyncProgress(progress || 0);
-                    setSyncStatus(`Loaded ${progress} tokens...`);
-                }
-            }
-
-            if (type === 'SYNC_PHASE_COMPLETE') {
-                if (phase === 'definitions') {
-                    setSyncStatus('Finalizing...');
-                    // Don't set isSyncing false yet, wait for Stats or GraphUpdated
-                }
-            }
-
-            const MIN_DURATION = 1000; // 1 second minimum "Vibe" delay
-
-            const finishSync = (fn: () => void) => {
-                if (!syncStartTime.current) {
-                    fn();
-                    return;
-                }
-                const elapsed = Date.now() - syncStartTime.current;
-                const remaining = Math.max(0, MIN_DURATION - elapsed);
-
-                setTimeout(() => {
-                    fn();
-                    syncStartTime.current = null;
-                }, remaining);
-            };
-
-            if (type === 'GRAPH_UPDATED' || type === 'REQUEST_GRAPH_SUCCESS' || type === 'SYNC_VARIABLES_SUCCESS') {
-                const { isIncremental } = event.data.pluginMessage;
-
-                if (Array.isArray(payload)) {
-                    finishSync(() => {
-                        // 🛑 OPTIMIZATION: If incremental sync, DO NOT overwrite bits we just chunk-loaded
-                        if (!isIncremental) {
-                            setTokens(payload);
-                        }
-                        setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
-                        setIsSyncing(false); // Stop spinner
-                        setSyncStatus('Idle');
-                        setLiveIndicator(true);
-                        setTimeout(() => setLiveIndicator(false), 2000);
-                    });
-                }
-            }
+            const { type, payload } = event.data.pluginMessage || {};
 
             if (type === 'ANATOMY_UPDATED' || (type === 'GET_ANATOMY_SUCCESS')) {
                 if (payload && Array.isArray(payload.anatomy)) {
@@ -146,26 +99,6 @@ export function useTokens(): TokensViewModel {
                     collectionNames: payload.collectionNames ?? [],
                     collectionMap: payload.collectionMap ?? {},
                     lastSync: Date.now()
-                });
-            }
-
-            if (type === 'SCAN_COMPLETE') {
-                finishSync(() => {
-                    if (payload.tokens) setTokens(payload.tokens);
-                    if (payload.anatomy) setAnatomy(payload.anatomy);
-                    if (payload.stats) {
-                        setStats({
-                            totalVariables: payload.stats.totalVariables ?? 0,
-                            collections: payload.stats.collections ?? 0,
-                            styles: payload.stats.styles ?? 0,
-                            collectionNames: payload.stats.collectionNames ?? [],
-                            collectionMap: payload.stats.collectionMap ?? {},
-                            lastSync: Date.now()
-                        });
-                    }
-                    setIsSynced(false); // 🛑 Momentary Switch: Turn OFF after completion
-                    setLiveIndicator(true);
-                    setTimeout(() => setLiveIndicator(false), 2000);
                 });
             }
 
@@ -237,16 +170,7 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
-            // 🛡️ GENERIC ERROR HANDLER (Fixes Stuck Loading)
-            if (type === 'ERROR') {
-                setIsSyncing(false);
-                setSyncStatus('Error');
-                setIsSynced(false);
-                omnibox.show(payload.message || 'An error occurred', { type: 'error' });
-            }
-
             if (type === 'DELETE_COLLECTION_ERROR' || (type === 'OMNIBOX_NOTIFY' && payload.type === 'error' && deletePromise.current)) {
-                // If we get a generic error while deletion is pending, assume it's ours
                 omnibox.show(payload.message || 'Failed to delete collection', { type: 'error' });
 
                 if (deletePromise.current) {
@@ -255,11 +179,16 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
+            // ⚡ Sync completion feedback
+            if (type === 'SYNC_COMPLETE') {
+                setIsSynced(false);
+                setLiveIndicator(true);
+                setTimeout(() => setLiveIndicator(false), 2000);
+            }
+
             // 🛑 Manual Sync Cancelled Confirmation
             if (type === 'SYNC_CANCELLED') {
-                setIsSyncing(false);
-                setSyncStatus('Idle');
-                setIsSynced(false); // Force "No" state on toggle
+                setIsSynced(false);
             }
         };
 
@@ -326,7 +255,6 @@ export function useTokens(): TokensViewModel {
             omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
             deletePromise.current = { resolve, reject };
 
-            // Smart Deletion: Lookup ID if available
             const id = stats.collectionMap?.[name];
 
             parent.postMessage({
@@ -339,29 +267,27 @@ export function useTokens(): TokensViewModel {
     }, [stats.collectionMap]);
 
     const scanUsage = useCallback(() => {
-        setIsSyncing(true); // 🛑 Immediate Feedback
-        setSyncStatus('Scanning usage...');
+        omnibox.show('Scanning usage...', { type: 'loading', duration: 0 });
         parent.postMessage({ pluginMessage: { type: 'SCAN_USAGE' } }, '*');
     }, []);
 
     const syncVariables = useCallback(() => {
-        // 🛑 Explicit Manual Start
+        // ⚡ IMMEDIATE UI FEEDBACK
         setIsSynced(false);
-        setIsSyncing(true); // Immediate UI feedback
-        setSyncStatus('Starting engine...');
-        syncStartTime.current = Date.now();
+        omnibox.show('Starting sync...', { type: 'loading', duration: 0 });
 
-        parent.postMessage({ pluginMessage: { type: 'SYNC_START' } }, '*');
-    }, []);
+        // Start progressive sync via UISyncManager
+        uiSyncManager.startSync(stats.totalVariables || undefined);
+
+        // Tell plugin to start
+        parent.postMessage({ pluginMessage: { type: 'SYNC_TOKENS' } }, '*');
+    }, [stats.totalVariables]);
 
     const resetSync = useCallback(() => {
-        // 🛑 Explicit Manual Cancel
         parent.postMessage({ pluginMessage: { type: 'SYNC_CANCEL' } }, '*');
-
-        // Optimistic UI update (Controller will send SYNC_CANCELLED to confirm)
-        setIsSyncing(false);
-        setSyncStatus('Cancelling...');
+        uiSyncManager.reset();
         setIsSynced(false);
+        omnibox.show('Sync cancelled', { type: 'info' });
     }, []);
 
     return {
@@ -371,10 +297,10 @@ export function useTokens(): TokensViewModel {
         isSynced,
         liveIndicator,
         lineageData,
-        // 🌊 Exposed State
-        isSyncing,
-        syncProgress,
-        syncStatus,
+        // 🌊 From UISyncManager
+        isSyncing: syncState.isLoading,
+        syncProgress: syncState.progress,
+        syncStatus: `${syncState.loadedTokens} / ${syncState.totalTokens} tokens`,
 
         // 🌊 Lazy Triggers
         scanUsage,
@@ -391,4 +317,3 @@ export function useTokens(): TokensViewModel {
         resetSync
     };
 }
-
