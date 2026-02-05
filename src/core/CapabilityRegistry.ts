@@ -1,4 +1,5 @@
 import type { ICapability } from './interfaces/ICapability';
+import { logger } from './services/Logger';
 
 export class CapabilityRegistry {
     private capabilities: Map<string, ICapability> = new Map();
@@ -9,13 +10,13 @@ export class CapabilityRegistry {
      */
     register(capability: ICapability): void {
         if (this.capabilities.has(capability.id)) {
-            console.warn(`[Vibe] Capability ${capability.id} already registered. Overwriting.`);
+            logger.warn('registry', `Capability ${capability.id} already registered. Overwriting.`);
         }
 
         this.capabilities.set(capability.id, capability);
         this.commandMap.set(capability.commandId, capability.id);
 
-        console.log(`[Vibe] Registered Capability: ${capability.id} (cmd: ${capability.commandId})`);
+        logger.debug('registry', `Registered: ${capability.id}`, { command: capability.commandId });
     }
 
     /**

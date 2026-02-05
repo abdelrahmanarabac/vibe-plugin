@@ -1,5 +1,5 @@
 import type { TokenEntity } from '../../core/types';
-import type { ITokenAdapter, TokenExportResult } from './interfaces/ITokenExporter';
+import type { ITokenAdapter, TokenExportResult, ExportOptions } from './interfaces/ITokenExporter';
 
 
 /**
@@ -180,7 +180,7 @@ export class TokenExportService {
     public async exportAll(
         tokens: TokenEntity[],
         formatId: string,
-        options?: any // typed as ExportOptions but avoiding circular dependency if possible, or use ITokenExporter's type
+        options?: ExportOptions // Export options from ITokenExporter interface
     ): Promise<TokenExportResult> {
         // Validate adapter exists
         const adapter = this.adapters.get(formatId);
@@ -239,7 +239,7 @@ export class TokenExportService {
     public async exportMultiple(
         tokens: TokenEntity[],
         formatIds: string[],
-        options?: any
+        options?: ExportOptions
     ): Promise<ExportBatchResult[]> {
         // Parallel execution
         const promises = formatIds.map(async (formatId) => {

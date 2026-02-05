@@ -1,6 +1,6 @@
 import type { ICapability } from '../../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../../core/AgentContext';
-import { Result } from '../../../../shared/utils/Result';
+import { Result } from '../../../../shared/lib/result';
 import { Traverser } from '../../core/Traverser';
 import { HierarchyVisitor, type SceneNodeAnatomy } from '../../visitors/HierarchyVisitor';
 

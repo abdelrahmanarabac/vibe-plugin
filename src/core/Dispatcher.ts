@@ -1,12 +1,9 @@
 import type { PluginAction } from '../shared/types';
 import type { AgentContext } from './AgentContext';
 import type { CapabilityRegistry } from './CapabilityRegistry';
+import { logger } from './services/Logger';
 
-/**
- * ⚡ Dispatcher
- * The central nervous system for routing UI messages to specific Capabilities.
- * Enforces a strict boundary between "Action" (UI) and "Execution" (Domain).
- */
+
 export class Dispatcher {
     private readonly registry: CapabilityRegistry;
 
@@ -22,15 +19,15 @@ export class Dispatcher {
         const capability = this.registry.getByCommand(msg.type);
 
         if (!capability) {
-            console.warn(`[Dispatcher] No capability found for command: ${msg.type}`);
+            logger.warn('dispatcher', `No capability found for command: ${msg.type}`);
             return;
         }
 
-        console.log(`[Dispatcher] Routing ${msg.type} -> ${capability.id}`);
+        logger.debug('dispatcher', `Routing ${msg.type} -> ${capability.id}`);
 
         // 2. Validate Context
         if (!capability.canExecute(context)) {
-            console.warn(`[Dispatcher] Capability ${capability.id} declined execution context.`);
+            logger.warn('dispatcher', `Capability ${capability.id} declined execution context`);
             figma.ui.postMessage({
                 type: 'OMNIBOX_NOTIFY',
                 payload: { message: `⚠️ Cannot execute ${msg.type} in current context.`, type: 'warning' }
@@ -50,7 +47,7 @@ export class Dispatcher {
             this.sendSuccess(msg.type, result.value);
             this.handleSideEffects(result.value);
         } else {
-            console.error(`[Dispatcher] Capability failed:`, result.error);
+            logger.error('dispatcher', 'Capability failed', { capability: capability.id, error: result.error });
             figma.ui.postMessage({
                 type: 'OMNIBOX_NOTIFY',
                 payload: { message: `❌ Action failed: ${result.error}`, type: 'error' }

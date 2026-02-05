@@ -1,5 +1,5 @@
 import type { AgentContext } from '../AgentContext';
-import type { Result } from '../../shared/utils/Result';
+import type { Result } from '../../shared/lib/result';
 
 /**
  * Standard Interface for ALL Plugin Features (Capabilities).

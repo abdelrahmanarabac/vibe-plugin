@@ -1,4 +1,4 @@
-import { generateUUID } from '../../shared/utils/uuid';
+import { generateUUID } from '../../shared/lib/uuid';
 
 export type OmniboxType = 'info' | 'success' | 'error' | 'warning' | 'loading';
 

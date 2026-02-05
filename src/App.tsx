@@ -3,12 +3,13 @@ import { VibeSupabase } from './infrastructure/supabase/SupabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useVibeApp } from './ui/hooks/useVibeApp';
 import { MainLayout } from './ui/layouts/MainLayout';
-import { EditorView } from './features/editor/ui/EditorView';
+import { TokensView } from './features/tokens/ui/pages/TokensView';
 import { Dashboard } from './features/dashboard/ui/Dashboard';
 import { SettingsPage } from './features/settings/ui/SettingsPage';
 import { CreateTokenPage } from './features/tokens/ui/pages/CreateTokenPage';
 import { ExportTokensPage } from './features/export/ui/pages/ExportTokensPage';
-import { OmniboxTrigger, OmniboxModal } from './features/intelligence/omnibox';
+import { OmniboxTrigger } from './features/intelligence/omnibox';
+import { FeedbackOmnibox } from './features/feedback/ui/FeedbackOmnibox';
 
 
 // System Messaging
@@ -47,7 +48,7 @@ export default function App() {
 function VibeAppContent() {
     const vm = useVibeApp();
     const [activeTab, setActiveTab] = useState<import('./ui/layouts/MainLayout').ViewType>('dashboard');
-    const [isOmniboxOpen, setIsOmniboxOpen] = useState(false);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
     // Fake credits for demo (Matches Dashboard)
     const credits = 1250;
@@ -80,17 +81,20 @@ function VibeAppContent() {
                             <Dashboard
                                 tokens={vm.tokens.tokens}
                                 stats={vm.tokens.stats}
+
                                 onTabChange={(tab) => setActiveTab(tab)}
+                                onSync={vm.tokens.syncVariables}
+                                onResetSync={vm.tokens.resetSync}
+                                isSyncing={vm.tokens.liveIndicator}
+                                isSynced={vm.tokens.isSynced}
                             />
                         )}
 
-                        {activeTab === 'graph' && (
-                            <EditorView
-                                tokens={vm.tokens.tokens}
-                                onTraceLineage={vm.tokens.traceLineage}
-                                lineageData={vm.tokens.lineageData}
-                            />
+                        {activeTab === 'tokens' && (
+                            <TokensView onBack={() => setActiveTab('dashboard')} />
                         )}
+
+
 
                         {activeTab === 'create-token' && (
                             <CreateTokenPage
@@ -115,20 +119,16 @@ function VibeAppContent() {
                 </AnimatePresence>
             </MainLayout>
 
-            {/* AI Intelligence Layer */}
+            {/* Feedback Layer */}
             <OmniboxTrigger
-                isOpen={isOmniboxOpen}
-                onClick={() => setIsOmniboxOpen(!isOmniboxOpen)}
+                isOpen={isFeedbackOpen}
+                onClick={() => setIsFeedbackOpen(!isFeedbackOpen)}
                 isLifted={activeTab === 'create-token'}
             />
 
-            <OmniboxModal
-                isOpen={isOmniboxOpen}
-                onClose={() => setIsOmniboxOpen(false)}
-                onCommand={(cmd) => {
-                    vm.ai.handleCommand(cmd);
-                }}
-                isProcessing={vm.ai.isProcessing}
+            <FeedbackOmnibox
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
             />
 
             {/* Ambient Atmosphere */}
@@ -137,7 +137,7 @@ function VibeAppContent() {
             {/* System Message Overlay */}
             <SystemMessageBar />
 
-            {/* Global Feedback Omnibox */}
+
 
         </div>
     );

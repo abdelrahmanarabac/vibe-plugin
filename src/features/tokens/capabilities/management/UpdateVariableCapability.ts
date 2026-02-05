@@ -1,6 +1,6 @@
 import type { ICapability } from '../../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../../core/AgentContext';
-import { Result } from '../../../../shared/utils/Result';
+import { Result } from '../../../../shared/lib/result';
 import type { VariableManager } from '../../../../features/governance/VariableManager';
 import { HarmonyValidator } from '../../../../features/intelligence/HarmonyValidator';
 import { TraceLineageCapability } from '../../../../features/intelligence/capabilities/TraceLineageCapability';

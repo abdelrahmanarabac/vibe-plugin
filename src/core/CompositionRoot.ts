@@ -2,6 +2,7 @@ import { TokenRepository } from './TokenRepository';
 import { CapabilityRegistry } from './CapabilityRegistry';
 import { SyncEngine } from './SyncEngine';
 import { SyncService } from './services/SyncService';
+import { logger } from './services/Logger';
 
 // Core Modules
 import { VariableManager } from '../features/governance/VariableManager';
@@ -63,7 +64,7 @@ export class CompositionRoot {
     }
 
     constructor() {
-        console.log('[CompositionRoot] Wiring dependencies...');
+        logger.debug('composition', 'Wiring dependencies...');
 
         // 1. Core State
         this.repository = new TokenRepository();

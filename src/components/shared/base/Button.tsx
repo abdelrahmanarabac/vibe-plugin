@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../../../ui/utils/cn';
+import { cn } from '../../../shared/lib/classnames';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';

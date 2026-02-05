@@ -1,6 +1,6 @@
 import type { ICapability } from '../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../core/AgentContext';
-import { Result } from '../../../shared/utils/Result';
+import { Result } from '../../../shared/lib/result';
 import { QualityGate } from '../QualityGate';
 import { TokenRepository } from '../../../core/TokenRepository';
 import type { VibeToken, TokenType as VibeTokenType } from '../types';

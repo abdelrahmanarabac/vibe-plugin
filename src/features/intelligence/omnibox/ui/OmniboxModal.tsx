@@ -84,7 +84,7 @@ export const OmniboxModal: React.FC<OmniboxModalProps> = ({
                                 <div className="absolute -inset-1 bg-gradient-to-r from-primary via-purple-500 to-secondary rounded-[28px] blur-xl opacity-40 animate-pulse" />
 
                                 {/* 💊 Main Pill Container */}
-                                <div className="relative flex items-center gap-4 px-6 py-5 bg-[#0A0C14]/95 backdrop-blur-2xl border border-primary/50 shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-[24px]">
+                                <div className="relative flex items-center gap-4 px-6 py-5 bg-void/95 backdrop-blur-2xl border border-primary/50 shadow-card rounded-[24px]">
 
                                     {/* Icon / Status */}
                                     <div className="flex-none flex items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10">
@@ -109,7 +109,7 @@ export const OmniboxModal: React.FC<OmniboxModalProps> = ({
                                         onKeyDown={handleKeyDown}
                                         placeholder={placeholder}
                                         disabled={isProcessing}
-                                        className="flex-1 bg-transparent border-none outline-none text-lg font-medium text-white placeholder:text-gray-500"
+                                        className="flex-1 bg-transparent border-none outline-none text-lg font-medium text-white placeholder:text-text-dim"
                                     />
 
                                     {/* Submit Button */}
@@ -134,9 +134,9 @@ export const OmniboxModal: React.FC<OmniboxModalProps> = ({
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.2 }}
-                                className="mt-4 text-center text-xs font-medium text-gray-500 uppercase tracking-widest"
+                                className="mt-4 text-center text-xs font-medium text-text-dim uppercase tracking-widest"
                             >
-                                Press <span className="text-gray-300">Enter</span> to execute • <span className="text-gray-300">Esc</span> to close
+                                Press <span className="text-text-primary">Enter</span> to execute • <span className="text-text-primary">Esc</span> to close
                             </motion.div>
                         </motion.div>
                     </div>

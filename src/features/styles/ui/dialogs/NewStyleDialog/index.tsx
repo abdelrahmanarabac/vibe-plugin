@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { X, Layers, Paintbrush } from 'lucide-react';
 import { useStyleCreation } from '../../hooks/useStyleCreation';
 import { StyleNameInput } from '../../components/StyleNameInput';
-import { StyleTypeSelect } from '../../components/StyleTypeSelect';
+import { VibeSelect } from '../../../../../components/shared/base/VibeSelect';
+import { FieldLabel } from '../../../../../components/shared/base/FieldLabel';
 import { StyleDetailsInput } from '../../components/StyleDetailsInput';
 import type { NewStyleDialogProps } from '../../../domain/types';
 
@@ -53,10 +54,19 @@ export function NewStyleDialog({ isOpen, onClose, onSubmit }: NewStyleDialogProp
                     />
 
                     {/* 3. Classification */}
-                    <StyleTypeSelect
-                        type={formState.type}
-                        onTypeChange={setters.setType}
-                    />
+                    <div className="space-y-1.5 my-4">
+                        <FieldLabel>Type</FieldLabel>
+                        <VibeSelect
+                            value={formState.type}
+                            onChange={setters.setType}
+                            options={[
+                                { label: 'Typography', value: 'typography' },
+                                { label: 'Effect', value: 'effect' },
+                                { label: 'Layout Grid', value: 'grid' },
+                            ]}
+                            className="w-full"
+                        />
+                    </div>
 
                     {/* 4. Description / Value Input */}
                     <StyleDetailsInput

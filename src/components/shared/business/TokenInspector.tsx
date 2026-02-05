@@ -1,5 +1,5 @@
 import React from 'react';
-import { Surface } from '../../ui/atoms/Surface/Surface';
+import { Surface } from '../base/Surface';
 import type { TokenPickerItem } from '../base/VibePathPicker';
 
 interface TokenInspectorProps {

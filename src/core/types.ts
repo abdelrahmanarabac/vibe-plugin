@@ -17,6 +17,45 @@ export type RGB = { r: number; g: number; b: number };
 export type RGBA = RGB & { a: number };
 export type VariableValue = string | number | boolean | RGB | RGBA;
 
+export interface ComponentUsage {
+    id: string;
+    name: string;
+}
+
+export interface StyleUsage {
+    id: string;
+    name: string;
+}
+
+export interface TokenUsageStats {
+    /** 
+     * Qualitative list of components using this token.
+     */
+    usedInComponents: ComponentUsage[];
+
+    /** 
+     * Qualitative list of styles using this token.
+     */
+    usedInStyles: StyleUsage[];
+
+    /** 
+     * Qualitative impact estimate (e.g. instances of components).
+     */
+    affectedInstancesCount: number;
+
+    /**
+     * Total raw usage count across the entire file (including Frames, Text, etc.).
+     */
+    totalRawUsage: number;
+
+    /** 
+     * Dependency chain for deep analysis.
+     */
+    dependencyChain: string[];
+}
+
+export type TokenUsageMap = Map<string, TokenUsageStats>;
+
 export interface TokenEntity {
     id: string;                    // Figma Variable ID
     name: string;                  // "primary-500"
@@ -34,4 +73,11 @@ export interface TokenEntity {
     };
     dependencies: string[];        // Token IDs this references
     dependents: string[];          // Token IDs that reference this
+
+    /**
+     * 📊 Usage Analytics
+     * Added for qualitative usage insights (e.g. "Used in Button/Primary").
+     * Populated by TokenUsageAnalyzer.
+     */
+    usage?: TokenUsageStats;
 }

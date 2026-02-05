@@ -4,7 +4,8 @@ import { Paintbrush } from 'lucide-react';
 
 import { useTokenCreation } from '../hooks/useTokenCreation';
 import { TokenNameInput } from '../components/TokenNameInput';
-import { TokenTypeSelect } from '../components/TokenTypeSelect';
+import { VibeSelect } from '../../../../components/shared/base/VibeSelect';
+import { FieldLabel } from '../../../../components/shared/base/FieldLabel';
 import { TokenScopeConfig } from '../components/TokenScopeConfig';
 import { TokenValueInput } from '../components/TokenValueInput';
 import { VibePathPicker } from '../../../../components/shared/base/VibePathPicker';
@@ -112,11 +113,22 @@ export function CreateTokenPage({ onBack, onSubmit }: CreateTokenPageProps) {
                             <div className="space-y-4">
                                 {/* Row 1: Type & Scope */}
                                 <div className="flex flex-col md:flex-row gap-4 items-start">
-                                    <TokenTypeSelect
-                                        type={formState.type}
-                                        onTypeChange={setters.setType}
-                                        className="w-full md:w-[140px] flex-shrink-0"
-                                    />
+                                    <div className="space-y-1.5 w-full md:w-[140px] flex-shrink-0">
+                                        <FieldLabel>Type</FieldLabel>
+                                        <VibeSelect
+                                            value={formState.type}
+                                            onChange={setters.setType}
+                                            options={[
+                                                { label: 'Color', value: 'color' },
+                                                { label: 'Spacing', value: 'spacing' },
+                                                { label: 'Sizing', value: 'sizing' },
+                                                { label: 'Radius', value: 'radius' },
+                                                { label: 'Number', value: 'number' },
+                                                { label: 'String', value: 'string' },
+                                            ]}
+                                            className="w-full"
+                                        />
+                                    </div>
 
                                     {!['number', 'string'].includes(formState.type) && (
                                         <TokenScopeConfig

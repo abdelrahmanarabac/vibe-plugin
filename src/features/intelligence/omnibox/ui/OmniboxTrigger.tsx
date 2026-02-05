@@ -77,7 +77,7 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
         greetingTimeoutRef.current = setTimeout(() => {
             // Only greet if no other system message is active
             if (!omnibox.getCurrent()) {
-                omnibox.show("Welcome back! How can I help?", { duration: 3000 });
+                omnibox.show("💡 Got feedback? We're listening!", { duration: 4000 });
             }
         }, 1000);
 
@@ -106,8 +106,8 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
     return (
         <motion.button
             className={clsx(
-                "fixed right-6 z-[9999] group outline-none cursor-pointer transition-all duration-500",
-                isLifted ? 'bottom-24' : 'bottom-6'
+                "fixed z-[9999] group outline-none cursor-pointer transition-all duration-500",
+                // Don't use className for positioning - we'll animate it via motion values
             )}
             onClick={handleClick}
             onHoverStart={() => {
@@ -119,9 +119,28 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
                 if (!currentMessage) setExpression('neutral');
             }}
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            animate={{
+                scale: 1,
+                opacity: 1,
+                // Spotlight Animation: Move eyes UP when modal opens
+                bottom: isOpen
+                    ? isLifted ? 'calc(60vh + 72px)' : '60vh'  // Move to spotlight position
+                    : isLifted ? '96px' : '24px',              // Default bottom-right
+                right: isOpen
+                    ? '50%'    // Center horizontally
+                    : '24px',  // Default right edge
+                x: isOpen ? '50%' : 0,  // Offset for centering
+            }}
             whileHover={{ scale: (isCoolingDown || isOpen) ? 1 : 1.1 }}
             whileTap={{ scale: 0.95 }}
+            transition={{
+                scale: { type: "spring", stiffness: 300, damping: 20 },
+                opacity: { type: "spring", stiffness: 300, damping: 20 },
+                // Smooth spotlight movement
+                bottom: { type: "spring", stiffness: 200, damping: 25, mass: 0.8 },
+                right: { type: "spring", stiffness: 200, damping: 25, mass: 0.8 },
+                x: { type: "spring", stiffness: 200, damping: 25, mass: 0.8 },
+            }}
         >
             {/* 🌟 Enhanced Aura Glow (Reactive) */}
             <motion.div
@@ -182,6 +201,29 @@ export const OmniboxTrigger: React.FC<OmniboxTriggerProps> = ({ onClick, isOpen,
                             </span>
                         )}
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 🎭 Spotlight Beam - Theatrical Light Effect */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scaleY: 0 }}
+                        animate={{ opacity: 1, scaleY: 1 }}
+                        exit={{ opacity: 0, scaleY: 0 }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 150,
+                            damping: 20,
+                            opacity: { duration: 0.5 }
+                        }}
+                        className="absolute top-full left-1/2 -translate-x-1/2 w-64 h-[50vh] origin-top pointer-events-none"
+                        style={{
+                            background: 'linear-gradient(to bottom, rgba(138, 180, 248, 0.2) 0%, rgba(138, 180, 248, 0.1) 30%, transparent 100%)',
+                            filter: 'blur(30px)',
+                            clipPath: 'polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)', // Cone shape
+                        }}
+                    />
                 )}
             </AnimatePresence>
 

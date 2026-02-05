@@ -1,3 +1,5 @@
+import { logger } from './services/Logger';
+
 /**
  * 🔄 SyncEngine
  * Orchestrates background synchronization between the Plugin environment and the UI.
@@ -25,7 +27,7 @@ export class SyncEngine {
     public start(): void {
         if (this.syncIntervalId !== null) return;
 
-        console.log('[SyncEngine] Ignition sequence started...');
+        logger.info('sync', 'Ignition sequence started');
 
         this.syncIntervalId = setInterval(async () => {
             await this.tick();
@@ -39,7 +41,7 @@ export class SyncEngine {
         if (this.syncIntervalId !== null) {
             clearInterval(this.syncIntervalId);
             this.syncIntervalId = null;
-            console.log('[SyncEngine] Engine shutting down.');
+            logger.info('sync', 'Engine shutting down');
         }
     }
 
@@ -59,7 +61,7 @@ export class SyncEngine {
 
             if (currentHash !== this.lastVariableHash) {
                 if (this.lastVariableHash !== '') {
-                    console.log('[SyncEngine] Variable drift detected.');
+                    logger.debug('sync:drift', 'Variable drift detected');
                     hasChanges = true;
                 }
                 this.lastVariableHash = currentHash;
@@ -67,19 +69,19 @@ export class SyncEngine {
 
             if (currentCollectionHash !== this.lastCollectionHash) {
                 if (this.lastCollectionHash !== '') {
-                    console.log('[SyncEngine] Collection drift detected.');
+                    logger.debug('sync:drift', 'Collection drift detected');
                     hasChanges = true;
                 }
                 this.lastCollectionHash = currentCollectionHash;
             }
 
             if (hasChanges) {
-                console.log('[SyncEngine] Triggering synchronization protocol.');
+                logger.debug('sync', 'Triggering synchronization protocol');
                 await this.onSyncNeeded();
             }
 
         } catch (error) {
-            console.error('[SyncEngine] Critical Tick Failure:', error);
+            logger.error('sync', 'Critical tick failure', { error });
         }
     }
 

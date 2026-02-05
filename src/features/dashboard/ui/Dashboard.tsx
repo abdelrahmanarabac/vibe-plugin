@@ -3,12 +3,17 @@ import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
 import { useState } from 'react';
 import type { ViewType } from '../../../ui/layouts/MainLayout';
+import { SyncToggle } from './components/SyncToggle';
 
 interface DashboardProps {
     tokens?: TokenEntity[];
     stats?: { totalVariables: number; collections: number; styles: number; lastSync: number };
 
     onTabChange?: (tab: ViewType) => void;
+    onSync?: () => void;
+    onResetSync?: () => void;
+    isSyncing?: boolean;
+    isSynced?: boolean;
     onCreateStyle?: (data: { name: string; type: string; value: string | number | { r: number; g: number; b: number; a?: number } }) => void;
 }
 
@@ -16,8 +21,11 @@ interface DashboardProps {
  * 📊 Elite Dashboard Fragment
  * Higher contrast, super rounded corners, and clear information hierarchy.
  */
-export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateStyle }: DashboardProps) {
+export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateStyle, onSync, onResetSync, isSyncing, isSynced }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
+
+    // Toggle is "Active" if we are consistently synced OR currently syncing
+    const isToggleActive = isSynced || isSyncing;
 
     return (
         <div className="flex flex-col items-center py-8 px-4 gap-8 w-full max-w-5xl mx-auto">
@@ -26,7 +34,9 @@ export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateSt
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
                 {/* 📊 Stat Card: Total Tokens (Large) */}
-                <div className="vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group">
+                <div
+                    className="vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group transition-all"
+                >
                     {/* Background Gradient */}
                     <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
 
@@ -34,7 +44,19 @@ export function Dashboard({ tokens: _tokens = [], stats, onTabChange, onCreateSt
                         <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
-                        <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xxs font-bold uppercase tracking-wider border border-primary/20">Active System</span>
+                        <div className="absolute top-1/2 right-6 -translate-y-1/2 z-20">
+                            <SyncToggle
+                                isActive={isToggleActive}
+                                isSyncing={isSyncing}
+                                onClick={() => {
+                                    if (isToggleActive) {
+                                        onResetSync?.();
+                                    } else {
+                                        onSync?.();
+                                    }
+                                }}
+                            />
+                        </div>
                     </div>
 
                     <div className="z-10">

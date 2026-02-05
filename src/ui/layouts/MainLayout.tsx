@@ -2,7 +2,7 @@ import React from 'react';
 import { Settings, LayoutGrid, Cpu, Wallet } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export type ViewType = 'dashboard' | 'graph' | 'settings' | 'create-token' | 'export-tokens';
+export type ViewType = 'dashboard' | 'tokens' | 'settings' | 'create-token' | 'export-tokens';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -48,10 +48,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                         label="Dashboard"
                     />
                     <TabButton
-                        active={activeTab === 'graph'}
-                        onClick={() => onTabChange('graph')}
+                        active={activeTab === 'tokens'}
+                        onClick={() => onTabChange('tokens')}
                         icon={<Cpu size={14} strokeWidth={2} />}
-                        label="Graph"
+                        label="Tokens"
                     />
                 </div>
 

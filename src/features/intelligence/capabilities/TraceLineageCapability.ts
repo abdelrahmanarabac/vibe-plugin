@@ -1,6 +1,6 @@
 import type { ICapability } from '../../../core/interfaces/ICapability';
 import type { AgentContext } from '../../../core/AgentContext';
-import { Result } from '../../../shared/utils/Result';
+import { Result } from '../../../shared/lib/result';
 import type { TokenEntity } from '../../../core/types';
 
 type TraceLineagePayload = { tokenId: string };

@@ -7,7 +7,7 @@ import {
     rgbToHsv,
     hsvToRgb,
     toHex6
-} from '../../../../shared/utils/ColorUtils';
+} from '../../../../shared/lib/colors';
 
 interface ColorPickerProps {
     value: string;

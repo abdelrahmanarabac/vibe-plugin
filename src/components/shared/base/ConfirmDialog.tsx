@@ -73,7 +73,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                         className={`
                             relative w-full max-w-sm overflow-hidden
                             rounded-2xl border ${colors.border}
-                            bg-[#121212] shadow-2xl
+                            bg-surface-0 shadow-2xl
                         `}
                     >
                         {/* Header Decoration */}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Send, X, Loader2, PartyPopper, AlertCircle } from 'lucide-react';
 import { FeedbackService, type FeedbackType } from '../FeedbackService';
 import { AuthService } from '../../auth/AuthService';
-import { colors } from '../../../components/ui/tokens/colors';
+
 
 interface FeedbackOmniboxProps {
     isOpen: boolean;
@@ -74,7 +74,7 @@ export const FeedbackOmnibox: React.FC<FeedbackOmniboxProps> = ({ isOpen, onClos
                             rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]
                         "
                         style={{
-                            boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 0 40px ${colors.primary.glow}`
+                            boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 0 40px rgba(110,98,229,0.4)`
                         }}
                     >
                         {/* Header */}
@@ -84,8 +84,8 @@ export const FeedbackOmnibox: React.FC<FeedbackOmniboxProps> = ({ isOpen, onClos
                                     <MessageSquare size={18} />
                                 </div>
                                 <div>
-                                    <h2 className="text-sm font-bold text-white tracking-wide">Vibe Feedback</h2>
-                                    <p className="text-[10px] text-text-muted">Tell us what you think directly.</p>
+                                    <h2 className="text-sm font-bold text-white tracking-wide">💬 We're All Ears!</h2>
+                                    <p className="text-[10px] text-text-muted">Your voice shapes Vibe's future.</p>
                                 </div>
                             </div>
                             <button
@@ -137,16 +137,24 @@ export const FeedbackOmnibox: React.FC<FeedbackOmniboxProps> = ({ isOpen, onClos
                                             value={message}
                                             onChange={(e) => setMessage(e.target.value)}
                                             placeholder={
-                                                type === 'feature' ? "I wish Vibe could..." :
-                                                    type === 'bug' ? "Something went wrong when..." :
-                                                        "Here is what's on my mind..."
+                                                type === 'feature' ? "I dream of... ✨" :
+                                                    type === 'bug' ? "Houston, we have a problem: 🚨" :
+                                                        "Just wanted to say... 💭"
                                             }
                                             className="
-                                                w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4
-                                                text-sm text-white placeholder-white/20 resize-none
-                                                focus:border-primary/50 focus:bg-black/40 focus:outline-none focus:ring-1 focus:ring-primary/50
-                                                transition-all
+                                                w-full h-40 px-5 py-4
+                                                bg-gradient-to-br from-black/40 via-black/30 to-black/20
+                                                border-2 border-white/10
+                                                rounded-2xl
+                                                text-base text-white/90 placeholder:text-white/30 placeholder:font-normal
+                                                font-medium leading-relaxed
+                                                focus:border-primary/60 focus:bg-black/50
+                                                focus:outline-none focus:ring-2 focus:ring-primary/30
+                                                focus:shadow-[0_0_30px_rgba(138,180,248,0.15)]
+                                                transition-all duration-300
+                                                resize-none
                                             "
+                                            autoFocus
                                         />
                                     </div>
 

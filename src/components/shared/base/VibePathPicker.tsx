@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Folder, ChevronRight, CornerDownRight, ChevronLeft, Plus, Box, Hash, Type, Search, Info } from 'lucide-react';
+import { Folder, ChevronRight, CornerDownRight, ChevronLeft, Plus, Box, Hash, Type, Info } from 'lucide-react';
 import { CollectionContextMenu } from '../CollectionContextMenu';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Input } from '../../ui/atoms/Input/Input';
+import { Input } from './Input';
 import { TokenInspector } from '../business/TokenInspector';
 
 // Exported for usage in parent components
@@ -363,13 +363,11 @@ export function VibePathPicker({ value, onChange, size = 'md', placeholder = 'Se
                         {/* 1. Internal Search Bar */}
                         <div className="p-2 border-b border-white/5 space-y-2">
                             <Input
-                                rightIcon={<Search size={14} />}
                                 placeholder="Search tokens..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 autoFocus
                                 className="h-9 text-xs"
-                                variant="glass"
                             />
                         </div>
 

@@ -26,6 +26,8 @@ export interface TokensViewModel {
     renameCollection: (oldName: string, newName: string) => void;
     deleteCollection: (name: string) => Promise<void>;
     traceLineage: (tokenId: string) => void;
+    syncVariables: () => void;
+    resetSync: () => void;
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
 
@@ -49,7 +51,7 @@ export function useTokens(): TokensViewModel {
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
-    const deletePromise = useRef<{ resolve: () => void, reject: (reason?: any) => void } | null>(null);
+    const deletePromise = useRef<{ resolve: () => void, reject: (reason?: Error | string) => void } | null>(null);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -180,10 +182,14 @@ export function useTokens(): TokensViewModel {
 
         window.addEventListener('message', handleMessage);
 
+        // Auto-sync removed as per user request.
+        // Sync is now triggered manually via the SyncToggle in Dashboard.
+        /*
         setTimeout(() => {
             parent.postMessage({ pluginMessage: { type: 'REQUEST_GRAPH' } }, '*');
             parent.postMessage({ pluginMessage: { type: 'REQUEST_STATS' } }, '*');
         }, 100);
+        */
 
         return () => {
             window.removeEventListener('message', handleMessage);
@@ -258,6 +264,20 @@ export function useTokens(): TokensViewModel {
         });
     }, [stats.collectionMap]);
 
+    const syncVariables = useCallback(() => {
+        setIsSynced(false);
+        setLiveIndicator(true);
+        omnibox.show('Syncing tokens from Figma...', { type: 'loading', duration: 0 });
+
+        // Trigger generic sync which should update graph and stats
+        parent.postMessage({ pluginMessage: { type: 'SYNC_VARIABLES' } }, '*');
+
+        // Redundant explicit request just in case
+        setTimeout(() => {
+            parent.postMessage({ pluginMessage: { type: 'REQUEST_STATS' } }, '*');
+        }, 500);
+    }, []);
+
     return {
         tokens,
         anatomy,
@@ -271,7 +291,10 @@ export function useTokens(): TokensViewModel {
         renameCollection,
         deleteCollection,
         scanAnatomy,
-        traceLineage
+
+        traceLineage,
+        syncVariables,
+        resetSync: () => setIsSynced(false)
     };
 }
 

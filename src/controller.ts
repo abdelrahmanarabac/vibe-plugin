@@ -2,9 +2,11 @@ import type { PluginAction } from './shared/types';
 import type { AgentContext } from './core/AgentContext';
 import { CompositionRoot } from './core/CompositionRoot';
 import { Dispatcher } from './core/Dispatcher';
+import { logger } from './core/services/Logger';
 
-console.clear();
-console.log('[Vibe] System Booting...');
+
+logger.clear();
+logger.info('system', 'System booting...');
 
 // === 1. Bootstrap Core ===
 const root = new CompositionRoot();
@@ -24,11 +26,11 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 // === 4. Start Engine ===
 (async () => {
     try {
-        console.log('[Vibe] Initializing Architecture...');
+        logger.info('system', 'Initializing architecture...');
         root.syncEngine.start();
-        console.log('[Vibe] System Ready.');
+        logger.info('system', 'System ready');
     } catch (e) {
-        console.error('[Vibe] Bootstrap failed:', e);
+        logger.error('system', 'Bootstrap failed', { error: e });
     }
 })();
 
@@ -43,7 +45,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             session: { timestamp: Date.now() }
         };
 
-        console.log(`[Controller] Received: ${msg.type}`);
+        logger.debug('controller:message', `Received: ${msg.type}`);
 
         // 1. Initial System Check: Storage Bridge Handlers
         // These are low-level system messages that shouldn't go through the domain dispatcher.
@@ -71,7 +73,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         // Global Post-Dispatch Side Effects (e.g. Sync Trigger)
         if (['CREATE_VARIABLE', 'UPDATE_VARIABLE', 'RENAME_TOKEN', 'SYNC_TOKENS', 'CREATE_COLLECTION', 'RENAME_COLLECTION', 'DELETE_COLLECTION', 'CREATE_STYLE'].includes(msg.type)) {
             // Re-trigger global sync to ensure Graph is up to date:
-            console.log('[Controller] Action requires sync, triggering stabilization delay...');
+            logger.debug('controller:sync', 'Action requires sync, triggering stabilization delay');
             // Wait 100ms to allow Figma's internal cache to settle (Anti-Phantom Fix)
             setTimeout(async () => {
                 await performFullSync();
@@ -79,7 +81,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         }
 
     } catch (error: unknown) {
-        console.error('[Vibe] Controller Error:', error);
+        logger.error('controller:error', 'Controller error occurred', { error });
         const errorMessage = error instanceof Error ? error.message : 'Unknown Controller Error';
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
@@ -100,7 +102,7 @@ async function performFullSync() {
             timestamp: Date.now()
         });
     } catch (e) {
-        console.error('[Controller] Token Sync Failed:', e);
+        logger.error('controller:sync', 'Token sync failed', { error: e });
         // Continue to stats...
     }
 
@@ -120,7 +122,7 @@ async function performFullSync() {
             }
         });
     } catch (e) {
-        console.error('[Controller] Stats Sync Failed:', e);
+        logger.error('controller:sync', 'Stats sync failed', { error: e });
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
             payload: {
