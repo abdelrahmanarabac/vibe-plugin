@@ -7,6 +7,7 @@ export type PluginAction =
     | { type: 'STARTUP' }
     | { type: 'SYNC_GRAPH' }
     | { type: 'SYNC_VARIABLES' }
+    | { type: 'SYNC_TOKENS' }
     // 🛑 Manual Sync Control
     | { type: 'SYNC_START' }
     | { type: 'SYNC_CANCEL' }
