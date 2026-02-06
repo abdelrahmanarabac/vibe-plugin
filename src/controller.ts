@@ -3,7 +3,6 @@ import type { AgentContext } from './core/AgentContext';
 import { CompositionRoot } from './core/CompositionRoot';
 import { Dispatcher } from './core/Dispatcher';
 import { logger } from './core/services/Logger';
-import { ProgressiveSyncCoordinator } from './core/services/ProgressiveSyncCoordinator';
 
 // 🛑 POLYFILL: AbortController for Figma Sandbox
 if (typeof globalThis.AbortController === 'undefined') {
@@ -35,8 +34,10 @@ logger.info('system', 'System booting...');
 const root = new CompositionRoot();
 const dispatcher = new Dispatcher(root.registry);
 
-// 1. Initialize the Coordinator (Singleton Scope)
-const syncCoordinator = new ProgressiveSyncCoordinator();
+// === 2. Bind Background Services ===
+// === 2. Bind Background Services ===
+// 🛑 CORE RULE: No auto-sync callback. Sync is triggered purely by UI message.
+// root.syncEngine.setCallback(...) -> REMOVED.
 
 // === 3. Setup UI ===
 figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
@@ -45,6 +46,7 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 (async () => {
     try {
         logger.info('system', 'Initializing architecture...');
+        // root.syncEngine.start(); // 🛑 DISABLED: No background loop.
         logger.info('system', 'System ready');
     } catch (e) {
         logger.error('system', 'Bootstrap failed', { error: e });
@@ -52,6 +54,7 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 })();
 
 // === 5. Message Handling ===
+let currentSyncAbortController: AbortController | null = null;
 
 figma.ui.onmessage = async (msg: PluginAction) => {
     try {
@@ -105,61 +108,27 @@ figma.ui.onmessage = async (msg: PluginAction) => {
 
         // 🛑 MANUAL SYNC TRIGGER
         else if (msg.type === 'SYNC_START') {
-            // Safety Check: Don't start if already running
-            if (syncCoordinator.isActive()) {
-                figma.ui.postMessage({ type: 'ERROR', message: 'Sync is already in progress!' });
+            if (currentSyncAbortController) {
+                logger.warn('sync', 'Sync already in progress, ignoring start request.');
                 return;
             }
-
-            try {
-                logger.info('sync', '🚀 Starting Non-Blocking Sync Strategy...');
-
-                // Notify UI: Lock the button
-                figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'initializing' });
-
-                // Run the Coordinator
-                await syncCoordinator.start(root.syncService.syncDefinitionsGenerator(), {
-                    // ⚡ Vital: Update UI every chunk
-                    onChunk: (chunk) => {
-                        // Instead of sending the whole list, send the chunk diff (Performance Optimization)
-                        figma.ui.postMessage({ type: 'SYNC_CHUNK', payload: chunk });
-                    },
-                    // 📊 Vital: Real Progress Bar
-                    onProgress: (progress) => {
-                        figma.ui.postMessage({ type: 'SYNC_PROGRESS', payload: progress });
-                    },
-                    // ✅ Done
-                    onComplete: async () => {
-                        logger.info('sync', '✅ Sync Completed without freezing!');
-                        figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'done' });
-
-                        // Refresh Stats after sync
-                        try {
-                            const stats = await root.syncService.getStats();
-                            figma.ui.postMessage({ type: 'STATS_UPDATED', payload: stats });
-                        } catch (err) {
-                            logger.error('sync', 'Stats refresh failed', { error: err as Error });
-                        }
-                    },
-                    onError: (err) => {
-                        logger.error('sync', 'Sync Crashed', { error: err });
-                        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Failed: ' + err.message });
-                        figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'error' }); // Unlock UI
-                    }
-                });
-
-            } catch (e) {
-                logger.error('sync', 'Critical Controller Error', { error: e as Error });
-                figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'error' }); // Unlock UI
-            }
+            currentSyncAbortController = new AbortController();
+            logger.info('sync', 'Manual Sync Initiated');
+            await performFullSync(currentSyncAbortController.signal);
+            currentSyncAbortController = null; // Reset after completion
             return;
         }
 
-        // 🛑 MANUAL SYNC CANCEL
+        // � MANUAL SYNC CANCEL
         else if (msg.type === 'SYNC_CANCEL') {
-            logger.warn('sync', 'User invoked Emergency Stop');
-            syncCoordinator.cancel();
-            figma.ui.postMessage({ type: 'SYNC_CANCELLED' });
+            if (currentSyncAbortController) {
+                logger.info('sync', 'Cancelling sync process...');
+                currentSyncAbortController.abort();
+                currentSyncAbortController = null;
+                figma.ui.postMessage({ type: 'SYNC_CANCELLED' }); // Feedback to UI
+            } else {
+                logger.debug('sync', 'No active sync to cancel.');
+            }
             return;
         }
 
@@ -181,7 +150,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             try {
                 await root.syncService.scanUsage();
             } catch (err) {
-                logger.error('controller:usage', 'Scan usage failed', { error: err as Error });
+                logger.error('controller:usage', 'Scan usage failed', { error: err });
             }
 
             // Re-emit graph with updated usage info
@@ -194,12 +163,12 @@ figma.ui.onmessage = async (msg: PluginAction) => {
                 });
                 logger.debug('controller:usage', 'Usage scan complete & broadcasted.');
             } catch (err) {
-                logger.error('controller:usage', 'Failed to broadcast graph update', { error: err as Error });
+                logger.error('controller:usage', 'Failed to broadcast graph update', { error: err });
             }
         }
 
     } catch (error: unknown) {
-        logger.error('controller:error', 'Controller error occurred', { error: error as Error });
+        logger.error('controller:error', 'Controller error occurred', { error });
         const errorMessage = error instanceof Error ? error.message : 'Unknown Controller Error';
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
@@ -208,3 +177,120 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         figma.ui.postMessage({ type: 'ERROR', message: errorMessage });
     }
 };
+
+// Helper: extracted sync logic
+async function performFullSync(abortSignal: AbortSignal) {
+    // 🌊 Progressive Protocol
+    // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
+    // const allTokens: any[] = []; // Removed to save memory
+    let progress = 0;
+
+    if (abortSignal.aborted) return;
+
+    // 1. Start Phase: Definitions
+    figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
+
+    try {
+        // Stream Chunks
+        for await (const chunk of root.syncService.syncDefinitionsGenerator()) {
+            if (abortSignal.aborted) {
+                logger.info('sync', 'Aborted during definitions stream.');
+                throw new Error('Sync Aborted');
+            }
+
+            // allTokens.push(...chunk); // Removed
+            progress += chunk.length;
+
+            figma.ui.postMessage({
+                type: 'SYNC_CHUNK',
+                tokens: chunk,
+                progress: progress // Simple count for now, or we could estimate % if we knew total
+            });
+
+            // Allow event loop to breathe and process aborts
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        // Phase Complete
+        figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'definitions' });
+
+        // 🔄 Final Consistency Event (Backward Compat)
+        // 🛑 PAYLOAD REMOVED: prevents freezing on large docs.
+        figma.ui.postMessage({
+            type: 'GRAPH_UPDATED',
+            payload: [], // Empty payload. UI has already built state from chunks.
+            isIncremental: true, // 🚩 Signal UI to keep chunked data
+            timestamp: Date.now()
+        });
+
+    } catch (e) {
+        if (e instanceof Error && e.message === 'Sync Aborted') {
+            logger.info('sync', 'Sync process aborted gracefully.');
+            return; // Exit cleanly
+        }
+        logger.error('controller:sync', 'Progressive sync failed', { error: e });
+        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Interrupted' });
+        return; // Stop if failed
+    }
+
+    if (abortSignal.aborted) return;
+
+    // 2. Sync Stats (Collections/Styles)
+    try {
+        const stats = await root.syncService.getStats();
+
+        if (abortSignal.aborted) return;
+
+        figma.ui.postMessage({
+            type: 'STATS_UPDATED',
+            payload: {
+                totalVariables: stats.totalVariables,
+                collections: stats.collections,
+                styles: stats.styles,
+                collectionNames: Object.keys(stats.collectionMap),
+                collectionMap: stats.collectionMap
+            }
+        });
+    } catch (e) {
+        logger.error('controller:sync', 'Stats sync failed', { error: e });
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: {
+                message: "Stats Sync Partial Failure",
+                type: 'error'
+            }
+        });
+    }
+
+    // 3. Lazy Usage Scan (Now Manual & Instant & Non-Blocking)
+    if (abortSignal.aborted) return;
+
+    try {
+        logger.info('sync', 'Starting non-blocking usage scan...');
+        const usageMap = await root.syncService.scanUsage();
+
+        // Convert Map to Record for transport
+        const usageReport = Object.fromEntries(usageMap);
+
+        if (abortSignal.aborted) return;
+
+        // Persist for next startup
+        await figma.clientStorage.setAsync('internal_usage_cache', usageReport);
+
+        // Broadcast results
+        figma.ui.postMessage({
+            type: 'SCAN_COMPLETE',
+            payload: {
+                timestamp: Date.now(),
+                // We're essentially sending back stats, but specialized for usage
+                usage: usageReport
+            }
+        });
+
+        logger.info('sync', 'Manual usage scan complete & saved.');
+        figma.notify("✅ Data Synced & Saved Internally");
+
+    } catch (e) {
+        logger.error('controller:sync', 'Usage scan failed', { error: e });
+    }
+}

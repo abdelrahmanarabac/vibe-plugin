@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { omnibox } from '../managers/OmniboxManager';
-import { uiSyncManager } from '../services/UISyncManager'; // ⚡ USE THE MANAGER!
+import { uiSyncManager } from '../services/UISyncManager';
 import type { TokenEntity } from '../../core/types';
 import { type SceneNodeAnatomy } from '../../features/perception/visitors/HierarchyVisitor';
 import type { TokenFormData } from '../../features/tokens/domain/ui-types';
@@ -20,15 +20,10 @@ export interface TokensViewModel {
     stats: TokenStats;
     isSynced: boolean;
     liveIndicator: boolean;
-
-    // 🌊 Progressive State
     isSyncing: boolean;
     syncProgress: number;
     syncStatus: string;
-
-    // 🌊 Lazy Triggers
     scanUsage: () => void;
-
     updateToken: (id: string, value: string) => void;
     createToken: (data: TokenFormData) => Promise<boolean>;
     scanAnatomy: () => void;
@@ -41,46 +36,51 @@ export interface TokensViewModel {
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
 
-/**
- * ⚡ OPTIMIZED useTokens Hook
- * 
- * Key Changes:
- * 1. Uses UISyncManager for progressive updates
- * 2. Immediate UI feedback (no blocking)
- * 3. Subscribes to token updates from manager
- */
 export function useTokens(): TokensViewModel {
-    // ⚡ Subscribe to UISyncManager
+    // 1. Core State
     const [tokens, setTokens] = useState<TokenEntity[]>([]);
     const [syncState, setSyncState] = useState(uiSyncManager.getState());
-
     const [anatomy, setAnatomy] = useState<SceneNodeAnatomy[]>([]);
-    const [stats, setStats] = useState<TokenStats>({
+
+    // 2. Raw Stats from Backend
+    const [backendStats, setBackendStats] = useState<TokenStats>({
         totalVariables: 0,
         collections: 0,
         styles: 0,
         collectionNames: [],
         lastSync: 0
     });
+
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
-
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
+
+    // Refs for Promises
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
     const deletePromise = useRef<{ resolve: () => void, reject: (reason?: Error | string) => void } | null>(null);
+
+    // ⚡ Computed Stats (FIX #1: Source of Truth Unification)
+    // بنخلي الرقم يعتمد على اللي موجود فعلياً في الميموري لو متاح
+    const stats = useMemo(() => {
+        return {
+            ...backendStats,
+            // لو عندنا توكنز فعلية، نستخدم عددهم، غير كده نستخدم اللي جاي من الباك إند
+            totalVariables: tokens.length > 0 ? tokens.length : backendStats.totalVariables
+        };
+    }, [tokens.length, backendStats]);
 
     // ⚡ Subscribe to UISyncManager
     useEffect(() => {
         const unsubState = uiSyncManager.onStateChange(setSyncState);
         const unsubTokens = uiSyncManager.onTokensUpdate(setTokens);
-
         return () => {
             unsubState();
             unsubTokens();
         };
     }, []);
 
+    // ⚡ Message Handling
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const { type, payload } = event.data.pluginMessage || {};
@@ -92,7 +92,7 @@ export function useTokens(): TokensViewModel {
             }
 
             if (type === 'STATS_UPDATED' || type === 'REQUEST_STATS_SUCCESS') {
-                setStats({
+                setBackendStats({
                     totalVariables: payload.totalVariables ?? 0,
                     collections: payload.collections ?? 0,
                     styles: payload.styles ?? 0,
@@ -110,25 +110,17 @@ export function useTokens(): TokensViewModel {
 
             if (type === 'CREATE_VARIABLE_SUCCESS') {
                 omnibox.show('Token created successfully', { type: 'success' });
-                if (creationPromise.current) {
-                    creationPromise.current(true);
-                    creationPromise.current = null;
-                }
+                creationPromise.current?.(true);
             }
-
             if (type === 'CREATE_VARIABLE_ERROR') {
-                omnibox.show(payload.message || 'Failed to create token', { type: 'error' });
-
-                if (creationPromise.current) {
-                    creationPromise.current(false);
-                    creationPromise.current = null;
-                }
+                omnibox.show(payload.message, { type: 'error' });
+                creationPromise.current?.(false);
             }
 
             if (type === 'CREATE_COLLECTION_SUCCESS') {
                 omnibox.show(`Collection created`, { type: 'success' });
                 if (payload.collectionMap) {
-                    setStats(prev => ({
+                    setBackendStats(prev => ({
                         ...prev,
                         collections: payload.collections ? payload.collections.length : prev.collections,
                         collectionNames: payload.collections || prev.collectionNames,
@@ -136,18 +128,14 @@ export function useTokens(): TokensViewModel {
                         lastSync: Date.now()
                     }));
                 }
-                if (collectionPromise.current) {
-                    collectionPromise.current(payload.collectionId);
-                    collectionPromise.current = null;
-                }
+                collectionPromise.current?.(payload.collectionId);
+                collectionPromise.current = null;
             }
 
             if (type === 'CREATE_COLLECTION_ERROR') {
                 omnibox.show(payload.message || 'Failed to create collection', { type: 'error' });
-                if (collectionPromise.current) {
-                    collectionPromise.current(null);
-                    collectionPromise.current = null;
-                }
+                collectionPromise.current?.(null);
+                collectionPromise.current = null;
             }
 
             if (type === 'DELETE_COLLECTION_SUCCESS') {
@@ -155,7 +143,7 @@ export function useTokens(): TokensViewModel {
                 omnibox.show(`${deletedName} deleted`, { type: 'success' });
 
                 if (payload.collectionMap) {
-                    setStats(prev => ({
+                    setBackendStats(prev => ({
                         ...prev,
                         collections: Object.keys(payload.collectionMap).length,
                         collectionNames: Object.keys(payload.collectionMap),
@@ -179,24 +167,27 @@ export function useTokens(): TokensViewModel {
                 }
             }
 
-            // ⚡ Sync completion feedback
+            // ⚡ FIX #2: KILL THE SPINNER
             if (type === 'SYNC_COMPLETE') {
-                setIsSynced(false);
+                // 1. وقف مؤشر التحميل في الـ Manager فوراً
+                uiSyncManager.reset();
+
+                // 2. تحديث الحالة المحلية
+                setIsSynced(true); // خليها true عشان نعرف إننا خلصنا
                 setLiveIndicator(true);
+
+                omnibox.show('Sync Complete', { type: 'success', duration: 2000 });
                 setTimeout(() => setLiveIndicator(false), 2000);
             }
 
-            // 🛑 Manual Sync Cancelled Confirmation
             if (type === 'SYNC_CANCELLED') {
+                uiSyncManager.reset();
                 setIsSynced(false);
             }
         };
 
         window.addEventListener('message', handleMessage);
-
-        return () => {
-            window.removeEventListener('message', handleMessage);
-        };
+        return () => window.removeEventListener('message', handleMessage);
     }, []);
 
     const scanAnatomy = useCallback(() => {
@@ -214,12 +205,7 @@ export function useTokens(): TokensViewModel {
         return new Promise<boolean>((resolve) => {
             omnibox.show(`Creating ${data.name}...`, { type: 'loading', duration: 0 });
             creationPromise.current = resolve;
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'CREATE_VARIABLE',
-                    payload: data
-                }
-            }, '*');
+            parent.postMessage({ pluginMessage: { type: 'CREATE_VARIABLE', payload: data } }, '*');
         });
     }, []);
 
@@ -231,40 +217,23 @@ export function useTokens(): TokensViewModel {
         return new Promise<string | null>((resolve) => {
             omnibox.show(`Creating ${name}...`, { type: 'loading', duration: 0 });
             collectionPromise.current = resolve;
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'CREATE_COLLECTION',
-                    payload: { name }
-                }
-            }, '*');
+            parent.postMessage({ pluginMessage: { type: 'CREATE_COLLECTION', payload: { name } } }, '*');
         });
     }, []);
 
     const renameCollection = useCallback((oldName: string, newName: string) => {
         omnibox.show(`Renaming ${oldName}...`, { type: 'loading', duration: 0 });
-        parent.postMessage({
-            pluginMessage: {
-                type: 'RENAME_COLLECTION',
-                payload: { oldName, newName }
-            }
-        }, '*');
+        parent.postMessage({ pluginMessage: { type: 'RENAME_COLLECTION', payload: { oldName, newName } } }, '*');
     }, []);
 
     const deleteCollection = useCallback((name: string) => {
         return new Promise<void>((resolve, reject) => {
             omnibox.show(`Deleting ${name}...`, { type: 'loading', duration: 0 });
             deletePromise.current = { resolve, reject };
-
-            const id = stats.collectionMap?.[name];
-
-            parent.postMessage({
-                pluginMessage: {
-                    type: 'DELETE_COLLECTION',
-                    payload: { name, id }
-                }
-            }, '*');
+            const id = backendStats.collectionMap?.[name]; // Use backendStats here
+            parent.postMessage({ pluginMessage: { type: 'DELETE_COLLECTION', payload: { name, id } } }, '*');
         });
-    }, [stats.collectionMap]);
+    }, [backendStats.collectionMap]);
 
     const scanUsage = useCallback(() => {
         omnibox.show('Scanning usage...', { type: 'loading', duration: 0 });
@@ -272,16 +241,14 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const syncVariables = useCallback(() => {
-        // ⚡ IMMEDIATE UI FEEDBACK
         setIsSynced(false);
         omnibox.show('Starting sync...', { type: 'loading', duration: 0 });
 
-        // Start progressive sync via UISyncManager
-        uiSyncManager.startSync(stats.totalVariables || undefined);
+        // Pass known count to help manager estimate progress
+        uiSyncManager.startSync(backendStats.totalVariables || undefined);
 
-        // Tell plugin to start
         parent.postMessage({ pluginMessage: { type: 'SYNC_TOKENS' } }, '*');
-    }, [stats.totalVariables]);
+    }, [backendStats.totalVariables]);
 
     const resetSync = useCallback(() => {
         parent.postMessage({ pluginMessage: { type: 'SYNC_CANCEL' } }, '*');
@@ -293,25 +260,20 @@ export function useTokens(): TokensViewModel {
     return {
         tokens,
         anatomy,
-        stats,
+        stats, // This is now the Computed Stats
         isSynced,
         liveIndicator,
         lineageData,
-        // 🌊 From UISyncManager
         isSyncing: syncState.isLoading,
         syncProgress: syncState.progress,
-        syncStatus: `${syncState.loadedTokens} / ${syncState.totalTokens} tokens`,
-
-        // 🌊 Lazy Triggers
+        syncStatus: `${syncState.loadedTokens} / ${syncState.totalTokens || '?'} tokens`,
         scanUsage,
-
         updateToken,
         createToken,
         createCollection,
         renameCollection,
         deleteCollection,
         scanAnatomy,
-
         traceLineage,
         syncVariables,
         resetSync
