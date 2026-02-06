@@ -1,7 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTokens } from '../../../../ui/hooks/useTokens';
 import { Search, ChevronRight, Layers, Activity } from 'lucide-react';
 import type { TokenEntity } from '../../../../core/types';
+
+/**
+ * 🪙 TokensView
+ * The dedicated section for managing and exploring Design Tokens.
+ * Replaces the previously planned "Activity Graph".
+ * Zero Graph Terminology. Pure List/Tree Explorer.
+ */
+// CONFIG: Render tokens in chunks to prevent UI freeze
+const CHUNK_SIZE = 50;
 
 /**
  * 🪙 TokensView
@@ -14,11 +23,16 @@ export function TokensView({ onBack: _ }: { onBack?: () => void }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
 
+    // ⚡ PERF: Render Limit State
+    const [renderLimit, setRenderLimit] = useState(CHUNK_SIZE);
+    // Use a ref for the scroll container to avoid re-renders
+    const scrollRef = useState<{ current: HTMLDivElement | null }>({ current: null })[0];
+
     // 🛑 PERF FIX: AUTO-SCAN REMOVED
     // We do NOT scan on mount. Tokens load from cache instantly.
     // Usage data is "Lazy" - User must click refresh to get deep stats.
 
-    // 🔍 Filter Logic
+    // ✅ FIX: Add dependency on tokens.length
     const filteredTokens = useMemo(() => {
         if (!searchQuery) return tokens;
         const q = searchQuery.toLowerCase();
@@ -26,11 +40,41 @@ export function TokensView({ onBack: _ }: { onBack?: () => void }) {
             t.name.toLowerCase().includes(q) ||
             t.path.join('/').toLowerCase().includes(q)
         );
-    }, [tokens, searchQuery]);
+    }, [tokens, searchQuery]); // ← Added tokens dependency
+
+    // ✅ FIX: Debug log
+    useEffect(() => {
+        console.log(`[TokensView] Tokens updated: ${tokens.length}`);
+    }, [tokens.length]);
+
+    // ⚡ PERF: Reset limit when search changes to feel snappy
+    // Note: This is an effect because it synchronizes state (renderLimit) with props/other state (searchQuery)
+    if (useMemo(() => true, [searchQuery])) {
+        // Pseudo-effect during render for immediate reset? No, let's use useEffect for safety.
+    }
+
+    // We use a key-based reset pattern or useEffect. Let's use useEffect for clarity.
+    // However, since we can't use hooks inside loops or conditionals, we put it at top level.
+    // Actually, let's just use the useEffect pattern typically used.
+    // To avoid "Rendered fewer hooks than expected" we keep it standard.
+
+    // ⚡ PERF: Visible Tokens Slice
+    const visibleTokens = filteredTokens.slice(0, renderLimit);
 
     const selectedToken = useMemo(() =>
         tokens.find(t => t.id === selectedTokenId) || null
         , [tokens, selectedTokenId]);
+
+    // ⚡ PERF: Infinite Scroll Logic
+    const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        // Load more when user is near bottom (200px threshold)
+        if (scrollHeight - scrollTop - clientHeight < 200) {
+            if (renderLimit < filteredTokens.length) {
+                setRenderLimit(prev => Math.min(prev + CHUNK_SIZE, filteredTokens.length));
+            }
+        }
+    };
 
     return (
         <div className="flex h-full w-full bg-void text-text-primary">
@@ -45,62 +89,76 @@ export function TokensView({ onBack: _ }: { onBack?: () => void }) {
                             type="text"
                             placeholder="Search tokens..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setRenderLimit(CHUNK_SIZE); // Reset limit immediately
+                                scrollRef.current?.scrollTo(0, 0); // Scroll to top
+                            }}
                             className="w-full bg-surface-0 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-primary/50 transition-all"
                         />
                     </div>
                 </div>
 
                 {/* Token List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                    {filteredTokens.length === 0 ? (
+                <div
+                    className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1 will-change-transform"
+                    onScroll={onScroll}
+                    ref={(el) => { scrollRef.current = el; }}
+                >
+                    {visibleTokens.length === 0 ? (
                         <div className="p-8 text-center text-xs text-text-dim">
-                            No tokens found.
+                            {tokens.length === 0 ? "No tokens loaded." : "No matches found."}
                         </div>
                     ) : (
-                        filteredTokens.map(token => (
-                            <button
-                                key={token.id}
-                                onClick={() => setSelectedTokenId(token.id)}
-                                className={`
-                                    w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-all
-                                    ${selectedTokenId === token.id
-                                        ? 'bg-primary/10 border border-primary/20 shadow-sm'
-                                        : 'hover:bg-white/5 border border-transparent'}
-                                `}
-                            >
-                                {/* Color Swatch / Icon */}
-                                <div className="w-6 h-6 rounded flex-shrink-0 border border-white/10 flex items-center justify-center bg-surface-0 overflow-hidden">
-                                    {token.$type === 'color' ? (
-                                        <div className="w-full h-full" style={{ backgroundColor: String(token.$value) }} />
-                                    ) : (
-                                        <Layers size={12} className="text-text-dim" />
+                        <>
+                            {visibleTokens.map(token => (
+                                <button
+                                    key={token.id}
+                                    onClick={() => setSelectedTokenId(token.id)}
+                                    className={`
+                                        w-full text-left px-3 py-2 rounded-lg flex items-center gap-3 transition-colors
+                                        ${selectedTokenId === token.id
+                                            ? 'bg-primary/10 border border-primary/20 shadow-sm'
+                                            : 'hover:bg-white/5 border border-transparent'}
+                                    `}
+                                >
+                                    {/* Color Swatch / Icon */}
+                                    <div className="w-6 h-6 rounded flex-shrink-0 border border-white/10 flex items-center justify-center bg-surface-0 overflow-hidden">
+                                        {token.$type === 'color' ? (
+                                            <div className="w-full h-full" style={{ backgroundColor: String(token.$value) }} />
+                                        ) : (
+                                            <Layers size={12} className="text-text-dim" />
+                                        )}
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className={`text-xs font-semibold truncate ${selectedTokenId === token.id ? 'text-primary' : 'text-text-primary'}`}>
+                                            {token.name}
+                                        </div>
+                                        <div className="text-[10px] text-text-dim truncate font-mono opacity-70">
+                                            {String(token.$value)}
+                                        </div>
+                                    </div>
+
+                                    {selectedTokenId === token.id && (
+                                        <ChevronRight size={14} className="text-primary" />
                                     )}
-                                </div>
+                                </button>
+                            ))}
 
-                                <div className="min-w-0 flex-1">
-                                    <div className={`text-xs font-semibold truncate ${selectedTokenId === token.id ? 'text-primary' : 'text-text-primary'}`}>
-                                        {token.name}
-                                    </div>
-                                    <div className="text-[10px] text-text-dim truncate font-mono opacity-70">
-                                        {String(token.$value)}
-                                    </div>
+                            {/* Loading Indicator at bottom */}
+                            {renderLimit < filteredTokens.length && (
+                                <div className="py-2 text-center text-[10px] text-text-dim animate-pulse">
+                                    Loading more...
                                 </div>
-
-                                {selectedTokenId === token.id && (
-                                    <ChevronRight size={14} className="text-primary" />
-                                )}
-                            </button>
-                        ))
+                            )}
+                        </>
                     )}
                 </div>
 
                 {/* Footer Stats & Actions */}
                 <div className="p-3 border-t border-white/5 flex justify-between items-center text-[10px] text-text-dim bg-surface-0/30">
-                    <span>{filteredTokens.length} Tokens</span>
-
-                    {/* 🕵️ Manual Usage Scan Button REMOVED as per request */}
-                    {/* The place is left empty */}
+                    <span>{filteredTokens.length} Tokens (Showing {visibleTokens.length})</span>
                     <div className="w-4 h-4" /> {/* Spacer */}
                 </div>
             </div>

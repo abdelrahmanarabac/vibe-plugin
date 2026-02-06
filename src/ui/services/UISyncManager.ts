@@ -115,7 +115,7 @@ export class UISyncManager {
     private handleChunk(chunk: TokenChunk): void {
         const startIndex = this.tokens.length;
 
-        // Add tokens incrementally
+        // ✅ FIX: Add tokens incrementally
         this.tokens.push(...chunk.tokens);
 
         // Build fast lookup index
@@ -123,19 +123,26 @@ export class UISyncManager {
             this.tokenIndex.set(token.id, startIndex + i);
         });
 
-        // Send to worker for background indexing
-        tokenWorker.indexTokens(chunk.tokens).catch(console.error);
+        // ✅ CRITICAL: Update total if we got more than expected
+        const newTotal = Math.max(
+            this.state.totalTokens,
+            this.tokens.length
+        );
 
         // Update state
         this.updateState({
+            totalTokens: newTotal,  // ← FIX: Update total dynamically
             loadedTokens: this.tokens.length,
-            progress: this.state.totalTokens > 0
-                ? (this.tokens.length / this.state.totalTokens) * 100
+            progress: newTotal > 0
+                ? Math.min(100, (this.tokens.length / newTotal) * 100)
                 : 0
         });
 
-        // Notify token subscribers (triggers virtual scroll update)
+        // ✅ FIX: Notify IMMEDIATELY after each chunk
         this.notifyTokenSubscribers();
+
+        // Background indexing (non-blocking)
+        tokenWorker.indexTokens(chunk.tokens).catch(console.error);
     }
 
     /**
@@ -159,16 +166,21 @@ export class UISyncManager {
      * Handle sync completion
      */
     private handleComplete(): void {
-        // Don't remove listener yet, usage analysis might come next
-        // window.removeEventListener('message', this.handleMessage);
+        // ✅ FIX: Make sure we have the final count
+        const finalCount = this.tokens.length;
 
         this.updateState({
-            // isLoading: false, // Keep loading if usage analysis comes next? 
-            // Actually, for user experience, sync is "done" when definitions are loaded.
-            isLoading: false,
+            isLoading: false,  // ← Stop spinner
             phase: 'complete',
-            progress: 100
+            progress: 100,
+            totalTokens: finalCount,      // ← Update to actual
+            loadedTokens: finalCount
         });
+
+        // ✅ Final notification to ensure UI updates
+        this.notifyTokenSubscribers();
+
+        console.log(`[UISyncManager] Sync complete: ${finalCount} tokens loaded`);
     }
 
     /**

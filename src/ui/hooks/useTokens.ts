@@ -60,13 +60,15 @@ export function useTokens(): TokensViewModel {
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
     const deletePromise = useRef<{ resolve: () => void, reject: (reason?: Error | string) => void } | null>(null);
 
-    // ⚡ Computed Stats (FIX #1: Source of Truth Unification)
-    // بنخلي الرقم يعتمد على اللي موجود فعلياً في الميموري لو متاح
+    // ⚡ Computed Stats (FIX: Source of Truth Unification)
     const stats = useMemo(() => {
+        // ✅ ALWAYS use tokens.length as primary source
+        const actualCount = tokens.length;
+
         return {
             ...backendStats,
-            // لو عندنا توكنز فعلية، نستخدم عددهم، غير كده نستخدم اللي جاي من الباك إند
-            totalVariables: tokens.length > 0 ? tokens.length : backendStats.totalVariables
+            totalVariables: actualCount,  // ← FIX: Use actual loaded tokens
+            lastSync: actualCount > 0 ? Date.now() : backendStats.lastSync
         };
     }, [tokens.length, backendStats]);
 
@@ -170,7 +172,8 @@ export function useTokens(): TokensViewModel {
             // ⚡ FIX #2: KILL THE SPINNER
             if (type === 'SYNC_COMPLETE') {
                 // 1. وقف مؤشر التحميل في الـ Manager فوراً
-                uiSyncManager.reset();
+                // Note: The manager now handles its own state via handleComplete
+                // but we keep the setIsSynced and notifications here.
 
                 // 2. تحديث الحالة المحلية
                 setIsSynced(true); // خليها true عشان نعرف إننا خلصنا
@@ -241,6 +244,7 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const syncVariables = useCallback(() => {
+        setTokens([]); // 🛑 FIX #2: Clear old state to avoid "Ghost State"
         setIsSynced(false);
         omnibox.show('Starting sync...', { type: 'loading', duration: 0 });
 

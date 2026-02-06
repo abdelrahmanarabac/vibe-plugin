@@ -184,6 +184,7 @@ async function performFullSync(abortSignal: AbortSignal) {
     // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
     // const allTokens: any[] = []; // Removed to save memory
     let progress = 0;
+    let totalTokensProcessed = 0;  // ← Track total
 
     if (abortSignal.aborted) return;
 
@@ -200,19 +201,31 @@ async function performFullSync(abortSignal: AbortSignal) {
 
             // allTokens.push(...chunk); // Removed
             progress += chunk.length;
+            totalTokensProcessed += chunk.length;  // ← Track
 
             figma.ui.postMessage({
                 type: 'SYNC_CHUNK',
-                tokens: chunk,
-                progress: progress // Simple count for now, or we could estimate % if we knew total
+                payload: {
+                    tokens: chunk,
+                    chunkIndex: Math.floor(progress / 50),
+                    isLast: false
+                }
             });
 
             // Allow event loop to breathe and process aborts
             await new Promise(resolve => setTimeout(resolve, 0));
         }
 
-        // Phase Complete
-        figma.ui.postMessage({ type: 'SYNC_PHASE_COMPLETE', phase: 'definitions' });
+        // ✅ FIX: Send final SYNC_COMPLETE with actual count
+        figma.ui.postMessage({
+            type: 'SYNC_COMPLETE',
+            payload: {
+                totalTokens: totalTokensProcessed,  // ← Send actual count
+                message: '✅ Sync complete!'
+            }
+        });
+
+        logger.info('sync', `Sync complete: ${totalTokensProcessed} tokens`);
 
         // 🔄 Final Consistency Event (Backward Compat)
         // 🛑 PAYLOAD REMOVED: prevents freezing on large docs.
