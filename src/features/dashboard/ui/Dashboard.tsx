@@ -1,8 +1,8 @@
+import React, { useState } from 'react';
 import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
-import { useState } from 'react';
 import type { ViewType } from '../../../ui/layouts/MainLayout';
 import { SyncToggle } from './components/SyncToggle';
 
@@ -40,6 +40,22 @@ export function Dashboard({
     syncProgress: _swallowedProgress // 🗑️ Unused for now, status has the text
 }: DashboardProps) {
     const [showNewStyleDialog, setShowNewStyleDialog] = useState(false);
+
+    // ✅ FIX: Calculate total usage from tokens
+    const totalUsage = React.useMemo(() => {
+        return _tokens.reduce((sum, token) => {
+            const usage = token.usage?.totalRawUsage || 0;
+            return sum + usage;
+        }, 0);
+    }, [_tokens]);
+
+    // ✅ FIX: Find most used tokens
+    const topUsedTokens = React.useMemo(() => {
+        return [..._tokens]
+            .filter(t => (t.usage?.totalRawUsage || 0) > 0)
+            .sort((a, b) => (b.usage?.totalRawUsage || 0) - (a.usage?.totalRawUsage || 0))
+            .slice(0, 5);
+    }, [_tokens]);
 
     // Toggle is "Active" if we are consistently synced OR currently syncing
     const isToggleActive = isSynced || isSyncing;
@@ -107,7 +123,7 @@ export function Dashboard({
                     </div>
                 </div>
 
-                {/* 🎨 Stat Card: Styles (Large) */}
+                {/* 📈 Usage Stats Card - UPDATED */}
                 <div className="vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group">
                     <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 blur-[80px] rounded-full group-hover:bg-secondary/20 transition-all duration-500" />
 
@@ -115,14 +131,18 @@ export function Dashboard({
                         <div className="p-3 rounded-xl bg-white/5 text-secondary border border-white/5 shadow-inner">
                             <Layers size={24} strokeWidth={1.5} />
                         </div>
-                        <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xxs font-bold uppercase tracking-wider border border-secondary/20">Linked Styles</span>
+                        <span className="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xxs font-bold uppercase tracking-wider border border-secondary/20">
+                            Total Usage
+                        </span>
                     </div>
 
                     <div className="z-10">
-                        <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.styles ?? 0}</div>
+                        <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">
+                            {totalUsage}
+                        </div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-secondary" />
-                            Figma Styles Mapped
+                            Times Used in File
                         </div>
                     </div>
                 </div>
@@ -206,6 +226,33 @@ export function Dashboard({
                         </div>
                     </button>
                 </div>
+
+                {/* ✅ NEW: Most Used Tokens section */}
+                {topUsedTokens.length > 0 && (
+                    <div className="col-span-1 md:col-span-2 vibe-card p-6">
+                        <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-4">
+                            🔥 Most Used Tokens
+                        </h3>
+                        <div className="space-y-3">
+                            {topUsedTokens.map(token => (
+                                <div key={token.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-0/50 hover:bg-surface-0 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        {token.$type === 'color' && (
+                                            <div
+                                                className="w-6 h-6 rounded border border-white/10"
+                                                style={{ backgroundColor: String(token.$value) }}
+                                            />
+                                        )}
+                                        <span className="text-sm font-medium text-text-primary">{token.name}</span>
+                                    </div>
+                                    <span className="text-xs font-bold text-primary">
+                                        {token.usage?.totalRawUsage}×
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* 🆕 New Style Dialog */}
