@@ -1,6 +1,5 @@
 import { TokenRepository } from './TokenRepository';
 import { CapabilityRegistry } from './CapabilityRegistry';
-import { SyncEngine } from './SyncEngine';
 import { SyncService } from './services/SyncService';
 import { logger } from './services/Logger';
 
@@ -24,8 +23,6 @@ import { RenameCollectionsCapability } from '../features/collections/capabilitie
 import { CreateCollectionCapability } from '../features/collections/capabilities/CreateCollectionCapability';
 import { RenameCollectionCapability } from '../features/collections/capabilities/RenameCollectionCapability';
 import { DeleteCollectionCapability } from '../features/collections/capabilities/DeleteCollectionCapability';
-import { TraceLineageCapability } from '../features/intelligence/capabilities/TraceLineageCapability';
-import { CheckHealthCapability } from '../features/intelligence/capabilities/CheckHealthCapability';
 import { CreateStyleCapability } from '../features/styles/capabilities/CreateStyleCapability';
 
 // System Capabilities
@@ -52,7 +49,6 @@ export class CompositionRoot {
 
     // Public Services
     public readonly registry: CapabilityRegistry;
-    public readonly syncEngine: SyncEngine;
     public readonly repository: TokenRepository;
     public readonly syncService: SyncService;
 
@@ -80,14 +76,6 @@ export class CompositionRoot {
         // 3. Capabilities
         this.registry = new CapabilityRegistry();
         this.registerCapabilities(variableManager, docsRenderer, collectionRenamer);
-
-        // 4. Background Services (SyncEngine)
-        // We inject a placeholder callback, the Controller will bind the actual UI-messaging logic
-        // or we can pass the logic here if we invert control properly.
-        // For now, we expose the SyncEngine and let the Controller bind the callback.
-        this.syncEngine = new SyncEngine(async () => {
-            // Default no-op, Controller will override or we pass it in 'start'
-        });
     }
 
     private registerCapabilities(
@@ -107,8 +95,6 @@ export class CompositionRoot {
             new RenameCollectionCapability(),
             new DeleteCollectionCapability(this.syncService),
             new GetAnatomyCapability(),
-            new TraceLineageCapability(),
-            new CheckHealthCapability(this.repository),
             new CreateStyleCapability(),
 
             // System Capabilities

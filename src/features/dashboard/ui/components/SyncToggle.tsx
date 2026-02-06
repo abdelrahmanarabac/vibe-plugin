@@ -61,7 +61,7 @@ export const SyncToggle: React.FC<SyncToggleProps> = ({
                 <motion.div
                     layout
                     className={cn(
-                        "w-10 h-10 rounded-full flex flex-col items-center justify-center shadow-lg relative z-10 border border-white/5 gap-0.5",
+                        "w-10 h-10 rounded-full flex items-center justify-center shadow-lg relative z-10 border border-white/5",
                         isActive
                             ? "bg-primary text-white shadow-primary/40"
                             : "bg-surface-1 text-text-dim group-hover:text-text-primary group-hover:bg-surface-3 group-hover:shadow-xl"
@@ -82,20 +82,7 @@ export const SyncToggle: React.FC<SyncToggleProps> = ({
                         }
                     }}
                 >
-                    <RefreshCw size={14} strokeWidth={isSyncing ? 2.5 : 2} className={cn("transition-all", isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100")} />
-
-                    {/* 🎯 "Sync" Label - Shows when Active */}
-                    <motion.span
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{
-                            opacity: isActive ? 1 : 0,
-                            scale: isActive ? 1 : 0.8
-                        }}
-                        transition={{ duration: 0.2 }}
-                        className="text-[7px] font-black uppercase tracking-wider"
-                    >
-                        Sync
-                    </motion.span>
+                    <RefreshCw size={18} strokeWidth={isSyncing ? 2.5 : 2} className={cn("transition-all", isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100")} />
                 </motion.div>
             </div>
 

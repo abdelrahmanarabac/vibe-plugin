@@ -55,10 +55,6 @@ export function useTokens(): TokensViewModel {
     const [liveIndicator, setLiveIndicator] = useState(false);
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
 
-    const autoSyncTimerRef = useRef<any>(null);
-    const lastSyncTimeRef = useRef<number>(0);
-    const AUTO_SYNC_INTERVAL = 30000; // 30 seconds
-
     // Refs for Promises
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
     const collectionPromise = useRef<((id: string | null) => void) | null>(null);
@@ -175,17 +171,16 @@ export function useTokens(): TokensViewModel {
 
             // ⚡ FIX #2: KILL THE SPINNER
             if (type === 'SYNC_COMPLETE') {
-                setIsSynced(true);
+                // 1. وقف مؤشر التحميل في الـ Manager فوراً
+                // Note: The manager now handles its own state via handleComplete
+                // but we keep the setIsSynced and notifications here.
+
+                // 2. تحديث الحالة المحلية
+                setIsSynced(true); // خليها true عشان نعرف إننا خلصنا
                 setLiveIndicator(true);
-                lastSyncTimeRef.current = Date.now();
 
                 omnibox.show('Sync Complete', { type: 'success', duration: 2000 });
                 setTimeout(() => setLiveIndicator(false), 2000);
-
-                // ✅ Auto-close after 2 seconds
-                setTimeout(() => {
-                    setIsSynced(false);
-                }, 2000);
             }
 
             if (type === 'SYNC_CANCELLED') {
@@ -265,29 +260,6 @@ export function useTokens(): TokensViewModel {
         setIsSynced(false);
         omnibox.show('Sync cancelled', { type: 'info' });
     }, []);
-
-    // 🚀 AUTO-SYNC: Every 30 seconds
-    useEffect(() => {
-        const startAutoSync = () => {
-            if (autoSyncTimerRef.current) clearInterval(autoSyncTimerRef.current);
-
-            autoSyncTimerRef.current = setInterval(() => {
-                const now = Date.now();
-                const timeSinceLastSync = now - lastSyncTimeRef.current;
-
-                // Only sync if not currently syncing and enough time has passed
-                if (!syncState.isLoading && !isSynced && timeSinceLastSync >= AUTO_SYNC_INTERVAL) {
-                    syncVariables();
-                }
-            }, AUTO_SYNC_INTERVAL);
-        };
-
-        startAutoSync();
-
-        return () => {
-            if (autoSyncTimerRef.current) clearInterval(autoSyncTimerRef.current);
-        };
-    }, [syncState.isLoading, isSynced, syncVariables]);
 
     return {
         tokens,

@@ -34,11 +34,6 @@ logger.info('system', 'System booting...');
 const root = new CompositionRoot();
 const dispatcher = new Dispatcher(root.registry);
 
-// === 2. Bind Background Services ===
-// === 2. Bind Background Services ===
-// 🛑 CORE RULE: No auto-sync callback. Sync is triggered purely by UI message.
-// root.syncEngine.setCallback(...) -> REMOVED.
-
 // === 3. Setup UI ===
 figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 
@@ -46,7 +41,6 @@ figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 (async () => {
     try {
         logger.info('system', 'Initializing architecture...');
-        // root.syncEngine.start(); // 🛑 DISABLED: No background loop.
         logger.info('system', 'System ready');
     } catch (e) {
         logger.error('system', 'Bootstrap failed', { error: e });
@@ -99,10 +93,12 @@ figma.ui.onmessage = async (msg: PluginAction) => {
         }
         else if (msg.type === 'STORAGE_SET') {
             await figma.clientStorage.setAsync(msg.key, msg.value);
+            figma.ui.postMessage({ type: 'STORAGE_SET_SUCCESS', key: msg.key }); // ACK
             return; // Handled
         }
         else if (msg.type === 'STORAGE_REMOVE') {
             await figma.clientStorage.deleteAsync(msg.key);
+            figma.ui.postMessage({ type: 'STORAGE_REMOVE_SUCCESS', key: msg.key }); // ACK
             return; // Handled
         }
 
