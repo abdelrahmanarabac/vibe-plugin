@@ -128,14 +128,8 @@ export class ProgressiveSyncCoordinator {
             await this.yieldToMain();
         }
 
-        // Final chunk notification
-        if (allTokens.length > 0) {
-            this.onChunk?.({
-                tokens: allTokens.slice(-this.processedCount % this.CHUNK_SIZE || this.CHUNK_SIZE),
-                chunkIndex,
-                isLast: true
-            });
-        }
+        // ✅ FIXED: Final chunk notification is no longer needed as the loop already sends all tokens.
+        // We let the COMPLETE event or final notifyProgress handle the "Done" state.
 
         // Notify completion
         this.notifyProgress('complete', this.processedCount);

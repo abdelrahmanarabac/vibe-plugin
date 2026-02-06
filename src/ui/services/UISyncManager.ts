@@ -29,6 +29,7 @@ export interface SyncState {
 export class UISyncManager {
     private tokens: TokenEntity[] = [];
     private tokenIndex = new Map<string, number>(); // Fast lookup: id -> array index
+    private existingIds = new Set<string>(); // ✅ NEW: Track added token IDs for deduplication
     private searchIndex: Map<string, Set<number>> = new Map(); // keyword -> token indices
 
     private state: SyncState = {
@@ -68,6 +69,7 @@ export class UISyncManager {
     startSync(estimatedTotal?: number): void {
         this.tokens = [];
         this.tokenIndex.clear();
+        this.existingIds.clear(); // ✅ RESET: Clear the deduplication set
         this.searchIndex.clear();
 
         this.updateState({
@@ -114,12 +116,23 @@ export class UISyncManager {
      */
     private handleChunk(chunk: TokenChunk): void {
         const startIndex = this.tokens.length;
+        const newTokens: TokenEntity[] = [];
 
-        // ✅ FIX: Add tokens incrementally
-        this.tokens.push(...chunk.tokens);
+        // ✅ FILTER: Only add tokens we haven't seen before
+        for (const token of chunk.tokens) {
+            if (!this.existingIds.has(token.id)) {
+                this.existingIds.add(token.id);
+                newTokens.push(token);
+            }
+        }
 
-        // Build fast lookup index
-        chunk.tokens.forEach((token, i) => {
+        if (newTokens.length === 0) return; // Skip if all tokens are duplicates
+
+        // Add confirmed unique tokens
+        this.tokens.push(...newTokens);
+
+        // Build fast lookup index for NEW tokens only
+        newTokens.forEach((token, i) => {
             this.tokenIndex.set(token.id, startIndex + i);
         });
 
@@ -131,18 +144,18 @@ export class UISyncManager {
 
         // Update state
         this.updateState({
-            totalTokens: newTotal,  // ← FIX: Update total dynamically
+            totalTokens: newTotal,
             loadedTokens: this.tokens.length,
             progress: newTotal > 0
                 ? Math.min(100, (this.tokens.length / newTotal) * 100)
                 : 0
         });
 
-        // ✅ FIX: Notify IMMEDIATELY after each chunk
+        // ✅ Notify subcribers immediately
         this.notifyTokenSubscribers();
 
-        // Background indexing (non-blocking)
-        tokenWorker.indexTokens(chunk.tokens).catch(console.error);
+        // Background indexing (non-blocking) - Only index NEW tokens
+        tokenWorker.indexTokens(newTokens).catch(console.error);
     }
 
     /**
@@ -249,6 +262,8 @@ export class UISyncManager {
             totalTokens: 0,
             loadedTokens: 0
         });
+
+        this.existingIds.clear(); // ✅ Extra safety: clear on reset
 
         window.removeEventListener('message', this.handleMessage);
     }
