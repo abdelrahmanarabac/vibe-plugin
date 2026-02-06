@@ -244,6 +244,7 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const syncVariables = useCallback(() => {
+        console.log('[useTokens] syncVariables called - clearing state and starting sync');
         setTokens([]); // 🛑 FIX #2: Clear old state to avoid "Ghost State"
         setIsSynced(false);
         omnibox.show('Starting sync...', { type: 'loading', duration: 0 });
@@ -251,6 +252,7 @@ export function useTokens(): TokensViewModel {
         // Pass known count to help manager estimate progress
         uiSyncManager.startSync(backendStats.totalVariables || undefined);
 
+        console.log('[useTokens] Sending SYNC_TOKENS message to controller');
         parent.postMessage({ pluginMessage: { type: 'SYNC_TOKENS' } }, '*');
     }, [backendStats.totalVariables]);
 

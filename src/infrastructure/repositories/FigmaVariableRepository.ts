@@ -31,10 +31,44 @@ export class FigmaVariableRepository implements IVariableRepository {
         return tokens;
     }
 
-    async *syncGenerator(): AsyncGenerator<TokenEntity[]> {
+    async *syncGenerator(abortSignal?: AbortSignal): AsyncGenerator<TokenEntity[]> {
+        // 🔒 SAFETY: Check if Plugin API is available
+        if (!figma.variables || abortSignal?.aborted) {
+            throw new Error("Figma variables API not available or Sync Aborted.");
+        }
+
         try {
-            const allVariables = await figma.variables.getLocalVariablesAsync();
-            const collections = await figma.variables.getLocalVariableCollectionsAsync();
+            let allVariables: Variable[] = [];
+            let collections: VariableCollection[] = [];
+
+            try {
+                // 🛡️ PARANOID SAFETY: Double check figma global
+                if (typeof figma === 'undefined' || !figma.variables) {
+                    throw new Error("Figma global is missing or variables API is undefined");
+                }
+
+                allVariables = await figma.variables.getLocalVariablesAsync();
+                collections = await figma.variables.getLocalVariableCollectionsAsync();
+
+                // 🛡️ DATA INTEGRITY: Ensure we actually got arrays
+                if (!allVariables || !Array.isArray(allVariables)) {
+                    console.warn('[Repository] getLocalVariablesAsync returned invalid data', allVariables);
+                    allVariables = [];
+                }
+                if (!collections || !Array.isArray(collections)) {
+                    console.warn('[Repository] getLocalVariableCollectionsAsync returned invalid data', collections);
+                    collections = [];
+                }
+            } catch (error: any) {
+                // 🛑 Catch ReferenceErrors (common in detached plugin states)
+                console.error('[Repository] Figma API Critical Failure during fetch:', error);
+
+                // If it's a ReferenceError, the plugin environment might be corrupted
+                if (error instanceof ReferenceError || error.name === 'ReferenceError') {
+                    throw new Error("Figma API Context Lost (ReferenceError). Please restart the plugin.");
+                }
+                throw error;
+            }
 
             // ⚡ OPTIMIZATION: Create Lookup Maps (O(1) access)
             const collectionMap = new Map(collections.map(c => [c.id, c]));
@@ -45,6 +79,11 @@ export class FigmaVariableRepository implements IVariableRepository {
             let currentChunk: TokenEntity[] = [];
 
             for (const variable of allVariables) {
+                // 🔒 SAFETY: Fail fast if API becomes unavailable OR aborted
+                if (!figma.variables || abortSignal?.aborted) {
+                    throw new Error("Figma variables API became unavailable or Sync Aborted.");
+                }
+
                 const collection = collectionMap.get(variable.variableCollectionId);
                 if (!collection) continue;
 
@@ -140,7 +179,18 @@ export class FigmaVariableRepository implements IVariableRepository {
             }
 
         } catch (error) {
-            console.error('[Repository] Failed to sync variables:', error);
+            // 🔍 ENHANCED ERROR LOGGING
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            const errorName = error instanceof Error ? error.name : 'Unknown';
+
+            console.error('[Repository] Failed to sync variables - Full details:', {
+                name: errorName,
+                message: errorMessage,
+                stack: errorStack,
+                raw: error
+            });
+
             throw error;
         }
     }

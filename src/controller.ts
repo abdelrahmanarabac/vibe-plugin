@@ -189,7 +189,7 @@ async function performFullSync(abortSignal: AbortSignal) {
 
     try {
         // Stream Chunks
-        for await (const chunk of root.syncService.syncDefinitionsGenerator()) {
+        for await (const chunk of root.syncService.syncDefinitionsGenerator(abortSignal)) {
             if (abortSignal.aborted) {
                 logger.info('sync', 'Aborted during definitions stream.');
                 throw new Error('Sync Aborted');

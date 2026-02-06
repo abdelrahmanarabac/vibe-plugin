@@ -1,10 +1,11 @@
-import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
+import { Download, Plus, Layers, Zap, Globe, ArrowLeft, ArrowRight } from 'lucide-react';
+import { cn } from '../../../shared/lib/classnames';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
 import { useState, useEffect } from 'react';
 import type { ViewType } from '../../../ui/layouts/MainLayout';
-import { SyncToggle } from './components/SyncToggle';
+
 import { FirstTimeWelcome } from './components/FirstTimeWelcome';
 import { useOnboarding } from '../../auth/OnboardingStore';
 
@@ -37,7 +38,7 @@ export function Dashboard({
     onSync,
     onResetSync,
     isSyncing,
-    isSynced,
+    isSynced: _isSynced,
     syncStatus,
     syncProgress: _swallowedProgress // 🗑️ Unused for now, status has the text
 }: DashboardProps) {
@@ -53,8 +54,31 @@ export function Dashboard({
         }
     }, [isFirstSession]);
 
-    // Toggle is "Active" if we are consistently synced OR currently syncing
-    const isToggleActive = isSynced || isSyncing;
+
+    // 🔥 Burn Effect State
+    const [isBurning, setIsBurning] = useState(false);
+
+    const handleRefreshFromBlack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('[Dashboard] From Black button clicked - triggering onSync');
+        setIsBurning(true);
+        // Simulate sync/refresh delay of 2.5s
+        onSync?.();
+        setTimeout(() => {
+            setIsBurning(false);
+        }, 2500);
+    };
+
+    const handleRefreshToBlack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('[Dashboard] To Black button clicked - triggering onResetSync');
+        setIsBurning(true);
+        // Simulate feedback delay of 3s
+        onResetSync?.();
+        setTimeout(() => {
+            setIsBurning(false);
+        }, 3000);
+    };
 
     return (
         <div className="flex flex-col items-center py-8 px-4 gap-8 w-full max-w-5xl mx-auto">
@@ -62,58 +86,112 @@ export function Dashboard({
             {/* 🍱 Bento Grid - Responsive */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
-                {/* 📊 Stat Card: Total Tokens (Large) */}
+                {/* 📊 Stat Card: Total Tokens (Large) - With Burn Effect */}
                 <div
-                    className="vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group transition-all"
+                    className={cn(
+                        "vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group transition-all",
+                        isBurning && "border-primary/50" // Optional border enhancement during burn
+                    )}
                 >
-                    {/* Background Gradient */}
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
+                    {/* Background Gradient - Standard */}
+                    {!isBurning && (
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
+                    )}
 
-                    <div className="flex justify-between items-start z-10">
-                        <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
+                    {/* 🔥 Burn Overlay - Only visible when burning */}
+                    <AnimatePresence>
+                        {isBurning && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 pointer-events-none z-0"
+                            >
+                                {/* Base Burn Layer - Blue/Purple Light */}
+                                <motion.div
+                                    className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50"
+                                    animate={{ opacity: [0.5, 0.8, 0.5] }}
+                                    transition={{ duration: 0.2, repeat: Infinity, repeatType: "reverse" }}
+                                />
+
+                                {/* Slanted White Glow */}
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                                    animate={{
+                                        opacity: [0.7, 1, 0.7],
+                                        scale: [0.95, 1.05, 0.95],
+                                        rotate: [-13, -11, -13],
+                                        x: [-2, 2, -2],
+                                        y: [-2, 2, -2]
+                                    }}
+                                    transition={{
+                                        duration: 0.4,
+                                        repeat: Infinity,
+                                        repeatType: "reverse",
+                                        ease: "easeInOut"
+                                    }}
+                                    className="absolute top-[-50%] left-[-20%] w-[150%] h-[200%] bg-white/10 blur-[60px] mix-blend-overlay"
+                                />
+
+                                {/* Intense Flicker Core */}
+                                <motion.div
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 rounded-full blur-xl"
+                                    animate={{ opacity: [0, 1, 0, 0.5, 0] }}
+                                    transition={{ duration: 0.15, repeat: Infinity }}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Card Content - Z-Index to stay above burn */}
+                    <div className="flex justify-between items-start z-10 relative">
+                        <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner backdrop-blur-sm">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
-                        <div className="absolute top-[60%] right-6 -translate-y-1/2 z-20 flex flex-col items-end">
-                            {/* 🌊 Progressive Status Label (Absolute Positioned to prevent layout shift) */}
-                            <div className="relative">
-                                <AnimatePresence>
-                                    {isSyncing && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 5 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 5 }}
-                                            className="absolute bottom-full right-0 mb-3 whitespace-nowrap text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
-                                        >
-                                            {syncStatus || 'Syncing...'}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
 
-                                <SyncToggle
-                                    isActive={isToggleActive}
-                                    isSyncing={isSyncing}
-                                    onClick={() => {
-                                        // Logic:
-                                        // 1. If currently Syncing -> Cancel (Reset)
-                                        // 2. If Active (Synced) -> Reset (Turn Off)
-                                        // 3. If Inactive -> Sync (Turn On)
-                                        if (isSyncing) {
-                                            onResetSync?.();
-                                        } else if (isToggleActive) {
-                                            onResetSync?.();
-                                        } else {
-                                            onSync?.();
-                                        }
-                                    }}
-                                />
+                        <div className="flex flex-col items-end gap-2">
+                            {/* 🌊 Progressive Status Label */}
+                            <AnimatePresence>
+                                {isSyncing && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 5 }}
+                                        className="mb-1 whitespace-nowrap text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
+                                    >
+                                        {syncStatus || 'Syncing...'}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Action Buttons: From Black / To Black */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleRefreshFromBlack}
+                                    className="px-2.5 py-1.5 rounded-lg bg-surface-2/50 hover:bg-surface-2 border border-surface-2 hover:border-white/10 text-text-dim hover:text-white text-xxs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 group/btn"
+                                >
+                                    <ArrowLeft size={10} className="group-hover/btn:-translate-x-0.5 transition-transform" />
+                                    From Black
+                                </button>
+                                <button
+                                    onClick={handleRefreshToBlack}
+                                    className="px-2.5 py-1.5 rounded-lg bg-surface-2/50 hover:bg-surface-2 border border-surface-2 hover:border-white/10 text-text-dim hover:text-white text-xxs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 group/btn"
+                                >
+                                    To Black
+                                    <ArrowRight size={10} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="z-10">
+                    <div className="z-10 relative">
                         <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.totalVariables ?? 0}</div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isSyncing ? 'bg-primary animate-ping' : 'bg-primary'}`} />
+                            {/* Status Dot */}
+                            <div className={cn(
+                                "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                                isSyncing || isBurning ? 'bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)] scale-125' : 'bg-primary'
+                            )} />
                             Total Design Tokens
                         </div>
                     </div>

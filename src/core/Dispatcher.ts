@@ -124,11 +124,29 @@ export class Dispatcher {
                 },
 
                 onError: (error) => {
-                    logger.error('dispatcher', 'Progressive sync failed', { error });
+                    // 🔍 ENHANCED ERROR LOGGING
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    const errorStack = error instanceof Error ? error.stack : undefined;
+                    const errorName = error instanceof Error ? error.name : 'Unknown';
+
+                    logger.error('dispatcher', 'Progressive sync failed', {
+                        error,
+                        errorName,
+                        errorMessage,
+                        errorStack
+                    });
+
+                    console.error('[Dispatcher] Full sync error details:', {
+                        name: errorName,
+                        message: errorMessage,
+                        stack: errorStack,
+                        raw: error
+                    });
+
                     figma.ui.postMessage({
                         type: 'OMNIBOX_NOTIFY',
                         payload: {
-                            message: `❌ Sync failed: ${error.message}`,
+                            message: `❌ Sync failed: ${errorMessage}`,
                             type: 'error'
                         }
                     });

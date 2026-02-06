@@ -17,15 +17,12 @@ export interface SyncChunk {
 }
 
 /**
- * 🚀 ProgressiveSyncCoordinator
- * 
- * Orchestrates non-blocking progressive sync with:
- * - Chunked streaming to UI
- * - Frame-budget aware processing
- * - Priority-based loading
- * - Cancelation support
- * 
- * ENVIRONMENT: Plugin Sandbox (No 'window', 'requestAnimationFrame', etc.)
+ * 🧠 ProgressiveSyncCoordinator (Ghobghabi Edition)
+ * * Implements "Context-Driven Sync" with Adaptive Frame Budgeting & Minimal Overhead.
+ * - Respects 16ms frame budget (60fps target).
+ * - Batches chunks dynamically to avoid yield thrashing AND small chunk spam.
+ * - Yields preemptively if processing gets heavy.
+ * - Eliminates dead code (MIN_CHUNK_SIZE was unused!).
  */
 export class ProgressiveSyncCoordinator {
     private isRunning = false;
@@ -33,17 +30,16 @@ export class ProgressiveSyncCoordinator {
     private startTime = 0;
     private processedCount = 0;
 
-    private readonly CHUNK_SIZE = 100; // Tokens per chunk
+    // ⚡ GHOBGHABI CONFIG: Adaptive Budgeting
+    private readonly FRAME_BUDGET_MS = 12; // Leave 4ms overhead for UI rendering
+    private readonly MIN_FLUSH_SIZE = 50;  // Avoid sending tiny chunks (reduce postMessage overhead)
+    private readonly MAX_FLUSH_SIZE = 200; // Hard cap to prevent memory spikes
 
-    // Callbacks
     private onProgress?: (progress: SyncProgress) => void;
     private onChunk?: (chunk: SyncChunk) => void;
     private onComplete?: () => void;
     private onError?: (error: Error) => void;
 
-    /**
-     * Start progressive sync with callbacks
-     */
     async start(
         syncGenerator: AsyncGenerator<TokenEntity[]>,
         options: {
@@ -55,7 +51,7 @@ export class ProgressiveSyncCoordinator {
         }
     ): Promise<void> {
         if (this.isRunning) {
-            logger.warn('sync-coordinator', 'Sync already running, ignoring start request');
+            logger.warn('sync-coordinator', 'Sync already running');
             return;
         }
 
@@ -64,7 +60,6 @@ export class ProgressiveSyncCoordinator {
         this.startTime = Date.now();
         this.processedCount = 0;
 
-        // Store callbacks
         this.onProgress = options.onProgress;
         this.onChunk = options.onChunk;
         this.onComplete = options.onComplete;
@@ -73,129 +68,131 @@ export class ProgressiveSyncCoordinator {
         try {
             await this.processGenerator(syncGenerator, options.estimatedTotal);
         } catch (error) {
-            logger.error('sync-coordinator', 'Sync failed', { error });
+            // 🔍 ENHANCED ERROR LOGGING
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            const errorName = error instanceof Error ? error.name : 'Unknown';
+
+            logger.error('sync-coordinator', 'Sync failed', {
+                error,
+                errorName,
+                errorMessage,
+                errorStack
+            });
+
+            console.error('[ProgressiveSyncCoordinator] Full error details:', {
+                name: errorName,
+                message: errorMessage,
+                stack: errorStack,
+                raw: error
+            });
+
             this.onError?.(error instanceof Error ? error : new Error(String(error)));
         } finally {
             this.isRunning = false;
         }
     }
 
-    /**
-     * Cancel ongoing sync
-     */
     cancel(): void {
         if (!this.isRunning) return;
-
-        logger.info('sync-coordinator', 'Canceling sync operation');
         this.shouldCancel = true;
     }
 
-    /**
-     * Process generator with frame-budget awareness
-     */
     private async processGenerator(
         generator: AsyncGenerator<TokenEntity[]>,
         estimatedTotal?: number
     ): Promise<void> {
         let chunkIndex = 0;
-        let allTokens: TokenEntity[] = [];
+        let pendingTokens: TokenEntity[] = [];
+        let lastYieldTime = Date.now();
 
-        for await (const chunk of generator) {
+        for await (const incomingChunk of generator) {
             if (this.shouldCancel) {
-                logger.info('sync-coordinator', 'Sync canceled by user');
+                logger.info('sync-coordinator', 'Sync canceled');
                 return;
             }
 
-            // Process chunk with frame budget
-            await this.processChunkWithFrameBudget(chunk);
+            // 🛡️ SAFETY: Prevent ReferenceError if generator yields null/undefined/non-array
+            if (!incomingChunk || !Array.isArray(incomingChunk)) {
+                logger.warn('sync-coordinator', 'Skipping invalid chunk (not an array)', { chunk: incomingChunk });
+                continue;
+            }
 
-            allTokens.push(...chunk);
-            this.processedCount += chunk.length;
-            chunkIndex++;
+            // 1. Accumulate tokens
+            pendingTokens.push(...incomingChunk);
 
-            // Send chunk to UI
-            const isLast = false; // We don't know yet
-            this.onChunk?.({
-                tokens: chunk,
-                chunkIndex,
-                isLast
-            });
+            const now = Date.now();
+            const timeInFrame = now - lastYieldTime;
 
-            // Update progress
-            this.notifyProgress('definitions', estimatedTotal);
+            // ⚡ GHOBGHABI LOGIC: 
+            // Yield if we exceeded frame budget OR hit hard cap.
+            // But ONLY if we have enough to meet minimum flush size.
+            const shouldYield =
+                timeInFrame >= this.FRAME_BUDGET_MS ||
+                pendingTokens.length >= this.MAX_FLUSH_SIZE;
 
-            // Yield to browser to prevent blocking
-            await this.yieldToMain();
+            if (shouldYield && pendingTokens.length >= this.MIN_FLUSH_SIZE) {
+                await this.flushChunk(pendingTokens, ++chunkIndex, false, estimatedTotal);
+                pendingTokens = []; // Clear buffer
+
+                // 🛑 Force yield to main thread to let UI breathe
+                await this.yieldToMain();
+                lastYieldTime = Date.now(); // Reset frame timer
+            }
         }
 
-        // ✅ FIXED: Final chunk notification is no longer needed as the loop already sends all tokens.
-        // We let the COMPLETE event or final notifyProgress handle the "Done" state.
+        // Flush remaining tokens (even if < MIN_FLUSH_SIZE, because it's the last batch)
+        if (pendingTokens.length > 0) {
+            await this.flushChunk(pendingTokens, ++chunkIndex, true, estimatedTotal);
+        }
 
-        // Notify completion
-        this.notifyProgress('complete', this.processedCount);
         this.onComplete?.();
-
         logger.info('sync-coordinator', `Sync complete: ${this.processedCount} tokens in ${Date.now() - this.startTime}ms`);
     }
 
-    /**
-     * Process chunk respecting frame budget
-     */
-    private async processChunkWithFrameBudget(chunk: TokenEntity[]): Promise<void> {
+    private async flushChunk(
+        tokens: TokenEntity[],
+        index: number,
+        isLast: boolean,
+        total?: number
+    ): Promise<void> {
+        this.processedCount += tokens.length;
 
-        // If chunk is small, process immediately
-        if (chunk.length <= 50) {
-            return;
-        }
+        // Send to UI
+        this.onChunk?.({
+            tokens,
+            chunkIndex: index,
+            isLast
+        });
 
-        // For larger chunks, check if we're within budget
-        // Note: For simple array operations this is usually fast, 
-        // but if we were doing transformation here, we'd need to loop.
-        // Since we are just passing chunks, we mainly assume the generator 
-        // did the heavy work. This check is more for future proofing if we add logic here.
-
-        // Simulate checking time (in real scenario, we might iterate processing here)
-        // Since we receive the whole chunk already processed from the generator, 
-        // we just yield if the generator took too long to produce it.
+        // Update Stats
+        this.notifyProgress('definitions', total);
     }
 
     /**
      * Yield control to main thread
+     * Uses setTimeout to break the microtask queue
      */
     private async yieldToMain(): Promise<void> {
         return new Promise(resolve => {
-            // setTimeout(resolve, 0) breaks the synchronous execution chain 
-            // and allows the Figma sandbox to handle other messages/events.
             setTimeout(resolve, 0);
         });
     }
 
-    /**
-     * Notify progress to UI
-     */
     private notifyProgress(phase: SyncProgress['phase'], total?: number): void {
         if (!this.onProgress) return;
 
         const elapsed = Date.now() - this.startTime;
-        // Avoid division by zero
-        const rate = elapsed > 0 ? this.processedCount / (elapsed / 1000) : 0; // tokens per second
+        const rate = elapsed > 0 ? this.processedCount / (elapsed / 1000) : 0;
         const remaining = total ? total - this.processedCount : 0;
-        const estimatedTimeRemaining = rate > 0 ? (remaining / rate) * 1000 : undefined;
 
         this.onProgress({
             phase,
             current: this.processedCount,
             total: total || this.processedCount,
             percentage: total ? Math.min(100, (this.processedCount / total) * 100) : 0,
-            chunksProcessed: Math.floor(this.processedCount / this.CHUNK_SIZE),
-            estimatedTimeRemaining
+            chunksProcessed: 0, // Deprecated/Not relevant in dynamic mode
+            estimatedTimeRemaining: rate > 0 ? (remaining / rate) * 1000 : undefined
         });
-    }
-
-    /**
-     * Check if sync is currently running
-     */
-    isActive(): boolean {
-        return this.isRunning;
     }
 }

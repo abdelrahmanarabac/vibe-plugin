@@ -32,9 +32,9 @@ export class SyncService {
      * Yields chunks of tokens definitions (Lightweight).
      * Usage analysis is DEFERRED.
      */
-    async *syncDefinitionsGenerator(): AsyncGenerator<TokenEntity[]> {
+    async *syncDefinitionsGenerator(abortSignal?: AbortSignal): AsyncGenerator<TokenEntity[]> {
         // Yield from Variable Manager (which yields from Repo)
-        for await (const chunk of this.variableManager.syncGenerator()) {
+        for await (const chunk of this.variableManager.syncGenerator(abortSignal)) {
             yield chunk;
         }
     }

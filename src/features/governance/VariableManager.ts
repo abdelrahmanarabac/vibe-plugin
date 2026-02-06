@@ -43,7 +43,7 @@ export class VariableManager {
      * 🌊 Progressive Sync Generator
      * Yields chunks of tokens as they are processed.
      */
-    async *syncGenerator(): AsyncGenerator<TokenEntity[]> {
+    async *syncGenerator(abortSignal?: AbortSignal): AsyncGenerator<TokenEntity[]> {
         if (!this.figmaRepo.syncGenerator) {
             // Fallback for repos that don't support generation (e.g. tests)
             yield this.syncFromFigma();
@@ -52,7 +52,7 @@ export class VariableManager {
 
         this.repository.reset(); // Clear graph before starting
 
-        for await (const chunk of this.figmaRepo.syncGenerator()) {
+        for await (const chunk of this.figmaRepo.syncGenerator(abortSignal)) {
             // Populate Repository incrementally
             for (const token of chunk) {
                 this.repository.addNode(token);
