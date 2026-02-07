@@ -1,596 +1,1058 @@
 /**
  * @module LoginScreen
- * @description Omni-Box Guided Authentication Experience (Auth v3.0).
- * @version 3.0.0 - Omni-Box Design, Guided Inputs, OTP Flow Preserved.
+ * @description Complete authentication screen with all flows:
+ * - Login (Email + Password)
+ * - Create Account → OTP Verify → Set Password/Username
+ * - Forgot Password → OTP Verify → Reset Password
+ * 
+ * @version 4.0.0 - OTP-First Passwordless Architecture
  */
+
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, Sparkles, AlertCircle, CheckCircle2, KeyRound, ShieldCheck, ChevronRight } from 'lucide-react';
-import { AuthService } from '../AuthService';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, User, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
+import { AuthService, type AuthResult, type OtpResult } from '../AuthService';
+import { GuidedInput, type ValidationState } from '../../../components/shared/base/GuidedInput';
 import { Button } from '../../../components/shared/base/Button';
-import { GuidedInput } from '../../../components/shared/base/GuidedInput';
-import { VibeSupabase } from '../../../infrastructure/supabase/SupabaseClient';
-import {
-    scaleIn,
-    vibeEase
-} from '../../../shared/animations/MicroAnimations';
-import { useOnboarding } from '../../auth/OnboardingStore';
+import { fadeTransition } from '../../../shared/animations/MicroAnimations';
 
-/**
- * OTP Recovery sub-states:
- * - EMAIL: User enters email to receive OTP.
- * - OTP: User enters the 6-digit code.
- * - NEW_PASSWORD: User sets a new password.
- */
-type RecoveryStep = 'EMAIL' | 'OTP' | 'NEW_PASSWORD';
-
-type AuthMode = 'LOGIN' | 'SIGNUP' | 'FORGOT_PASSWORD';
+// ============================================================================
+// 📝 TYPES
+// ============================================================================
 
 interface LoginScreenProps {
-    onSuccess?: () => void;
+    onSuccess: () => void;
 }
 
-// Config
-const OTP_COOLDOWN_SECONDS = 120;
+/**
+ * All possible authentication modes in the flow
+ * 
+ * SIGNUP FLOW: signup → signup-otp-verify → signup-complete
+ * FORGOT FLOW: forgot-password → forgot-otp-verify → reset-password
+ */
+type AuthMode =
+    | 'login'                    // Default: Email + Password login
+    | 'signup'                   // Step 1: Enter email only
+    | 'signup-otp-verify'        // Step 2: Verify OTP
+    | 'signup-complete'          // Step 3: Set username + password
+    | 'forgot-password'          // Step 1: Enter email
+    | 'forgot-otp-verify'        // Step 2: Verify recovery OTP
+    | 'reset-password';          // Step 3: Set new password
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
-    console.log("🚀 Vibe Plugin: Bento-Enhanced Omni-Box Loaded");
-    const [mode, setMode] = useState<AuthMode>('LOGIN');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+interface FormState {
+    email: string;
+    password: string;
+    newPassword: string;
+    confirmNewPassword: string;
+    username: string;
+    otpCode: string;
+}
 
-    // Omni-Box interaction state for premium animations
-    const [isInteracting, setIsInteracting] = useState(false);
+interface FormErrors {
+    email?: string;
+    password?: string;
+    newPassword?: string;
+    confirmNewPassword?: string;
+    username?: string;
+    otpCode?: string;
+    general?: string;
+}
 
-    // Onboarding State (Greeting Logic)
-    const { isFirstSession } = useOnboarding();
+interface FeedbackState {
+    type: 'success' | 'info' | 'error';
+    message: string;
+}
 
-    // Form State
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [username, setUsername] = useState('');
+// ============================================================================
+// 🎨 DESIGN SYSTEM TOKEN ILLUSTRATION
+// ============================================================================
 
-    // OTP Recovery State
-    const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>('EMAIL');
-    const [otpCode, setOtpCode] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-
-    // Rate Limit Timer
-    const [resendTimer, setResendTimer] = useState(0);
-
-    // Countdown Effect
-    useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
-        if (resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [resendTimer]);
-
-    const resetState = () => {
-        setError(null);
-        setSuccessMessage(null);
-    };
-
-    const resetRecoveryState = () => {
-        setRecoveryStep('EMAIL');
-        setOtpCode('');
-        setNewPassword('');
-        setConfirmPassword('');
-    };
-
-    // ==========================================================================
-    // == OTP PASSWORD RECOVERY HANDLERS ==
-    // ==========================================================================
-
-    const handleSendOtp = async () => {
-        if (resendTimer > 0) return; // Prevent spamming
-
-        resetState();
-        if (!email.trim()) {
-            setError("Please enter your email address.");
-            return;
-        }
-        setLoading(true);
-
-        const { error: otpError } = await AuthService.sendRecoveryOtp(email.trim());
-
-        if (otpError) {
-            setError(mapAuthError(otpError));
-        } else {
-            setSuccessMessage("Code sent! Check your email inbox (and spam).");
-            setRecoveryStep('OTP');
-            setResendTimer(OTP_COOLDOWN_SECONDS);
-        }
-        setLoading(false);
-    };
-
-    const handleVerifyOtp = async () => {
-        resetState();
-        if (!otpCode.trim() || otpCode.length < 6) {
-            setError("Please enter the complete 6-digit code.");
-            return;
-        }
-        setLoading(true);
-
-        const { session, error: verifyError } = await AuthService.verifyRecoveryOtp(email.trim(), otpCode.trim());
-
-        if (verifyError || !session) {
-            setError(verifyError?.message || "Invalid code. Please check and try again.");
-        } else {
-            setSuccessMessage("Code verified! Set your new password.");
-            setRecoveryStep('NEW_PASSWORD');
-        }
-        setLoading(false);
-    };
-
-    const handleSetNewPassword = async () => {
-        resetState();
-        if (!newPassword || newPassword.length < 8) {
-            setError("Password must be at least 8 characters.");
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            setError("Passwords do not match.");
-            return;
-        }
-        setLoading(true);
-
-        const { error: updateError } = await AuthService.updatePassword(newPassword);
-
-        if (updateError) {
-            setError(updateError.message);
-        } else {
-            setSuccessMessage("Password updated! You're now logged in.");
-            setTimeout(() => {
-                onSuccess?.();
-            }, 1500);
-        }
-        setLoading(false);
-    };
-
-    const handleRecoverySubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (recoveryStep === 'EMAIL') return handleSendOtp();
-        if (recoveryStep === 'OTP') return handleVerifyOtp();
-        if (recoveryStep === 'NEW_PASSWORD') return handleSetNewPassword();
-    };
-
-    // ==========================================================================
-    // == MAIN LOGIN / SIGNUP HANDLER ==
-    // ==========================================================================
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (mode === 'FORGOT_PASSWORD') return handleRecoverySubmit(e);
-
-        resetState();
-        setLoading(true);
-
-        try {
-            const supabase = VibeSupabase.get();
-            if (!supabase) throw new Error("Connection failed. Please restart the plugin.");
-
-            if (mode === 'SIGNUP') {
-                if (!username || username.length < 3) {
-                    throw new Error("Username must be at least 3 characters.");
-                }
-                const { session, error: signUpError } = await AuthService.signUp(email, password, username);
-                if (signUpError) throw signUpError;
-
-                if (session) {
-                    onSuccess?.();
-                } else {
-                    const { session: signInSession, error: signInError } = await AuthService.signIn(email, password);
-                    if (signInSession) {
-                        onSuccess?.();
-                    } else {
-                        console.warn("[LoginScreen] Auto-login failed:", signInError);
-                        setSuccessMessage("Account created! Verify your email to continue.");
-                    }
-                }
-            } else {
-                const { error: signInError } = await AuthService.signIn(email, password);
-                if (signInError) throw signInError;
-                onSuccess?.();
-            }
-        } catch (err: unknown) {
-            setError(mapAuthError(err));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    /**
-     * Maps raw Supabase errors to friendly, supportive Vibe messages.
-     * Tone: Calm, helpful, never harsh.
-     */
-    const mapAuthError = (err: unknown): string => {
-        const msg = ((err as Error).message || "").toLowerCase();
-
-        if (msg.includes("leaked password") || msg.includes("breach")) {
-            return "🔐 Security heads-up: This password appeared in a breach. Choose a stronger one.";
-        }
-        if (msg.includes("password") && (msg.includes("length") || msg.includes("short"))) {
-            return "🔑 A bit longer — aim for 8+ characters for security.";
-        }
-        if (msg.includes("invalid login credentials")) return "🤔 Hmm, that email or password doesn't match. Double-check?";
-        if (msg.includes("user already registered")) return "👋 Account already exists. Try logging in instead.";
-        if (msg.includes("rate limit") || msg.includes("too many requests")) {
-            return "⏱️ Whoa, slow down! Please wait a moment before trying again.";
-        }
-        if (msg.includes("invalid email") || msg.includes("email")) {
-            return "📧 Let's check that email format — looks off.";
-        }
-
-        return (err as Error).message || "⚠️ Something went wrong. Mind trying again?";
-    };
-
-    const toggleMode = (newMode: AuthMode) => {
-        setMode(newMode);
-        resetState();
-        resetRecoveryState();
-    };
-
-    // ==========================================================================
-    // == RENDER HELPERS ==
-    // ==========================================================================
-
-    const getHeaderTitle = () => {
-        if (mode === 'FORGOT_PASSWORD') {
-            if (recoveryStep === 'EMAIL') return 'Reset Password';
-            if (recoveryStep === 'OTP') return 'Verify Code';
-            if (recoveryStep === 'NEW_PASSWORD') return 'New Password';
-        }
-        return 'Enter the Vibe';
-    };
-
-    const getHeaderSubtitle = () => {
-        if (mode === 'LOGIN') {
-            return isFirstSession ? "Welcome back. Let's create something amazing." : "";
-        }
-        if (mode === 'SIGNUP') return "Join the design revolution. ✨";
-        if (mode === 'FORGOT_PASSWORD') {
-            if (recoveryStep === 'EMAIL') return "We'll email you a recovery code. Check your inbox.";
-            if (recoveryStep === 'OTP') return "Enter the code we sent to your email.";
-            if (recoveryStep === 'NEW_PASSWORD') return "Create a strong new password.";
-        }
-        return "";
-    };
-
-    const getButtonLabel = (): string => {
-        if (mode === 'LOGIN') return 'Enter the Vibe';
-        if (mode === 'SIGNUP') return 'Join the Revolution';
-        if (mode === 'FORGOT_PASSWORD') {
-            if (recoveryStep === 'EMAIL') return 'Send Recovery Code';
-            if (recoveryStep === 'OTP') return 'Verify Code';
-            if (recoveryStep === 'NEW_PASSWORD') return 'Reset & Secure';
-        }
-        return 'Continue';
-    };
-
+const DesignTokenIllustration: React.FC = () => {
     return (
-        <div className="flex flex-col items-center justify-center h-full bg-void text-text-primary px-6 overflow-hidden relative">
-            {/* Background Ambient Glow (Consistent with WelcomeScreen) */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.2 }}
-                transition={{ duration: 1 }}
-                className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] bg-[radial-gradient(circle_at_center,var(--color-primary-glow)_0%,transparent_60%)] pointer-events-none"
+        <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            {/* Subtle Background Grid Pattern */}
+            <div
+                className="absolute inset-0 opacity-[0.03]"
+                style={{
+                    backgroundImage: `
+                        linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '24px 24px'
+                }}
             />
 
-            {/* Bento-Enhanced Omni-Box Container */}
-            <motion.div
-                initial="hidden"
-                animate={{
-                    opacity: 1,
-                    scale: isInteracting ? 1.01 : 1,
-                    y: isInteracting ? -4 : 0
-                }}
-                exit="exit"
-                variants={scaleIn}
-                transition={vibeEase}
-                className="w-full max-w-sm relative z-10"
+            {/* Main SVG: Design Token System Visualization */}
+            <svg
+                viewBox="0 0 320 480"
+                className="w-full max-w-[260px] h-auto"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
             >
-                {/* Header Context */}
-                <div className="text-center mb-8">
-                    <motion.div
-                        layoutId="auth-icon"
-                        className="inline-flex items-center justify-center w-14 h-14 rounded-[20px] bg-white/5 border border-white/10 shadow-glow mb-4 backdrop-blur-md"
-                    >
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={mode}
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                            >
-                                {mode === 'LOGIN' && <Sparkles className="w-7 h-7 text-primary" />}
-                                {mode === 'SIGNUP' && <User className="w-7 h-7 text-secondary" />}
-                                {mode === 'FORGOT_PASSWORD' && <KeyRound className="w-7 h-7 text-warning" />}
-                            </motion.div>
-                        </AnimatePresence>
-                    </motion.div>
+                {/* CONNECTION LINES */}
+                <motion.path
+                    d="M160 95 L160 140"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    transition={{ duration: 1, delay: 0.8 }}
+                />
+                <motion.path
+                    d="M130 185 L90 230"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    transition={{ duration: 1, delay: 1.0 }}
+                />
+                <motion.path
+                    d="M190 185 L230 230"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    transition={{ duration: 1, delay: 1.0 }}
+                />
+                <motion.path
+                    d="M90 280 L130 330"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    transition={{ duration: 1, delay: 1.2 }}
+                />
+                <motion.path
+                    d="M230 280 L190 330"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.6 }}
+                    transition={{ duration: 1, delay: 1.2 }}
+                />
 
-                    <motion.h1
-                        layoutId="auth-title"
-                        className="text-2xl font-bold tracking-tight text-white font-display mb-2"
-                    >
-                        {mode === 'LOGIN' && !isFirstSession ? "Welcome back 👋" : getHeaderTitle()}
-                    </motion.h1>
-
-                    <motion.p
-                        layoutId="auth-subtitle"
-                        className="text-text-dim text-sm"
-                    >
-                        {getHeaderSubtitle()}
-                    </motion.p>
-                </div>
-
-                {/* Bento-Style Glassmorphic Form Card */}
-                <motion.div
-                    className="backdrop-blur-[24px] bg-surface-1/60 border border-white/10 rounded-[28px] shadow-card transition-shadow duration-500"
-                    animate={{
-                        boxShadow: isInteracting
-                            ? "0 0 40px 4px rgba(110, 98, 229, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.4)"
-                            : "0 4px 6px -1px rgba(0, 0, 0, 0.4)"
-                    }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                {/* COLOR TOKEN */}
+                <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
                 >
-                    <form onSubmit={handleSubmit} className="p-7 space-y-5">
-                        <AnimatePresence mode="popLayout">
-                            {/* SIGNUP: Username Section (Bento Tile) */}
-                            {mode === 'SIGNUP' && (
-                                <motion.div
-                                    key="username"
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    transition={{ duration: 0.35 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03] hover:border-white/[0.05] transition-colors">
-                                        <GuidedInput
-                                            label="Username"
-                                            placeholder="your_designer_name"
-                                            value={username}
-                                            onChange={(e) => setUsername(e.target.value)}
-                                            onFocus={() => setIsInteracting(true)}
-                                            onBlur={() => setIsInteracting(false)}
-                                            icon={<User className="w-4 h-4 text-text-muted" />}
-                                            onboardingHint="Choose a unique handle for the community. ✨"
-                                            suppressHints={!isFirstSession}
-                                            required={mode === 'SIGNUP'}
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
+                    <circle cx="160" cy="60" r="32" fill="url(#colorTokenGradient)" />
+                    <circle cx="160" cy="60" r="32" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
+                    <circle cx="150" cy="52" r="8" fill="#6E62E5" />
+                    <circle cx="170" cy="52" r="8" fill="#A855F7" />
+                    <circle cx="160" cy="68" r="8" fill="#10B981" />
+                </motion.g>
 
-                            {/* Credentials Section (Bento Tile) */}
-                            {(mode !== 'FORGOT_PASSWORD' || recoveryStep === 'EMAIL') && (
-                                <motion.div
-                                    key="credentials"
-                                    layout
-                                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03] hover:border-white/[0.05] transition-colors space-y-4"
-                                >
-                                    <GuidedInput
-                                        label="Email"
-                                        type="email"
-                                        placeholder="you@design.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        onFocus={() => setIsInteracting(true)}
-                                        onBlur={() => setIsInteracting(false)}
-                                        icon={<Mail className="w-4 h-4 text-text-muted" />}
-                                        onboardingHint={mode === 'LOGIN' ? "Your registered email address. 📧" : "We'll send you a verification link. 💌"}
-                                        suppressHints={!isFirstSession}
-                                        required
-                                    />
+                {/* TYPOGRAPHY TOKEN */}
+                <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+                >
+                    <rect x="115" y="140" width="90" height="44" rx="10" fill="url(#tokenBgGradient)" />
+                    <rect x="115" y="140" width="90" height="44" rx="10" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none" />
+                    <text x="160" y="168" textAnchor="middle" fill="#F4F4F5" fontSize="18" fontWeight="600" fontFamily="Inter, sans-serif">Aa</text>
+                </motion.g>
 
-                                    {/* PASSWORD: Login/Signup */}
-                                    {mode !== 'FORGOT_PASSWORD' && (
-                                        <GuidedInput
-                                            label="Password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            onFocus={() => setIsInteracting(true)}
-                                            onBlur={() => setIsInteracting(false)}
-                                            icon={<Lock className="w-4 h-4 text-text-muted" />}
-                                            showStrengthMeter={mode === 'SIGNUP'}
-                                            onboardingHint={mode === 'LOGIN' ? "Your secure password. 🔐" : "Make it strong! Mix letters, numbers, symbols. 💪"}
-                                            suppressHints={!isFirstSession}
-                                            required
-                                        />
-                                    )}
-                                </motion.div>
-                            )}
+                {/* SPACING TOKENS */}
+                <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.6, ease: "easeOut" }}
+                >
+                    <rect x="55" y="230" width="50" height="50" rx="8" fill="url(#tokenBgGradient)" />
+                    <rect x="55" y="230" width="50" height="50" rx="8" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none" />
+                    <rect x="65" y="245" width="30" height="4" rx="2" fill="#6E62E5" opacity="0.8" />
+                    <rect x="65" y="253" width="20" height="4" rx="2" fill="#6E62E5" opacity="0.5" />
+                    <rect x="65" y="261" width="25" height="4" rx="2" fill="#6E62E5" opacity="0.3" />
+                </motion.g>
+                <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.7, ease: "easeOut" }}
+                >
+                    <rect x="215" y="230" width="50" height="50" rx="8" fill="url(#tokenBgGradient)" />
+                    <rect x="215" y="230" width="50" height="50" rx="8" stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none" />
+                    <rect x="225" y="242" width="12" height="12" rx="2" fill="#A855F7" opacity="0.6" />
+                    <rect x="241" y="242" width="12" height="12" rx="2" fill="#A855F7" opacity="0.4" />
+                    <rect x="225" y="258" width="12" height="12" rx="2" fill="#A855F7" opacity="0.4" />
+                    <rect x="241" y="258" width="12" height="12" rx="2" fill="#A855F7" opacity="0.2" />
+                </motion.g>
 
+                {/* COMPONENT TOKEN */}
+                <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.6, delay: 0.9, ease: "easeOut" }}
+                >
+                    <rect x="100" y="330" width="120" height="70" rx="12" fill="url(#componentGradient)" />
+                    <rect x="100" y="330" width="120" height="70" rx="12" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
+                    <rect x="112" y="344" width="40" height="6" rx="3" fill="rgba(255,255,255,0.5)" />
+                    <rect x="112" y="356" width="96" height="32" rx="6" fill="#6E62E5" />
+                    <text x="160" y="377" textAnchor="middle" fill="#FFFFFF" fontSize="11" fontWeight="500" fontFamily="Inter, sans-serif">Button</text>
+                </motion.g>
 
+                {/* DECORATIVE FLOATING DOTS */}
+                <motion.circle
+                    cx="40" cy="90" r="4"
+                    fill="#6E62E5"
+                    opacity="0.3"
+                    animate={{ y: [-5, 5, -5], opacity: [0.2, 0.4, 0.2] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.circle
+                    cx="280" cy="180" r="3"
+                    fill="#A855F7"
+                    opacity="0.3"
+                    animate={{ y: [5, -5, 5], opacity: [0.3, 0.5, 0.3] }}
+                    transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                />
+                <motion.circle
+                    cx="60" cy="380" r="5"
+                    fill="#10B981"
+                    opacity="0.2"
+                    animate={{ y: [-8, 8, -8], opacity: [0.15, 0.35, 0.15] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                />
+                <motion.circle
+                    cx="270" cy="340" r="4"
+                    fill="#6E62E5"
+                    opacity="0.25"
+                    animate={{ y: [6, -6, 6], opacity: [0.2, 0.4, 0.2] }}
+                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                />
 
-                            {/* RECOVERY: OTP Code */}
-                            {mode === 'FORGOT_PASSWORD' && recoveryStep === 'OTP' && (
-                                <motion.div
-                                    key="otp-code"
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -8 }}
-                                    transition={{ duration: 0.35 }}
-                                >
-                                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03]">
-                                        <GuidedInput
-                                            label="Verification Code"
-                                            placeholder="123456"
-                                            value={otpCode}
-                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                                            onFocus={() => setIsInteracting(true)}
-                                            onBlur={() => setIsInteracting(false)}
-                                            icon={<KeyRound className="w-4 h-4 text-text-muted" />}
-                                            className="text-center tracking-[0.3em] font-mono"
-                                            onboardingHint="Check your inbox and spam folder. 📬"
-                                            required
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* RECOVERY: New Passwords */}
-                            {mode === 'FORGOT_PASSWORD' && recoveryStep === 'NEW_PASSWORD' && (
-                                <motion.div
-                                    key="new-password-fields"
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -8 }}
-                                    transition={{ duration: 0.35 }}
-                                >
-                                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.03] space-y-4">
-                                        <GuidedInput
-                                            label="New Password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            onFocus={() => setIsInteracting(true)}
-                                            onBlur={() => setIsInteracting(false)}
-                                            icon={<Lock className="w-4 h-4 text-text-muted" />}
-                                            showStrengthMeter
-                                            onboardingHint="Create a strong password. You've got this! 💪"
-                                            required
-                                        />
-                                        <GuidedInput
-                                            label="Confirm Password"
-                                            type="password"
-                                            placeholder="••••••••"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            onFocus={() => setIsInteracting(true)}
-                                            onBlur={() => setIsInteracting(false)}
-                                            icon={<ShieldCheck className="w-4 h-4 text-text-muted" />}
-                                            validationState={confirmPassword && newPassword === confirmPassword ? 'valid' : 'idle'}
-                                            validationMessage={confirmPassword && newPassword === confirmPassword ? "Perfect match! ✨" : undefined}
-                                            required
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Friendly Messages (Supportive Tone) */}
-                        <AnimatePresence mode="wait">
-                            {error && (
-                                <motion.div
-                                    key="error"
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 10 }}
-                                    variants={{
-                                        error: {
-                                            x: [-4, 4, -3, 3, -2, 2, 0],
-                                            transition: { duration: 0.4 }
-                                        }
-                                    }}
-                                    className="p-3.5 bg-error/[0.08] border border-error/[0.15] rounded-xl flex items-start gap-3"
-                                >
-                                    <AlertCircle className="w-4 h-4 text-error shrink-0 mt-0.5" />
-                                    <span className="text-xs text-error font-medium leading-relaxed">{error}</span>
-                                </motion.div>
-                            )}
-                            {successMessage && (
-                                <motion.div
-                                    key="success"
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                                    className="p-3.5 bg-success/[0.08] border border-success/[0.15] rounded-xl flex items-start gap-3"
-                                >
-                                    <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                                    <span className="text-xs text-success font-medium leading-relaxed">{successMessage}</span>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Actions (Polished Interactions) */}
-                        <div className="pt-2 space-y-4">
-                            <Button
-                                type="submit"
-                                variant="primary"
-                                size="lg"
-                                className="w-full shadow-glow active:scale-[0.98] hover:scale-[1.01] transition-transform duration-150"
-                                loading={loading}
-                                disabled={loading || (mode === 'FORGOT_PASSWORD' && recoveryStep === 'EMAIL' && resendTimer > 0)}
-                                icon={(!loading && resendTimer === 0) ? <ArrowRight className="w-4 h-4" /> : undefined}
-                            >
-                                {mode === 'FORGOT_PASSWORD' && recoveryStep === 'EMAIL' && resendTimer > 0
-                                    ? `Resend in ${resendTimer}s`
-                                    : getButtonLabel()}
-                            </Button>
-
-                            {/* Footer Links */}
-                            <div className="flex items-center justify-between px-1">
-                                {mode === 'LOGIN' && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleMode('FORGOT_PASSWORD')}
-                                            className="text-xs text-text-muted hover:text-text-primary transition-colors"
-                                        >
-                                            Forgot password?
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleMode('SIGNUP')}
-                                            className="text-xs text-text-muted hover:text-white transition-colors flex items-center gap-1"
-                                        >
-                                            Create account <ChevronRight className="w-3 h-3" />
-                                        </button>
-                                    </>
-                                )}
-                                {mode === 'SIGNUP' && (
-                                    <div className="w-full text-center">
-                                        <span className="text-xs text-text-muted">Already have an account? </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => toggleMode('LOGIN')}
-                                            className="text-xs text-primary hover:text-primary-hover font-semibold transition-colors"
-                                        >
-                                            Sign in
-                                        </button>
-                                    </div>
-                                )}
-                                {mode === 'FORGOT_PASSWORD' && (
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleMode('LOGIN')}
-                                        className="w-full text-center text-xs text-text-muted hover:text-white transition-colors"
-                                    >
-                                        Back to Login
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </form>
-                </motion.div>
-
-                {/* Secure Footer */}
-                {mode === 'LOGIN' && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 0.6 }}
-                        transition={{ delay: 0.5 }}
-                        className="mt-6 flex items-center justify-center gap-2 text-[10px] text-text-dim"
-                    >
-                        <ShieldCheck className="w-3 h-3" />
-                        <span>Secured by Vibe Auth • Figma Compliant</span>
-                    </motion.div>
-                )}
-            </motion.div>
+                {/* GRADIENTS */}
+                <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#6E62E5" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#A855F7" stopOpacity="0.2" />
+                    </linearGradient>
+                    <linearGradient id="colorTokenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(30, 27, 46, 0.9)" />
+                        <stop offset="100%" stopColor="rgba(25, 23, 38, 0.95)" />
+                    </linearGradient>
+                    <linearGradient id="tokenBgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(30, 27, 46, 0.8)" />
+                        <stop offset="100%" stopColor="rgba(20, 18, 30, 0.9)" />
+                    </linearGradient>
+                    <linearGradient id="componentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="rgba(35, 32, 52, 0.85)" />
+                        <stop offset="100%" stopColor="rgba(25, 23, 38, 0.95)" />
+                    </linearGradient>
+                </defs>
+            </svg>
         </div>
     );
 };
 
+// ============================================================================
+// 🧩 MAIN COMPONENT
+// ============================================================================
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
+    // Current auth mode
+    const [mode, setMode] = useState<AuthMode>('login');
+
+    // Form state
+    const [form, setForm] = useState<FormState>({
+        email: '',
+        password: '',
+        newPassword: '',
+        confirmNewPassword: '',
+        username: '',
+        otpCode: '',
+    });
+
+    // UI state
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+    const [emailValidation, setEmailValidation] = useState<ValidationState>('idle');
+    const [passwordValidation, setPasswordValidation] = useState<ValidationState>('idle');
+
+    // ========================================================================
+    // HELPERS
+    // ========================================================================
+
+    const updateField = (field: keyof FormState, value: string) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+    };
+
+    const resetForm = () => {
+        setForm({
+            email: '',
+            password: '',
+            newPassword: '',
+            confirmNewPassword: '',
+            username: '',
+            otpCode: '',
+        });
+        setErrors({});
+        setFeedback(null);
+        setEmailValidation('idle');
+        setPasswordValidation('idle');
+    };
+
+    const showFeedback = (type: 'success' | 'info' | 'error', message: string) => {
+        setFeedback({ type, message });
+    };
+
+    const validateEmail = (email: string): boolean => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
+    // Auto-clear feedback after 5 seconds
+    useEffect(() => {
+        if (feedback && (feedback.type === 'success' || feedback.type === 'info')) {
+            const timer = setTimeout(() => setFeedback(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [feedback]);
+
+    // ========================================================================
+    // VALIDATION
+    // ========================================================================
+
+    const validateLoginForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!form.email) {
+            newErrors.email = 'Email is required';
+        } else if (!validateEmail(form.email)) {
+            newErrors.email = 'Please enter a valid email';
+        }
+
+        if (!form.password) {
+            newErrors.password = 'Password is required';
+        } else if (form.password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateSignupEmailForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!form.email) {
+            newErrors.email = 'Email is required';
+        } else if (!validateEmail(form.email)) {
+            newErrors.email = 'Please enter a valid email';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateOtpForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!form.otpCode || form.otpCode.length !== 6) {
+            newErrors.otpCode = 'Please enter the 6-digit code';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateSignupCompleteForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!form.username) {
+            newErrors.username = 'Username is required';
+        } else if (form.username.length < 3) {
+            newErrors.username = 'Username must be at least 3 characters';
+        }
+
+        if (!form.password) {
+            newErrors.password = 'Password is required';
+        } else if (form.password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const validateResetPasswordForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!form.newPassword) {
+            newErrors.newPassword = 'New password is required';
+        } else if (form.newPassword.length < 6) {
+            newErrors.newPassword = 'Password must be at least 6 characters';
+        }
+
+        if (form.newPassword !== form.confirmNewPassword) {
+            newErrors.confirmNewPassword = 'Passwords do not match';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // ========================================================================
+    // AUTH ACTIONS
+    // ========================================================================
+
+    /**
+     * Handle Login (Email + Password)
+     */
+    const handleLogin = async () => {
+        if (!validateLoginForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+        setEmailValidation('validating');
+        setPasswordValidation('validating');
+
+        try {
+            const result: AuthResult = await AuthService.signIn(form.email, form.password);
+
+            if (result.error) {
+                const errorMsg = result.error.message.toLowerCase();
+
+                if (errorMsg.includes('not confirmed') || errorMsg.includes('verify')) {
+                    setErrors({ general: 'Please confirm your email address first' });
+                    // Send new OTP and go to verify
+                    await AuthService.sendSignupOtp(form.email);
+                    setMode('signup-otp-verify');
+                    showFeedback('info', 'Verification code sent. Please check your email.');
+                } else if (errorMsg.includes('invalid') || errorMsg.includes('credentials')) {
+                    setErrors({ general: 'Invalid email or password' });
+                    setEmailValidation('invalid');
+                    setPasswordValidation('invalid');
+                } else {
+                    setErrors({ general: result.error.message });
+                }
+                return;
+            }
+
+            setEmailValidation('valid');
+            setPasswordValidation('valid');
+            showFeedback('success', 'Login successful!');
+            onSuccess();
+
+        } catch (error) {
+            console.error('[LoginScreen] Login error:', error);
+            setErrors({ general: 'An unexpected error occurred' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Signup Step 1: Send OTP to Email
+     */
+    const handleSignupSendOtp = async () => {
+        if (!validateSignupEmailForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result: OtpResult = await AuthService.sendSignupOtp(form.email);
+
+            if (result.error) {
+                setErrors({ general: result.error.message });
+                return;
+            }
+
+            // OTP sent - proceed to verify step
+            setMode('signup-otp-verify');
+            showFeedback('success', `Verification code sent to ${form.email}`);
+
+        } catch (error) {
+            console.error('[LoginScreen] Signup OTP send error:', error);
+            setErrors({ general: 'Failed to send verification code. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Signup Step 2: Verify OTP
+     */
+    const handleVerifySignupOtp = async () => {
+        if (!validateOtpForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result = await AuthService.verifySignupOtp(form.email, form.otpCode);
+
+            if (result.error) {
+                setErrors({ otpCode: 'Invalid or expired code. Please try again.' });
+                return;
+            }
+
+            // OTP verified - proceed to set username/password
+            setMode('signup-complete');
+            showFeedback('success', 'Email verified! Now set your username and password.');
+
+        } catch (error) {
+            console.error('[LoginScreen] Signup OTP verify error:', error);
+            setErrors({ otpCode: 'Verification failed. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Signup Step 3: Complete Signup (set password + username)
+     */
+    const handleCompleteSignup = async () => {
+        if (!validateSignupCompleteForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result = await AuthService.completeSignup(form.password, form.username);
+
+            if (result.error) {
+                setErrors({ general: result.error.message });
+                return;
+            }
+
+            showFeedback('success', 'Account created successfully! Welcome to Vibe Tokens.');
+            onSuccess();
+
+        } catch (error) {
+            console.error('[LoginScreen] Complete signup error:', error);
+            setErrors({ general: 'Failed to complete signup. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Forgot Password Step 1: Send Recovery OTP
+     */
+    const handleForgotPassword = async () => {
+        if (!validateSignupEmailForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result = await AuthService.sendRecoveryOtp(form.email);
+
+            if (result.error) {
+                setErrors({ general: result.error.message });
+                return;
+            }
+
+            setMode('forgot-otp-verify');
+            showFeedback('success', `Recovery code sent to ${form.email}`);
+
+        } catch (error) {
+            console.error('[LoginScreen] Forgot password error:', error);
+            setErrors({ general: 'Failed to send recovery code. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Forgot Password Step 2: Verify Recovery OTP
+     */
+    const handleVerifyRecoveryOtp = async () => {
+        if (!validateOtpForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result = await AuthService.verifyRecoveryOtp(form.email, form.otpCode);
+
+            if (result.error) {
+                setErrors({ otpCode: 'Invalid or expired code. Please try again.' });
+                return;
+            }
+
+            // OTP verified - proceed to reset password
+            setMode('reset-password');
+            showFeedback('success', 'Code verified! Now set your new password.');
+
+        } catch (error) {
+            console.error('[LoginScreen] Recovery OTP verify error:', error);
+            setErrors({ otpCode: 'Verification failed. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Handle Forgot Password Step 3: Reset Password
+     */
+    const handleResetPassword = async () => {
+        if (!validateResetPasswordForm()) return;
+
+        setIsLoading(true);
+        setErrors({});
+        setFeedback(null);
+
+        try {
+            const result = await AuthService.updatePassword(form.newPassword);
+
+            if (result.error) {
+                setErrors({ general: result.error.message });
+                return;
+            }
+
+            showFeedback('success', 'Password updated successfully!');
+
+            // Return to login after short delay
+            setTimeout(() => {
+                resetForm();
+                setMode('login');
+            }, 1500);
+
+        } catch (error) {
+            console.error('[LoginScreen] Password reset error:', error);
+            setErrors({ general: 'Failed to update password. Please try again.' });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /**
+     * Form Submit Handler - Routes to correct action
+     */
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        switch (mode) {
+            case 'login':
+                await handleLogin();
+                break;
+            case 'signup':
+                await handleSignupSendOtp();
+                break;
+            case 'signup-otp-verify':
+                await handleVerifySignupOtp();
+                break;
+            case 'signup-complete':
+                await handleCompleteSignup();
+                break;
+            case 'forgot-password':
+                await handleForgotPassword();
+                break;
+            case 'forgot-otp-verify':
+                await handleVerifyRecoveryOtp();
+                break;
+            case 'reset-password':
+                await handleResetPassword();
+                break;
+        }
+    };
+
+    /**
+     * Get header content based on mode
+     */
+    const getHeaderContent = () => {
+        switch (mode) {
+            case 'login':
+                return { title: 'Welcome Back', subtitle: 'Sign in to continue to Vibe Tokens' };
+            case 'signup':
+                return { title: 'Create Account', subtitle: 'Enter your email to get started' };
+            case 'signup-otp-verify':
+                return { title: 'Verify Email', subtitle: 'Enter the 6-digit code sent to your email' };
+            case 'signup-complete':
+                return { title: 'Almost Done!', subtitle: 'Set your username and password' };
+            case 'forgot-password':
+                return { title: 'Forgot Password', subtitle: 'Enter your email to receive a recovery code' };
+            case 'forgot-otp-verify':
+                return { title: 'Verify Code', subtitle: 'Enter the 6-digit recovery code' };
+            case 'reset-password':
+                return { title: 'Reset Password', subtitle: 'Choose a new secure password' };
+        }
+    };
+
+    /**
+     * Get submit button text based on mode
+     */
+    const getSubmitButtonText = () => {
+        switch (mode) {
+            case 'login': return 'Sign In';
+            case 'signup': return 'Send Code';
+            case 'signup-otp-verify': return 'Verify Email';
+            case 'signup-complete': return 'Create Account';
+            case 'forgot-password': return 'Send Code';
+            case 'forgot-otp-verify': return 'Verify Code';
+            case 'reset-password': return 'Reset Password';
+        }
+    };
+
+    /**
+     * Handle back navigation
+     */
+    const handleBack = () => {
+        if (mode === 'forgot-otp-verify') {
+            setMode('forgot-password');
+        } else if (mode === 'reset-password') {
+            setMode('forgot-otp-verify');
+        } else if (mode === 'signup-otp-verify') {
+            setMode('signup');
+        } else if (mode === 'signup-complete') {
+            // Cannot go back after OTP verified - session is active
+            setMode('signup-otp-verify');
+        } else {
+            setMode('login');
+        }
+        setErrors({});
+        setFeedback(null);
+    };
+
+    const showBackButton = ['forgot-password', 'forgot-otp-verify', 'reset-password', 'signup-otp-verify'].includes(mode);
+
+    const headerContent = getHeaderContent();
+
+    // ========================================================================
+    // RENDER
+    // ========================================================================
+
+    return (
+        <motion.div
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={fadeTransition}
+            className="flex h-screen w-full bg-void overflow-hidden"
+        >
+            {/* LEFT: VISUAL ZONE (40%) */}
+            <div className="hidden md:flex w-[40%] bg-surface-0 border-r border-white/5 relative">
+                <DesignTokenIllustration />
+            </div>
+
+            {/* RIGHT: FORM ZONE (60%) */}
+            <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 overflow-y-auto">
+                <div className="w-full max-w-sm">
+
+                    {/* Back Button (for sub-flows) */}
+                    {showBackButton && (
+                        <motion.button
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            type="button"
+                            onClick={handleBack}
+                            className="flex items-center gap-1.5 text-sm text-text-muted hover:text-primary transition-colors mb-6"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back
+                        </motion.button>
+                    )}
+
+                    {/* Header */}
+                    <motion.div
+                        className="text-center mb-8"
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        key={mode}
+                    >
+                        <h1 className="text-2xl font-bold text-white font-display tracking-tight mb-2">
+                            {headerContent.title}
+                        </h1>
+                        <p className="text-sm text-text-dim">
+                            {headerContent.subtitle}
+                        </p>
+                    </motion.div>
+
+                    {/* Feedback Message (Success/Info) */}
+                    <AnimatePresence mode="wait">
+                        {feedback && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+                                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                className={`p-3 rounded-lg flex items-start gap-2 ${feedback.type === 'success'
+                                    ? 'bg-success/10 border border-success/30'
+                                    : feedback.type === 'info'
+                                        ? 'bg-primary/10 border border-primary/30'
+                                        : 'bg-error/10 border border-error/30'
+                                    }`}
+                            >
+                                <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${feedback.type === 'success' ? 'text-success' :
+                                    feedback.type === 'info' ? 'text-primary' : 'text-error'
+                                    }`} />
+                                <span className={`text-sm ${feedback.type === 'success' ? 'text-success' :
+                                    feedback.type === 'info' ? 'text-primary' : 'text-error'
+                                    }`}>{feedback.message}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* General Error */}
+                    <AnimatePresence mode="wait">
+                        {errors.general && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mb-4 p-3 bg-error/10 border border-error/30 rounded-lg flex items-start gap-2"
+                            >
+                                <AlertCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+                                <span className="text-sm text-error">{errors.general}</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <AnimatePresence mode="wait">
+                            {/* ===== LOGIN MODE ===== */}
+                            {mode === 'login' && (
+                                <motion.div
+                                    key="login"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-5"
+                                >
+                                    <GuidedInput
+                                        label="Email"
+                                        type="email"
+                                        placeholder="you@company.com"
+                                        value={form.email}
+                                        onChange={(e) => updateField('email', e.target.value)}
+                                        error={errors.email}
+                                        validationState={emailValidation}
+                                        icon={<Mail className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="email"
+                                    />
+                                    <GuidedInput
+                                        label="Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.password}
+                                        onChange={(e) => updateField('password', e.target.value)}
+                                        error={errors.password}
+                                        validationState={passwordValidation}
+                                        icon={<Lock className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="current-password"
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ===== SIGNUP STEP 1: EMAIL ONLY ===== */}
+                            {mode === 'signup' && (
+                                <motion.div
+                                    key="signup"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                >
+                                    <GuidedInput
+                                        label="Email"
+                                        type="email"
+                                        placeholder="you@company.com"
+                                        value={form.email}
+                                        onChange={(e) => updateField('email', e.target.value)}
+                                        error={errors.email}
+                                        icon={<Mail className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="email"
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ===== OTP VERIFICATION (Signup & Recovery) ===== */}
+                            {(mode === 'signup-otp-verify' || mode === 'forgot-otp-verify') && (
+                                <motion.div
+                                    key="otp-verify"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                >
+                                    <GuidedInput
+                                        label="Verification Code"
+                                        type="text"
+                                        placeholder="Enter 6-digit code"
+                                        value={form.otpCode}
+                                        onChange={(e) => updateField('otpCode', e.target.value)}
+                                        error={errors.otpCode}
+                                        icon={<Lock className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="one-time-code"
+                                        maxLength={6}
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ===== SIGNUP STEP 3: USERNAME + PASSWORD ===== */}
+                            {mode === 'signup-complete' && (
+                                <motion.div
+                                    key="signup-complete"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-5"
+                                >
+                                    <GuidedInput
+                                        label="Username"
+                                        type="text"
+                                        placeholder="Choose a unique username"
+                                        value={form.username}
+                                        onChange={(e) => updateField('username', e.target.value)}
+                                        error={errors.username}
+                                        icon={<User className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="username"
+                                    />
+                                    <GuidedInput
+                                        label="Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.password}
+                                        onChange={(e) => updateField('password', e.target.value)}
+                                        error={errors.password}
+                                        icon={<Lock className="w-4 h-4 text-text-muted" />}
+                                        showStrengthMeter={true}
+                                        autoComplete="new-password"
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ===== FORGOT PASSWORD MODE ===== */}
+                            {mode === 'forgot-password' && (
+                                <motion.div
+                                    key="forgot"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                >
+                                    <GuidedInput
+                                        label="Email"
+                                        type="email"
+                                        placeholder="you@company.com"
+                                        value={form.email}
+                                        onChange={(e) => updateField('email', e.target.value)}
+                                        error={errors.email}
+                                        icon={<Mail className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="email"
+                                    />
+                                </motion.div>
+                            )}
+
+                            {/* ===== RESET PASSWORD MODE ===== */}
+                            {mode === 'reset-password' && (
+                                <motion.div
+                                    key="reset"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    className="space-y-5"
+                                >
+                                    <GuidedInput
+                                        label="New Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.newPassword}
+                                        onChange={(e) => updateField('newPassword', e.target.value)}
+                                        error={errors.newPassword}
+                                        icon={<Lock className="w-4 h-4 text-text-muted" />}
+                                        showStrengthMeter={true}
+                                        autoComplete="new-password"
+                                    />
+                                    <GuidedInput
+                                        label="Confirm New Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={form.confirmNewPassword}
+                                        onChange={(e) => updateField('confirmNewPassword', e.target.value)}
+                                        error={errors.confirmNewPassword}
+                                        icon={<Lock className="w-4 h-4 text-text-muted" />}
+                                        autoComplete="new-password"
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Submit Button */}
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="lg"
+                            loading={isLoading}
+                            className="w-full mt-2"
+                        >
+                            {getSubmitButtonText()}
+                        </Button>
+                    </form>
+
+                    {/* Footer Links */}
+                    <div className="mt-6 text-center space-y-3">
+                        {/* Login mode footer */}
+                        {mode === 'login' && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMode('forgot-password');
+                                        setErrors({});
+                                        setFeedback(null);
+                                    }}
+                                    className="text-sm text-text-muted hover:text-primary transition-colors"
+                                >
+                                    Forgot your password?
+                                </button>
+                                <p className="text-sm text-text-dim">
+                                    Don't have an account?{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMode('signup');
+                                            resetForm();
+                                        }}
+                                        className="text-primary hover:text-primary-hover font-medium transition-colors"
+                                    >
+                                        Sign up
+                                    </button>
+                                </p>
+                            </>
+                        )}
+
+                        {/* Signup mode footer */}
+                        {mode === 'signup' && (
+                            <p className="text-sm text-text-dim">
+                                Already have an account?{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMode('login');
+                                        resetForm();
+                                    }}
+                                    className="text-primary hover:text-primary-hover font-medium transition-colors"
+                                >
+                                    Sign in
+                                </button>
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};

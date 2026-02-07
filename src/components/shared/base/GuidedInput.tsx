@@ -239,7 +239,7 @@ export const GuidedInput = forwardRef<HTMLInputElement, GuidedInputProps>((
                             variants={floatingHint}
                             className="absolute -top-12 left-0 right-0 z-10"
                         >
-                            <div className="bg-surface-3/95 backdrop-blur-md border border-primary/30 rounded-lg px-3 py-2 shadow-lg">
+                            <div className="bg-surface-3/90 backdrop-blur-xl border border-primary/40 rounded-lg px-3 py-2 shadow-lg shadow-primary/10">
                                 <p className="text-xs text-text-dim leading-relaxed flex items-start gap-2">
                                     <span className="text-primary text-sm">💡</span>
                                     <span>{onboardingHint}</span>
@@ -272,14 +272,14 @@ export const GuidedInput = forwardRef<HTMLInputElement, GuidedInputProps>((
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         className={cn(
-                            "w-full bg-surface-2 border border-white/5 text-text-primary placeholder:text-text-muted/50 rounded-lg py-3 text-sm transition-all duration-200",
+                            "w-full bg-white/[0.02] backdrop-blur-sm border border-white/10 text-text-primary placeholder:text-text-muted/60 rounded-lg py-3 text-sm transition-all duration-200",
                             icon ? "pl-10 pr-12" : "px-4 pr-12",
-                            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
-                            "hover:border-white/10 hover:bg-surface-3",
+                            "focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60",
+                            "hover:border-white/20 hover:bg-white/[0.04]",
                             "disabled:opacity-50 disabled:cursor-not-allowed",
-                            hasError && "border-error/50 focus:ring-error/30 focus:border-error",
-                            isValid && "border-success/50",
-                            isFocused && "shadow-glow border-primary/50",
+                            hasError && "border-error/60 focus:ring-error/40 focus:border-error bg-error/[0.02]",
+                            isValid && "border-success/60 bg-success/[0.02]",
+                            isFocused && "shadow-[0_0_20px_rgba(110,98,229,0.15)] border-primary/60",
                             className
                         )}
                         aria-invalid={hasError ? true : false}
@@ -300,7 +300,7 @@ export const GuidedInput = forwardRef<HTMLInputElement, GuidedInputProps>((
                         className="mt-2 space-y-1.5"
                     >
                         {/* Meter Bar */}
-                        <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                             <motion.div
                                 className="h-full rounded-full transition-colors duration-300"
                                 initial={{ width: '0%' }}
