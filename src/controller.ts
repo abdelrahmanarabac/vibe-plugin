@@ -3,6 +3,11 @@ import type { AgentContext } from './core/AgentContext';
 import { CompositionRoot } from './core/CompositionRoot';
 import { Dispatcher } from './core/Dispatcher';
 import { logger } from './core/services/Logger';
+import { TokenUsageAnalyzer } from './features/tokens/domain/TokenUsageAnalyzer';
+
+// Instantiate Analyzer (Global or Cached)
+const usageAnalyzer = new TokenUsageAnalyzer();
+
 
 // 🛑 POLYFILL: AbortController for Figma Sandbox
 if (typeof globalThis.AbortController === 'undefined') {
@@ -115,7 +120,7 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             return;
         }
 
-        // � MANUAL SYNC CANCEL
+        //  MANUAL SYNC CANCEL
         else if (msg.type === 'SYNC_CANCEL') {
             if (currentSyncAbortController) {
                 logger.info('sync', 'Cancelling sync process...');
@@ -282,135 +287,89 @@ function searchTokens(query: string): TokenEntity[] {
 // ==========================================
 // 🔄 SYNC & UTILS
 // ==========================================
+/**
+ * 🔄 REFACTORED SYNC ROUTINE
+ * Logic: Scan Usage First (Background) -> Stream Definitions + Usage (Chunked)
+ */
 async function performFullSync(abortSignal: AbortSignal) {
-    // 🌊 Progressive Protocol
-    // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
-    // const allTokens: any[] = []; // Removed to save memory
-    let progress = 0;
-    let totalTokensProcessed = 0;  // ← Track total
-
     if (abortSignal.aborted) return;
 
-    // 1. Progressive Sync (Definitions + Usage)
-    figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
-
     try {
-        // Stream Chunks (Unified Generator)
-        // Note: syncWithUsageGenerator manages both phases
+        // 1. Notify UI: Starting Analysis
+        figma.ui.postMessage({
+            type: 'OMNIBOX_NOTIFY',
+            payload: { message: "Analyzing Design System Usage...", type: 'info' }
+        });
+
+        // 2. Perform Global Usage Scan (Optimized & Cached)
+        // This is the "heavy" part, but now it's highly optimized with yields.
+        // We do this FIRST so we can attach data to chunks immediately.
+        const globalUsageMap = await usageAnalyzer.analyze(true); // force=true to refresh
+
+        if (abortSignal.aborted) return;
+
+        // 3. Start Token Sync & Stream Chunks
+        figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
+
+        // Retrieve all variables 
+        // We use syncWithUsageGenerator but only effectively use it for definitions streaming + injection
         const generator = root.syncService.syncWithUsageGenerator(abortSignal);
 
-        // Accumulate Usage for Persistence
-        const fullUsageAccumulator: Record<string, any> = {};
+        let totalTokensProcessed = 0;
 
         for await (const chunk of generator) {
-            if (abortSignal.aborted) {
-                logger.info('sync', 'Aborted during sync stream.');
-                throw new Error('Sync Aborted');
-            }
+            if (abortSignal.aborted) break;
 
-            // Track progress
+            // ✨ MAGIC STEP: Inject Real Usage Data for this specific chunk
+            // We strip the generic usage map and only send what's needed for these tokens.
+            const chunkUsage: Record<string, any> = {};
+
+            chunk.tokens.forEach((token: any) => { // Type as any or TokenEntity
+                const usage = globalUsageMap.get(token.id);
+                if (usage) {
+                    chunkUsage[token.id] = usage;
+                }
+            });
+
+            // Calculate Progress
             if (chunk.phase === 'definitions') {
                 totalTokensProcessed += chunk.tokens.length;
-                progress += chunk.tokens.length;
             }
 
-            // Convert Usage Map to Object for Serialization if present
-            let usagePayload: Record<string, any> | undefined;
-            if (chunk.usageMap && chunk.usageMap instanceof Map) {
-                usagePayload = Object.fromEntries(chunk.usageMap);
-                // Merge into accumulator
-                Object.assign(fullUsageAccumulator, usagePayload);
-            }
-
-            // ✨ Smart Emission: Send usage data with the chunk
+            // Send Combined Payload (Definition + Usage)
             figma.ui.postMessage({
                 type: 'SYNC_CHUNK',
                 payload: {
                     tokens: chunk.tokens,
-                    usageMap: usagePayload, // ← New Data Here!
+                    usageMap: chunkUsage, // ✅ Real data, no lag at the end
                     chunkIndex: chunk.chunkIndex,
                     phase: chunk.phase,
                     isLast: chunk.isLast,
                     progress: {
                         current: totalTokensProcessed,
-                        total: totalTokensProcessed > 0 ? totalTokensProcessed : 100 // Approximation
+                        total: totalTokensProcessed + 50 // Rolling estimate
                     }
                 }
             });
 
-            // Allow event loop to breathe
-            await new Promise(resolve => setTimeout(resolve, 0));
+            // Breathe
+            await new Promise(r => setTimeout(r, 5));
         }
 
-        // ✅ FIX: Send final SYNC_COMPLETE with actual count
+        // 4. Wrap up
         figma.ui.postMessage({
             type: 'SYNC_COMPLETE',
             payload: {
-                totalTokens: totalTokensProcessed,  // ← Send actual count
-                message: '✅ Sync complete!'
+                totalTokens: totalTokensProcessed,
+                message: '✅ Sync & Analysis Complete'
             }
         });
 
-        logger.info('sync', `Sync complete: ${totalTokensProcessed} tokens`);
-
-        // 🔄 Final Consistency Event (Backward Compat)
-        figma.ui.postMessage({
-            type: 'GRAPH_UPDATED',
-            payload: [], // Empty payload. UI has already built state from chunks.
-            isIncremental: true, // 🚩 Signal UI to keep chunked data
-            timestamp: Date.now()
-        });
-
-        // 🔍 Auto-Index for Search
+        // Indexing for search
         await buildSearchIndex(root.repository.getAllNodes());
 
-        // 💾 Persist Usage Data (Optimized)
-        if (Object.keys(fullUsageAccumulator).length > 0) {
-            await figma.clientStorage.setAsync('internal_usage_cache', fullUsageAccumulator);
-            logger.info('sync', 'Usage data persisted to clientStorage.');
-        }
-
     } catch (e) {
-        if (e instanceof Error && e.message === 'Sync Aborted') {
-            logger.info('sync', 'Sync process aborted gracefully.');
-            return; // Exit cleanly
-        }
-        logger.error('controller:sync', 'Progressive sync failed', { error: e });
-        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Interrupted' });
-        return; // Stop if failed
+        logger.error('sync', 'Sync Failed', { error: e });
+        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Process Failed' });
     }
-
-    if (abortSignal.aborted) return;
-
-    // 2. Sync Stats (Collections/Styles)
-    try {
-        const stats = await root.syncService.getStats();
-
-        if (abortSignal.aborted) return;
-
-        figma.ui.postMessage({
-            type: 'STATS_UPDATED',
-            payload: {
-                totalVariables: stats.totalVariables,
-                collections: stats.collections,
-                styles: stats.styles,
-                collectionNames: Object.keys(stats.collectionMap),
-                collectionMap: stats.collectionMap
-            }
-        });
-    } catch (e) {
-        logger.error('controller:sync', 'Stats sync failed', { error: e });
-        figma.ui.postMessage({
-            type: 'OMNIBOX_NOTIFY',
-            payload: {
-                message: "Stats Sync Partial Failure",
-                type: 'error'
-            }
-        });
-    }
-
-    // 🛑 REMOVED: Redundant "3. Lazy Usage Scan"
-    // The usage scan is now integrated into the loop above.
-    logger.info('sync', 'Full sync lifecycle completed.');
-    figma.notify("✅ Data Synced & Analysis Complete");
 }

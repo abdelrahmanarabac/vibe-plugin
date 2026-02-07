@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Continue" # Don't stop on error, just log it
 
 $root = "e:\vibe-plugin"
-$outputFile = "$root\Vibe_System_Codex_Complete.md"
+$outputFile = "$root\Codex_Complete.md"
 $srcDir = "$root\src"
 
 Write-Host "Starting Robust Codex Generation..."
@@ -19,7 +19,8 @@ $header = @"
 
 try {
     Set-Content -Path $outputFile -Value $header -Encoding UTF8 -Force
-} catch {
+}
+catch {
     Write-Error "Failed to create output file: $_"
     exit 1
 }
@@ -50,10 +51,12 @@ $content
 ```
 "@
             Add-Content -Path $outputFile -Value $block -Encoding UTF8 -Force
-        } catch {
+        }
+        catch {
             Write-Warning "FAILED to read/write $Title : $_"
         }
-    } else {
+    }
+    else {
         Write-Warning "File not found: $Path"
     }
 }
@@ -68,7 +71,8 @@ Append-File "$root\eslint.config.js" "ESLint Config" "javascript"
 # 2. Source Files (Recursive)
 try {
     $files = Get-ChildItem -Path $srcDir -Recurse -File -ErrorAction Stop | Sort-Object FullName
-} catch {
+}
+catch {
     Write-Error "Failed to list source directory: $_"
     exit 1
 }
@@ -85,12 +89,12 @@ foreach ($file in $files) {
     $lang = "typescript"
     switch ($file.Extension) {
         ".tsx" { $lang = "typescript" }
-        ".ts"  { $lang = "typescript" }
+        ".ts" { $lang = "typescript" }
         ".css" { $lang = "css" }
-        ".js"  { $lang = "javascript" }
+        ".js" { $lang = "javascript" }
         ".json" { $lang = "json" }
         ".svg" { $lang = "xml" }
-        ".md"  { $lang = "markdown" }
+        ".md" { $lang = "markdown" }
     }
     
     Append-File $file.FullName $relPath $lang

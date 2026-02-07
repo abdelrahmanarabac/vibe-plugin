@@ -1,6 +1,6 @@
 ﻿# ًں•‹ VIBE SYSTEM CODEX (OMNI-ARCHIVE)
 > **CLASSIFICATION:** TOP SECRET // VIBE ARCHITECT EYES ONLY
-> **GENERATED:** 2026-02-06 21:03:56
+> **GENERATED:** 2026-02-07 03:14:44
 > **SCOPE:** FULL RECURSIVE SOURCE DUMP
 > **NOTE:** This file is auto-generated to ensure 100% code coverage.
 
@@ -2359,6 +2359,14 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             } catch (err) {
                 logger.error('controller:usage', 'Failed to broadcast graph update', { error: err });
             }
+        } else if (msg.type === 'SEARCH_QUERY') {
+            // 🔍 Handle Search Request
+            const query = msg.payload?.query || '';
+            const results = searchTokens(query);
+            figma.ui.postMessage({
+                type: 'SEARCH_RESULTS',
+                payload: { matches: results, query }
+            });
         }
 
     } catch (error: unknown) {
@@ -2372,7 +2380,106 @@ figma.ui.onmessage = async (msg: PluginAction) => {
     }
 };
 
-// Helper: extracted sync logic
+// ==========================================
+// 🔍 SEARCH ENGINE (Main Thread + Yielding)
+// ==========================================
+
+import type { TokenEntity } from './core/types';
+
+let searchIndex: {
+    byName: Map<string, number[]>;
+    byPath: Map<string, number[]>;
+    byType: Map<string, number[]>;
+} = {
+    byName: new Map(),
+    byPath: new Map(),
+    byType: new Map()
+};
+
+// Cache tokens for search to avoid re-fetching from repo constantly
+let cachedSearchTokens: TokenEntity[] = [];
+
+async function buildSearchIndex(tokens: TokenEntity[]): Promise<void> {
+    // 1. Reset
+    searchIndex = {
+        byName: new Map(),
+        byPath: new Map(),
+        byType: new Map()
+    };
+    cachedSearchTokens = tokens;
+
+    logger.info('search', `Building index for ${tokens.length} tokens...`);
+
+    // 2. Batch Processing
+    const batchSize = 200; // slightly larger batch for performance
+
+    for (let i = 0; i < tokens.length; i += batchSize) {
+        const batch = tokens.slice(i, i + batchSize);
+
+        batch.forEach((token, localIndex) => {
+            const globalIndex = i + localIndex;
+
+            // Index by name parts
+            const nameParts = token.name.toLowerCase().split(/[-_./]/);
+            nameParts.forEach(part => {
+                if (!part) return;
+                if (!searchIndex.byName.has(part)) {
+                    searchIndex.byName.set(part, []);
+                }
+                searchIndex.byName.get(part)!.push(globalIndex);
+            });
+
+            // Index by path (full string)
+            // Assuming path is array of strings
+            if (Array.isArray(token.path)) {
+                const pathStr = token.path.join('/').toLowerCase();
+                if (!searchIndex.byPath.has(pathStr)) {
+                    searchIndex.byPath.set(pathStr, []);
+                }
+                searchIndex.byPath.get(pathStr)!.push(globalIndex);
+            }
+
+            // Index by type
+            if (!searchIndex.byType.has(token.$type)) {
+                searchIndex.byType.set(token.$type, []);
+            }
+            searchIndex.byType.get(token.$type)!.push(globalIndex);
+        });
+
+        // 🌊 Yield to Main Thread
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    logger.info('search', 'Index built successfully.');
+    figma.ui.postMessage({ type: 'INDEX_COMPLETE' });
+}
+
+function searchTokens(query: string): TokenEntity[] {
+    if (!query) return [];
+
+    const lowerQuery = query.toLowerCase();
+    const matchedIndices = new Set<number>();
+
+    // Search Name (Exact or Partial match on indexed parts)
+    for (const [key, indices] of searchIndex.byName) {
+        if (key.includes(lowerQuery)) {
+            indices.forEach(i => matchedIndices.add(i));
+        }
+    }
+
+    // Search Path
+    for (const [key, indices] of searchIndex.byPath) {
+        if (key.includes(lowerQuery)) {
+            indices.forEach(i => matchedIndices.add(i));
+        }
+    }
+
+    return Array.from(matchedIndices).map(idx => cachedSearchTokens[idx]);
+}
+
+// ==========================================
+// 🔄 SYNC & UTILS
+// ==========================================
 async function performFullSync(abortSignal: AbortSignal) {
     // 🌊 Progressive Protocol
     // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
@@ -2429,6 +2536,10 @@ async function performFullSync(abortSignal: AbortSignal) {
             isIncremental: true, // 🚩 Signal UI to keep chunked data
             timestamp: Date.now()
         });
+
+        // 🔍 Auto-Index for Search
+        await buildSearchIndex(root.repository.getAllNodes());
+
 
     } catch (e) {
         if (e instanceof Error && e.message === 'Sync Aborted') {
@@ -2850,11 +2961,29 @@ export class Dispatcher {
                 },
 
                 onError: (error) => {
-                    logger.error('dispatcher', 'Progressive sync failed', { error });
+                    // 🔍 ENHANCED ERROR LOGGING
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    const errorStack = error instanceof Error ? error.stack : undefined;
+                    const errorName = error instanceof Error ? error.name : 'Unknown';
+
+                    logger.error('dispatcher', 'Progressive sync failed', {
+                        error,
+                        errorName,
+                        errorMessage,
+                        errorStack
+                    });
+
+                    console.error('[Dispatcher] Full sync error details:', {
+                        name: errorName,
+                        message: errorMessage,
+                        stack: errorStack,
+                        raw: error
+                    });
+
                     figma.ui.postMessage({
                         type: 'OMNIBOX_NOTIFY',
                         payload: {
-                            message: `❌ Sync failed: ${error.message}`,
+                            message: `❌ Sync failed: ${errorMessage}`,
                             type: 'error'
                         }
                     });
@@ -2884,14 +3013,31 @@ export class Dispatcher {
                 payload: { message: '🔍 Analyzing token usage...' }
             });
 
-            // Run usage analysis (can be slow, but runs after UI is already populated)
-            await this.root.syncService.scanUsage();
+            // \u26a1 FIX: Capture usage data instead of discarding it
+            const usageMap = await this.root.syncService.scanUsage();
+
+            // Convert Map to Record for transport (like controller.ts line 282)
+            const usageReport = Object.fromEntries(usageMap);
+
+            //  Persist for next startup
+            await figma.clientStorage.setAsync('internal_usage_cache', usageReport);
+
+            // \u2705 CRITICAL FIX: Send usage data to UI (was missing before!)
+            figma.ui.postMessage({
+                type: 'SCAN_COMPLETE',
+                payload: {
+                    timestamp: Date.now(),
+                    usage: usageReport
+                }
+            });
 
             // Notify completion
             figma.ui.postMessage({
                 type: 'USAGE_ANALYSIS_COMPLETE',
                 payload: { message: '✅ Usage analysis complete' }
             });
+
+            logger.info('dispatcher', 'Usage analysis complete and transmitted to UI');
 
         } catch (error) {
             logger.error('dispatcher', 'Usage analysis failed', { error });
@@ -3279,7 +3425,25 @@ export class ProgressiveSyncCoordinator {
         try {
             await this.processGenerator(syncGenerator, options.estimatedTotal);
         } catch (error) {
-            logger.error('sync-coordinator', 'Sync failed', { error });
+            // 🔍 ENHANCED ERROR LOGGING
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            const errorName = error instanceof Error ? error.name : 'Unknown';
+
+            logger.error('sync-coordinator', 'Sync failed', {
+                error,
+                errorName,
+                errorMessage,
+                errorStack
+            });
+
+            console.error('[ProgressiveSyncCoordinator] Full error details:', {
+                name: errorName,
+                message: errorMessage,
+                stack: errorStack,
+                raw: error
+            });
+
             this.onError?.(error instanceof Error ? error : new Error(String(error)));
         } finally {
             this.isRunning = false;
@@ -3297,7 +3461,7 @@ export class ProgressiveSyncCoordinator {
     ): Promise<void> {
         let chunkIndex = 0;
         let pendingTokens: TokenEntity[] = [];
-        let lastYieldTime = performance.now();
+        let lastYieldTime = Date.now();
 
         for await (const incomingChunk of generator) {
             if (this.shouldCancel) {
@@ -3305,10 +3469,16 @@ export class ProgressiveSyncCoordinator {
                 return;
             }
 
+            // 🛡️ SAFETY: Prevent ReferenceError if generator yields null/undefined/non-array
+            if (!incomingChunk || !Array.isArray(incomingChunk)) {
+                logger.warn('sync-coordinator', 'Skipping invalid chunk (not an array)', { chunk: incomingChunk });
+                continue;
+            }
+
             // 1. Accumulate tokens
             pendingTokens.push(...incomingChunk);
 
-            const now = performance.now();
+            const now = Date.now();
             const timeInFrame = now - lastYieldTime;
 
             // ⚡ GHOBGHABI LOGIC: 
@@ -3324,7 +3494,7 @@ export class ProgressiveSyncCoordinator {
 
                 // 🛑 Force yield to main thread to let UI breathe
                 await this.yieldToMain();
-                lastYieldTime = performance.now(); // Reset frame timer
+                lastYieldTime = Date.now(); // Reset frame timer
             }
         }
 
@@ -3498,6 +3668,30 @@ export class SyncService {
             styles: styles.length,
             collectionMap
         };
+    }
+
+    /**
+     * ☁️ Cloud Sync (Worker Proxy)
+     * Pushes generic token data to the persistent store via Cloudflare Worker.
+     */
+    async pushToCloud(tokens: TokenEntity[]): Promise<boolean> {
+        try {
+            // Lazy load to ensure minimal bundle size if not used
+            const { VibeWorkerClient } = await import('../../infrastructure/network/VibeWorkerClient');
+
+            // 🛑 Chunking strategy could be implemented here if payload is too large
+            // For now, we push the whole batch as the worker snippet implies simple proxy
+            const { error } = await VibeWorkerClient.syncTokens(tokens);
+
+            if (error) {
+                console.error('[SyncService] Cloud push failed:', error);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('[SyncService] Cloud push exception:', e);
+            return false;
+        }
     }
 }
 
@@ -3830,15 +4024,18 @@ export class AuthService {
     }
 
     static async signIn(email: string, password: string): Promise<AuthResult> {
-        const supabase = VibeSupabase.get();
-        if (!supabase) return { user: null, session: null, error: new Error("Supabase disconnected") };
+        // 🔒 SECURE PROXY: Route through Worker
+        const { VibeWorkerClient } = await import('../../infrastructure/network/VibeWorkerClient');
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { data, error } = await VibeWorkerClient.signIn(email, password);
 
-        return { user: data.user, session: data.session, error };
+        if (error || !data) {
+            const errorObj = typeof error === 'string' ? new Error(error) : new Error('Login failed');
+            return { user: null, session: null, error: errorObj };
+        }
+
+        // Assuming Worker returns { user, session } in data
+        return { user: data.user, session: data.session, error: null };
     }
 
     static async signOut(): Promise<{ error: AuthError | null }> {
@@ -6730,117 +6927,18 @@ export const FirstTimeWelcome: React.FC<FirstTimeWelcomeProps> = ({
 
 ---
 
-## /src/features/dashboard/ui/components/SyncToggle.tsx
-> Path: $Path
-
-`$Lang
-import React from 'react';
-import { motion } from 'framer-motion';
-import { RefreshCw } from 'lucide-react';
-import { cn } from '../../../../shared/lib/classnames';
-
-interface SyncToggleProps {
-    onClick?: () => void;
-    isSyncing?: boolean;
-    isActive?: boolean;
-    className?: string;
-}
-
-/**
- * 🎚️ SyncToggle
- * A smart, vertical toggle-style button for triggering synchronization.
- * 
- * Behavior:
- * - Idle (No): Thumb at bottom, surface color.
- * - Active (Yes): Thumb at top, primary color.
- * - Syncing: Thumb spins (does not dictate position).
- */
-export const SyncToggle: React.FC<SyncToggleProps> = ({
-    onClick,
-    isSyncing = false,
-    isActive = false,
-    className
-}) => {
-    return (
-        <div
-            className={cn(
-                "group relative flex flex-col items-center justify-between py-2 w-14 h-32 rounded-full transition-all duration-300",
-                "bg-surface-2/30 border border-white/5 backdrop-blur-md cursor-pointer",
-                "hover:bg-surface-2/50 hover:border-white/10 hover:shadow-2xl hover:shadow-primary/10",
-                isActive ? "border-primary/50 bg-surface-2 shadow-[0_0_20px_rgba(var(--primary),0.2)]" : "",
-                className
-            )}
-            onClick={(e) => {
-                e.stopPropagation();
-                // 🛑 Allow interaction during sync to enable Cancellation
-                onClick?.();
-            }}
-        >
-            {/* 🏷️ Labels (Background) */}
-            <div className="absolute inset-0 flex flex-col justify-between items-center py-4 pointer-events-none select-none">
-                <span className={cn(
-                    "text-[10px] font-bold tracking-widest uppercase transition-colors duration-300",
-                    isActive ? "text-primary drop-shadow-md" : "text-white/10 group-hover:text-white/30"
-                )}>
-                    Yes
-                </span>
-                <span className={cn(
-                    "text-[10px] font-bold tracking-widest uppercase transition-colors duration-300",
-                    !isActive ? "text-white/20 group-hover:text-white/40" : "text-white/5"
-                )}>
-                    No
-                </span>
-            </div>
-
-            {/* 🔘 The Thumb (Animated) */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <motion.div
-                    layout
-                    className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center shadow-lg relative z-10 border border-white/5",
-                        isActive
-                            ? "bg-primary text-white shadow-primary/40"
-                            : "bg-surface-1 text-text-dim group-hover:text-text-primary group-hover:bg-surface-3 group-hover:shadow-xl"
-                    )}
-                    animate={{
-                        y: isActive ? -36 : 36, // Position based on Active state
-                        rotate: isSyncing ? 360 : 0, // Spin based on Syncing state
-                        scale: isActive ? 1.1 : 1
-                    }}
-                    transition={{
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 25,
-                        rotate: {
-                            repeat: isSyncing ? Infinity : 0,
-                            duration: 1.5,
-                            ease: "linear"
-                        }
-                    }}
-                >
-                    <RefreshCw size={18} strokeWidth={isSyncing ? 2.5 : 2} className={cn("transition-all", isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100")} />
-                </motion.div>
-            </div>
-
-        </div>
-    );
-};
-
-`
-
----
-
 ## /src/features/dashboard/ui/Dashboard.tsx
 > Path: $Path
 
 `$Lang
-import { Download, Plus, Layers, Zap, Globe } from 'lucide-react';
+import { Download, Plus, Layers, Zap, Globe, ArrowLeft, ArrowRight } from 'lucide-react';
+import { cn } from '../../../shared/lib/classnames';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type TokenEntity } from '../../../core/types';
 import { NewStyleDialog } from '../../styles/ui/dialogs/NewStyleDialog';
 import { useState, useEffect } from 'react';
 import type { ViewType } from '../../../ui/layouts/MainLayout';
-import { SyncToggle } from './components/SyncToggle';
+
 import { FirstTimeWelcome } from './components/FirstTimeWelcome';
 import { useOnboarding } from '../../auth/OnboardingStore';
 
@@ -6873,7 +6971,7 @@ export function Dashboard({
     onSync,
     onResetSync,
     isSyncing,
-    isSynced,
+    isSynced: _isSynced,
     syncStatus,
     syncProgress: _swallowedProgress // 🗑️ Unused for now, status has the text
 }: DashboardProps) {
@@ -6889,8 +6987,31 @@ export function Dashboard({
         }
     }, [isFirstSession]);
 
-    // Toggle is "Active" if we are consistently synced OR currently syncing
-    const isToggleActive = isSynced || isSyncing;
+
+    // 🔥 Burn Effect State
+    const [isBurning, setIsBurning] = useState(false);
+
+    const handleRefreshFromBlack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('[Dashboard] From Black button clicked - triggering onSync');
+        setIsBurning(true);
+        // Simulate sync/refresh delay of 2.5s
+        onSync?.();
+        setTimeout(() => {
+            setIsBurning(false);
+        }, 2500);
+    };
+
+    const handleRefreshToBlack = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('[Dashboard] To Black button clicked - triggering onResetSync');
+        setIsBurning(true);
+        // Simulate feedback delay of 3s
+        onResetSync?.();
+        setTimeout(() => {
+            setIsBurning(false);
+        }, 3000);
+    };
 
     return (
         <div className="flex flex-col items-center py-8 px-4 gap-8 w-full max-w-5xl mx-auto">
@@ -6898,58 +7019,112 @@ export function Dashboard({
             {/* 🍱 Bento Grid - Responsive */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
 
-                {/* 📊 Stat Card: Total Tokens (Large) */}
+                {/* 📊 Stat Card: Total Tokens (Large) - With Burn Effect */}
                 <div
-                    className="vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group transition-all"
+                    className={cn(
+                        "vibe-card h-44 p-6 flex flex-col justify-between relative overflow-hidden group transition-all",
+                        isBurning && "border-primary/50" // Optional border enhancement during burn
+                    )}
                 >
-                    {/* Background Gradient */}
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
+                    {/* Background Gradient - Standard */}
+                    {!isBurning && (
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
+                    )}
 
-                    <div className="flex justify-between items-start z-10">
-                        <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner">
+                    {/* 🔥 Burn Overlay - Only visible when burning */}
+                    <AnimatePresence>
+                        {isBurning && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="absolute inset-0 pointer-events-none z-0"
+                            >
+                                {/* Base Burn Layer - Blue/Purple Light */}
+                                <motion.div
+                                    className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-transparent opacity-50"
+                                    animate={{ opacity: [0.5, 0.8, 0.5] }}
+                                    transition={{ duration: 0.2, repeat: Infinity, repeatType: "reverse" }}
+                                />
+
+                                {/* Slanted White Glow */}
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.8, rotate: -12 }}
+                                    animate={{
+                                        opacity: [0.7, 1, 0.7],
+                                        scale: [0.95, 1.05, 0.95],
+                                        rotate: [-13, -11, -13],
+                                        x: [-2, 2, -2],
+                                        y: [-2, 2, -2]
+                                    }}
+                                    transition={{
+                                        duration: 0.4,
+                                        repeat: Infinity,
+                                        repeatType: "reverse",
+                                        ease: "easeInOut"
+                                    }}
+                                    className="absolute top-[-50%] left-[-20%] w-[150%] h-[200%] bg-white/10 blur-[60px] mix-blend-overlay"
+                                />
+
+                                {/* Intense Flicker Core */}
+                                <motion.div
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/5 rounded-full blur-xl"
+                                    animate={{ opacity: [0, 1, 0, 0.5, 0] }}
+                                    transition={{ duration: 0.15, repeat: Infinity }}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Card Content - Z-Index to stay above burn */}
+                    <div className="flex justify-between items-start z-10 relative">
+                        <div className="p-3 rounded-xl bg-white/5 text-primary border border-white/5 shadow-inner backdrop-blur-sm">
                             <Zap size={24} strokeWidth={1.5} />
                         </div>
-                        <div className="absolute top-[60%] right-6 -translate-y-1/2 z-20 flex flex-col items-end">
-                            {/* 🌊 Progressive Status Label (Absolute Positioned to prevent layout shift) */}
-                            <div className="relative">
-                                <AnimatePresence>
-                                    {isSyncing && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 5 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: 5 }}
-                                            className="absolute bottom-full right-0 mb-3 whitespace-nowrap text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
-                                        >
-                                            {syncStatus || 'Syncing...'}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
 
-                                <SyncToggle
-                                    isActive={isToggleActive}
-                                    isSyncing={isSyncing}
-                                    onClick={() => {
-                                        // Logic:
-                                        // 1. If currently Syncing -> Cancel (Reset)
-                                        // 2. If Active (Synced) -> Reset (Turn Off)
-                                        // 3. If Inactive -> Sync (Turn On)
-                                        if (isSyncing) {
-                                            onResetSync?.();
-                                        } else if (isToggleActive) {
-                                            onResetSync?.();
-                                        } else {
-                                            onSync?.();
-                                        }
-                                    }}
-                                />
+                        <div className="flex flex-col items-end gap-2">
+                            {/* 🌊 Progressive Status Label */}
+                            <AnimatePresence>
+                                {isSyncing && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 5 }}
+                                        className="mb-1 whitespace-nowrap text-xxs font-bold uppercase tracking-widest text-primary animate-pulse"
+                                    >
+                                        {syncStatus || 'Syncing...'}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Action Buttons: From Black / To Black */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleRefreshFromBlack}
+                                    className="px-2.5 py-1.5 rounded-lg bg-surface-2/50 hover:bg-surface-2 border border-surface-2 hover:border-white/10 text-text-dim hover:text-white text-xxs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 group/btn"
+                                >
+                                    <ArrowLeft size={10} className="group-hover/btn:-translate-x-0.5 transition-transform" />
+                                    From Black
+                                </button>
+                                <button
+                                    onClick={handleRefreshToBlack}
+                                    className="px-2.5 py-1.5 rounded-lg bg-surface-2/50 hover:bg-surface-2 border border-surface-2 hover:border-white/10 text-text-dim hover:text-white text-xxs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 group/btn"
+                                >
+                                    To Black
+                                    <ArrowRight size={10} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="z-10">
+                    <div className="z-10 relative">
                         <div className="text-5xl font-display font-bold text-white mb-1 tracking-tight">{stats?.totalVariables ?? 0}</div>
                         <div className="text-sm text-text-dim font-medium flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full transition-colors ${isSyncing ? 'bg-primary animate-ping' : 'bg-primary'}`} />
+                            {/* Status Dot */}
+                            <div className={cn(
+                                "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                                isSyncing || isBurning ? 'bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)] scale-125' : 'bg-primary'
+                            )} />
                             Total Design Tokens
                         </div>
                     </div>
@@ -16117,9 +16292,10 @@ export class TokenUsageAnalyzer {
                             const variableAlias = boundVars[key];
                             // Check if it's an array (gradients) or single
                             if (Array.isArray(variableAlias)) {
-                                variableAlias.forEach(a => {
+                                // ⚡ PERFORMANCE: for...of avoids closure allocation
+                                for (const a of variableAlias) {
                                     if (a && a.id) recordSourceUsage(a.id, { id: style.id, name: style.name }, false, true);
-                                });
+                                }
                             } else if (variableAlias && 'id' in variableAlias) {
                                 recordSourceUsage(variableAlias.id, { id: style.id, name: style.name }, false, true);
                             }
@@ -16165,9 +16341,10 @@ export class TokenUsageAnalyzer {
                         const alias = bindings[key];
                         if (alias) {
                             if (Array.isArray(alias)) {
-                                alias.forEach(a => {
+                                // ⚡ PERFORMANCE: for...of avoids closure allocation in hot path
+                                for (const a of alias) {
                                     if (a.id) recordSourceUsage(a.id, { id: node.id, name: node.name }, node.type === 'COMPONENT' || node.type === 'COMPONENT_SET', false);
-                                });
+                                }
                             } else if ('id' in alias) {
                                 recordSourceUsage(alias.id, { id: node.id, name: node.name }, node.type === 'COMPONENT' || node.type === 'COMPONENT_SET', false);
                             }
@@ -18294,6 +18471,107 @@ export const storage = new FigmaStorageProxy();
 
 ---
 
+## /src/infrastructure/network/VibeWorkerClient.ts
+> Path: $Path
+
+`$Lang
+/**
+ * @module VibeWorkerClient
+ * @description Secure proxy client to communicate with Vibe Cloudflare Worker.
+ * Replaces direct Supabase client for sensitive operations.
+ */
+
+// 🔒 SECURE WORKER URL - No specific keys needed on client side
+const WORKER_URL = 'https://fancy-dawn-0b10.abdelrahman-arab-ac.workers.dev';
+
+export interface WorkerResponse<T> {
+    data: T | null;
+    error: string | null;
+}
+
+export class VibeWorkerClient {
+
+    /**
+     * Generic POST request wrapper
+     */
+    private static async post<T>(endpoint: string, body: any): Promise<WorkerResponse<T>> {
+        try {
+            const response = await fetch(`${WORKER_URL}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                return { data: null, error: `Worker Error ${response.status}: ${text}` };
+            }
+
+            const json = await response.json();
+
+            // The worker wrapping convention based on user snippet:
+            // return result.data; -> The snippet implies the worker returns { data: ... }
+            // Let's assume the worker returns a structure we might need to normalize.
+            // If the snippet says:
+            // const result = await response.json();
+            // return result.data;
+            // Then we should probably just return the json directly if it matches our generic type,
+            // or extract data.
+
+            // User snippet analysis:
+            // const result = await response.json();
+            // return result.data;
+
+            // So the raw JSON response contains a 'data' property.
+            return { data: json.data, error: null };
+
+        } catch (e: unknown) {
+            console.error(`[VibeWorker] Request failed to ${endpoint}`, e);
+            return { data: null, error: e instanceof Error ? e.message : String(e) };
+        }
+    }
+
+    /**
+     * Authenticates a user via the Worker Proxy.
+     */
+    static async signIn(email: string, password: string): Promise<WorkerResponse<any>> {
+        return this.post('/auth', {
+            type: 'signin',
+            email,
+            password
+        });
+    }
+
+    /**
+     * Syncs generic data to Supabase tables via the Worker Proxy.
+     */
+    static async syncTokens(data: any): Promise<WorkerResponse<any>> {
+        return this.post('/sync', {
+            table: 'tokens',
+            method: 'POST', // or UPSERT based on worker logic
+            data: data
+        });
+    }
+
+    /**
+     * Helper to ping the worker or check health if needed.
+     */
+    static async healthCheck(): Promise<boolean> {
+        try {
+            const res = await fetch(`${WORKER_URL}/`);
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }
+}
+
+`
+
+---
+
 ## /src/infrastructure/repositories/FigmaVariableRepository.ts
 > Path: $Path
 
@@ -18338,8 +18616,37 @@ export class FigmaVariableRepository implements IVariableRepository {
         }
 
         try {
-            const allVariables = await figma.variables.getLocalVariablesAsync();
-            const collections = await figma.variables.getLocalVariableCollectionsAsync();
+            let allVariables: Variable[] = [];
+            let collections: VariableCollection[] = [];
+
+            try {
+                // 🛡️ PARANOID SAFETY: Double check figma global
+                if (typeof figma === 'undefined' || !figma.variables) {
+                    throw new Error("Figma global is missing or variables API is undefined");
+                }
+
+                allVariables = await figma.variables.getLocalVariablesAsync();
+                collections = await figma.variables.getLocalVariableCollectionsAsync();
+
+                // 🛡️ DATA INTEGRITY: Ensure we actually got arrays
+                if (!allVariables || !Array.isArray(allVariables)) {
+                    console.warn('[Repository] getLocalVariablesAsync returned invalid data', allVariables);
+                    allVariables = [];
+                }
+                if (!collections || !Array.isArray(collections)) {
+                    console.warn('[Repository] getLocalVariableCollectionsAsync returned invalid data', collections);
+                    collections = [];
+                }
+            } catch (error: any) {
+                // 🛑 Catch ReferenceErrors (common in detached plugin states)
+                console.error('[Repository] Figma API Critical Failure during fetch:', error);
+
+                // If it's a ReferenceError, the plugin environment might be corrupted
+                if (error instanceof ReferenceError || error.name === 'ReferenceError') {
+                    throw new Error("Figma API Context Lost (ReferenceError). Please restart the plugin.");
+                }
+                throw error;
+            }
 
             // ⚡ OPTIMIZATION: Create Lookup Maps (O(1) access)
             const collectionMap = new Map(collections.map(c => [c.id, c]));
@@ -18450,7 +18757,18 @@ export class FigmaVariableRepository implements IVariableRepository {
             }
 
         } catch (error) {
-            console.error('[Repository] Failed to sync variables:', error);
+            // 🔍 ENHANCED ERROR LOGGING
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorStack = error instanceof Error ? error.stack : undefined;
+            const errorName = error instanceof Error ? error.name : 'Unknown';
+
+            console.error('[Repository] Failed to sync variables - Full details:', {
+                name: errorName,
+                message: errorMessage,
+                stack: errorStack,
+                raw: error
+            });
+
             throw error;
         }
     }
@@ -18778,6 +19096,7 @@ export class VibeSupabase {
             });
             this.currentConfig = { url, key };
             console.log("✅ VibeSupabase: Connection Initialized.");
+            console.warn("⚠️ DEPRECATION NOTICE: Direct Supabase usage is deprecated for Auth and Sync. Use VibeWorkerClient instead.");
         } catch (e) {
             console.error("❌ VibeSupabase: Initialization Failed", e);
             this.instance = null;
@@ -19640,6 +19959,7 @@ export type PluginAction =
     | { type: 'UPDATE_TOKEN'; id: string; newValue: string | number | { r: number; g: number; b: number; a?: number } }
     | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } }
     | { type: 'CREATE_COLLECTION'; payload: { name: string } }
+    | { type: 'SEARCH_QUERY'; payload: { query: string } } // 🔍 New Search Handler
     | { type: 'CREATE_STYLE'; payload: { name: string; type: 'typography' | 'effect' | 'grid'; value: string | number | { r: number; g: number; b: number; a?: number } } };
 
 export type PluginEvent =
@@ -20042,6 +20362,8 @@ export interface TokensViewModel {
     traceLineage: (tokenId: string) => void;
     syncVariables: () => void;
     resetSync: () => void;
+    search: (query: string) => void;
+    searchResults: TokenEntity[];
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
 
@@ -20063,6 +20385,7 @@ export function useTokens(): TokensViewModel {
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
+    const [searchResults, setSearchResults] = useState<TokenEntity[]>([]);
 
     // Refs for Promises
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
@@ -20196,6 +20519,22 @@ export function useTokens(): TokensViewModel {
                 uiSyncManager.reset();
                 setIsSynced(false);
             }
+
+            if (type === 'SCAN_COMPLETE') {
+                console.log('[useTokens] Usage data received and integrated');
+                // UISyncManager already merged the data, just notify user
+                omnibox.show('✅ Usage analysis complete', { type: 'success', duration: 2000 });
+            }
+
+            // 🔍 Search Handling
+            if (type === 'INDEX_COMPLETE') {
+                omnibox.show('Search Index Built', { type: 'success' });
+            }
+            if (type === 'SEARCH_RESULTS') {
+                if (payload && Array.isArray(payload.matches)) {
+                    setSearchResults(payload.matches);
+                }
+            }
         };
 
         window.addEventListener('message', handleMessage);
@@ -20253,6 +20592,7 @@ export function useTokens(): TokensViewModel {
     }, []);
 
     const syncVariables = useCallback(() => {
+        console.log('[useTokens] syncVariables called - clearing state and starting sync');
         setTokens([]); // 🛑 FIX #2: Clear old state to avoid "Ghost State"
         setIsSynced(false);
         omnibox.show('Starting sync...', { type: 'loading', duration: 0 });
@@ -20260,8 +20600,14 @@ export function useTokens(): TokensViewModel {
         // Pass known count to help manager estimate progress
         uiSyncManager.startSync(backendStats.totalVariables || undefined);
 
+        console.log('[useTokens] Sending SYNC_TOKENS message to controller');
         parent.postMessage({ pluginMessage: { type: 'SYNC_TOKENS' } }, '*');
     }, [backendStats.totalVariables]);
+
+    // 🔍 Search Method
+    const search = useCallback((query: string) => {
+        parent.postMessage({ pluginMessage: { type: 'SEARCH_QUERY', payload: { query } } }, '*');
+    }, []);
 
     const resetSync = useCallback(() => {
         parent.postMessage({ pluginMessage: { type: 'SYNC_CANCEL' } }, '*');
@@ -20289,7 +20635,9 @@ export function useTokens(): TokensViewModel {
         scanAnatomy,
         traceLineage,
         syncVariables,
-        resetSync
+        resetSync,
+        search,
+        searchResults
     };
 }
 
@@ -20673,128 +21021,6 @@ export const omnibox = new OmniboxManager();
 
 ---
 
-## /src/ui/services/TokenWorkerManager.ts
-> Path: $Path
-
-`$Lang
-import type { TokenEntity } from '../../core/types';
-
-/**
- * 🛠️ TokenWorkerManager
- * 
- * Orchestrates communication between the UI Thread and the Token Background Worker.
- * Handles:
- * - Distributed Indexing (off-loading heavy work)
- * - Semantic & Fuzzy Search
- * - Usage Analysis delegation
- */
-export class TokenWorkerManager {
-    private worker: Worker | null = null;
-    private searchCallbacks: Map<string, (results: TokenEntity[]) => void> = new Map();
-
-    constructor() {
-        this.initWorker();
-    }
-
-    private initWorker() {
-        try {
-            // Check if we are in a browser-like environment
-            if (typeof Worker !== 'undefined') {
-                // In Vite, we use ?worker to load it
-                this.worker = new Worker(new URL('../../workers/token.worker.ts', import.meta.url), {
-                    type: 'module'
-                });
-
-                this.worker.onmessage = this.handleWorkerMessage.bind(this);
-                this.worker.onerror = (err) => {
-                    console.error('[TokenWorkerManager] Worker Error:', err);
-                };
-            }
-        } catch (error) {
-            console.error('[TokenWorkerManager] Failed to initialize worker:', error);
-        }
-    }
-
-    private handleWorkerMessage(event: MessageEvent) {
-        const { type, payload, jobId } = event.data;
-
-        switch (type) {
-            case 'SEARCH_RESULTS':
-                if (jobId && this.searchCallbacks.has(jobId)) {
-                    this.searchCallbacks.get(jobId)!(payload);
-                    this.searchCallbacks.delete(jobId);
-                }
-                break;
-            case 'INDEX_COMPLETE':
-                console.log('[TokenWorkerManager] Indexing complete');
-                break;
-            case 'ERROR':
-                console.error('[TokenWorkerManager] Worker Reported Error:', payload);
-                break;
-        }
-    }
-
-    /**
-     * Send tokens to worker for background indexing
-     */
-    async indexTokens(tokens: TokenEntity[]): Promise<void> {
-        if (!this.worker) return;
-
-        this.worker.postMessage({
-            type: 'INDEX_TOKENS',
-            payload: tokens
-        });
-    }
-
-    /**
-     * Perform search in background thread
-     */
-    async search(query: string, fallbackTokens: TokenEntity[]): Promise<TokenEntity[]> {
-        if (!this.worker) {
-            // Fallback to simple UI-thread search if worker failed
-            const q = query.toLowerCase();
-            return fallbackTokens.filter(t =>
-                t.name.toLowerCase().includes(q) ||
-                t.path.join('/').toLowerCase().includes(q)
-            );
-        }
-
-        const jobId = Math.random().toString(36).substring(7);
-
-        return new Promise((resolve) => {
-            this.searchCallbacks.set(jobId, resolve);
-            this.worker!.postMessage({
-                type: 'SEARCH',
-                payload: query,
-                jobId
-            });
-
-            // Safety timeout
-            setTimeout(() => {
-                if (this.searchCallbacks.has(jobId)) {
-                    this.searchCallbacks.delete(jobId);
-                    resolve([]);
-                }
-            }, 5000);
-        });
-    }
-
-    /**
-     * Terminate worker
-     */
-    destroy() {
-        this.worker?.terminate();
-        this.worker = null;
-    }
-}
-
-// Singleton instance
-export const tokenWorker = new TokenWorkerManager();
-
-`
-
----
-
 ## /src/ui/services/UISyncManager.ts
 > Path: $Path
 
@@ -20810,7 +21036,7 @@ export const tokenWorker = new TokenWorkerManager();
  */
 
 import type { TokenEntity } from '../../core/types';
-import { tokenWorker } from './TokenWorkerManager';
+
 
 export interface TokenChunk {
     tokens: TokenEntity[];
@@ -20906,6 +21132,10 @@ export class UISyncManager {
             case 'USAGE_ANALYSIS_STARTED':
                 this.updateState({ phase: 'usage' });
                 break;
+            case 'SCAN_COMPLETE':
+                // ✅ CRITICAL: Merge usage data into existing tokens
+                this.handleUsageData(msg.payload);
+                break;
             case 'USAGE_ANALYSIS_COMPLETE':
                 this.updateState({ phase: 'complete' });
                 break;
@@ -20955,12 +21185,17 @@ export class UISyncManager {
         // ✅ Notify subcribers immediately
         this.notifyTokenSubscribers();
 
+        // ✅ Notify subcribers immediately
+        this.notifyTokenSubscribers();
+
         // Background indexing (non-blocking) - Only index NEW tokens
-        tokenWorker.indexTokens(newTokens).catch(console.error);
+        // 🛑 REMOVED: Managed by Controller now
+        // tokenWorker.indexTokens(newTokens).catch(console.error);
     }
 
     /**
      * Handle progress update
+     * ... existing code for handleProgress ...
      */
     private handleProgress(progress: {
         current: number;
@@ -20975,6 +21210,8 @@ export class UISyncManager {
             estimatedRemaining: progress.estimatedTimeRemaining
         });
     }
+
+    // ... (rest of class)
 
     /**
      * Handle sync completion
@@ -20998,17 +21235,41 @@ export class UISyncManager {
     }
 
     /**
-     * Fast search using worker
+     * ✅ Merge usage data into existing tokens
      */
-    async search(query: string): Promise<TokenEntity[]> {
-        if (!query) return this.tokens;
-
-        this.updateState({ isLoading: true }); // Show spinner on search? Maybe not needed if fast.
-        try {
-            return await tokenWorker.search(query, this.tokens);
-        } finally {
-            this.updateState({ isLoading: false });
+    private handleUsageData(payload: { usage: Record<string, any>; timestamp: number }): void {
+        if (!payload || !payload.usage) {
+            console.warn('[UISyncManager] Received SCAN_COMPLETE without usage data');
+            return;
         }
+
+        console.log('[UISyncManager] Merging usage data into tokens...');
+        let mergedCount = 0;
+
+        // Iterate through usage map and merge into existing tokens
+        for (const [tokenId, usageStats] of Object.entries(payload.usage)) {
+            const tokenIdx = this.tokenIndex.get(tokenId);
+            if (tokenIdx !== undefined && this.tokens[tokenIdx]) {
+                // Merge usage data into token
+                this.tokens[tokenIdx].usage = usageStats;
+                mergedCount++;
+            }
+        }
+
+        console.log(`[UISyncManager] Merged usage data for ${mergedCount}/${this.tokens.length} tokens`);
+
+        // Notify subscribers of the update
+        this.notifyTokenSubscribers();
+    }
+
+    /**
+     * Fast search using worker
+     * 🛑 DEPRECATED: Search is now handled by Controller + useTokens
+     * Keeping API for compatibility but invalidating usage
+     */
+    async search(_query: string): Promise<TokenEntity[]> {
+        console.warn('UISyncManager.search is deprecated. Use useTokens().search() instead.');
+        return [];
     }
 
     /**
@@ -21724,272 +21985,6 @@ export function usePerformanceMonitor() {
     }, []);
 
     return metrics;
-}
-
-`
-
----
-
-## /src/workers/token.worker.ts
-> Path: $Path
-
-`$Lang
-/**
- * 🔧 Token Processing Worker
- * 
- * Handles CPU-intensive operations off the main thread:
- * - Search indexing
- * - Token filtering
- * - Dependency graph analysis
- * - Usage calculations
- */
-
-import type { TokenEntity } from '../core/types';
-
-// Worker message types
-export type WorkerMessage =
-    | { type: 'INDEX_TOKENS'; payload: TokenEntity[] }
-    | { type: 'SEARCH'; payload: { query: string; tokens: TokenEntity[] } }
-    | { type: 'ANALYZE_DEPENDENCIES'; payload: { tokenId: string; tokens: TokenEntity[] } }
-    | { type: 'FILTER_TOKENS'; payload: { filter: FilterCriteria; tokens: TokenEntity[] } };
-
-export type WorkerResponse =
-    | { type: 'INDEX_COMPLETE'; payload: SearchIndex }
-    | { type: 'SEARCH_RESULTS'; payload: TokenEntity[] }
-    | { type: 'DEPENDENCIES'; payload: { ancestors: TokenEntity[]; descendants: TokenEntity[] } }
-    | { type: 'FILTERED_TOKENS'; payload: TokenEntity[] }
-    | { type: 'ERROR'; payload: { message: string } };
-
-interface SearchIndex {
-    byName: Map<string, number[]>;
-    byPath: Map<string, number[]>;
-    byType: Map<string, number[]>;
-}
-
-export interface FilterCriteria {
-    type?: string;
-    collection?: string;
-    hasUsage?: boolean;
-    minUsageCount?: number;
-}
-
-// Global search index (built once, reused)
-let searchIndex: SearchIndex = {
-    byName: new Map(),
-    byPath: new Map(),
-    byType: new Map()
-};
-
-// Handle messages from main thread
-self.onmessage = (event: MessageEvent<WorkerMessage>) => {
-    const { type, payload } = event.data;
-
-    try {
-        switch (type) {
-            case 'INDEX_TOKENS':
-                handleIndexing(payload);
-                break;
-            case 'SEARCH':
-                handleSearch(payload);
-                break;
-            case 'ANALYZE_DEPENDENCIES':
-                handleDependencyAnalysis(payload);
-                break;
-            case 'FILTER_TOKENS':
-                handleFiltering(payload);
-                break;
-        }
-    } catch (error) {
-        self.postMessage({
-            type: 'ERROR',
-            payload: { message: error instanceof Error ? error.message : 'Unknown error' }
-        } as WorkerResponse);
-    }
-};
-
-/**
- * Build search index from tokens
- */
-function handleIndexing(tokens: TokenEntity[]): void {
-    // console.log(`[Worker] Indexing ${tokens.length} tokens...`);
-
-    searchIndex = {
-        byName: new Map(),
-        byPath: new Map(),
-        byType: new Map()
-    };
-
-    tokens.forEach((token, index) => {
-        // Index by name (normalized)
-        const nameParts = token.name.toLowerCase().split(/[-_./]/);
-        nameParts.forEach(part => {
-            if (!searchIndex.byName.has(part)) {
-                searchIndex.byName.set(part, []);
-            }
-            searchIndex.byName.get(part)!.push(index);
-        });
-
-        // Index by path
-        token.path.forEach(pathPart => {
-            const normalized = pathPart.toLowerCase();
-            if (!searchIndex.byPath.has(normalized)) {
-                searchIndex.byPath.set(normalized, []);
-            }
-            searchIndex.byPath.get(normalized)!.push(index);
-        });
-
-        // Index by type
-        const type = token.$type.toLowerCase();
-        if (!searchIndex.byType.has(type)) {
-            searchIndex.byType.set(type, []);
-        }
-        searchIndex.byType.get(type)!.push(index);
-    });
-
-    // console.log(`[Worker] Indexing complete in ${duration.toFixed(2)}ms`);
-
-    self.postMessage({
-        type: 'INDEX_COMPLETE',
-        payload: searchIndex
-    } as WorkerResponse);
-}
-
-/**
- * Fast search using pre-built index
- */
-function handleSearch(payload: { query: string; tokens: TokenEntity[] }): void {
-    const { query, tokens } = payload;
-    const lowerQuery = query.toLowerCase();
-    const matchedIndices = new Set<number>();
-
-    // Search in name index
-    searchIndex.byName.forEach((indices, key) => {
-        if (key.includes(lowerQuery)) {
-            indices.forEach(idx => matchedIndices.add(idx));
-        }
-    });
-
-    // Search in path index
-    searchIndex.byPath.forEach((indices, key) => {
-        if (key.includes(lowerQuery)) {
-            indices.forEach(idx => matchedIndices.add(idx));
-        }
-    });
-
-    // Search in type index (exact match for type)
-    if (searchIndex.byType.has(lowerQuery)) {
-        searchIndex.byType.get(lowerQuery)!.forEach(idx => matchedIndices.add(idx));
-    }
-
-    // Map indices back to tokens
-    const results = Array.from(matchedIndices)
-        .map(idx => tokens[idx])
-        .filter(Boolean);
-
-    self.postMessage({
-        type: 'SEARCH_RESULTS',
-        payload: results
-    } as WorkerResponse);
-}
-
-/**
- * Analyze token dependencies (ancestors and descendants)
- */
-function handleDependencyAnalysis(payload: { tokenId: string; tokens: TokenEntity[] }): void {
-    const { tokenId, tokens } = payload;
-
-    // Build quick lookup map
-    const tokenMap = new Map<string, TokenEntity>();
-    tokens.forEach(t => tokenMap.set(t.id, t));
-
-    const targetToken = tokenMap.get(tokenId);
-    if (!targetToken) {
-        self.postMessage({
-            type: 'DEPENDENCIES',
-            payload: { ancestors: [], descendants: [] }
-        } as WorkerResponse);
-        return;
-    }
-
-    // Find ancestors (DFS)
-    const ancestors = new Set<string>();
-    const findAncestors = (currentId: string) => {
-        const token = tokenMap.get(currentId);
-        if (!token) return;
-
-        token.dependencies.forEach(depId => {
-            if (!ancestors.has(depId)) {
-                ancestors.add(depId);
-                findAncestors(depId);
-            }
-        });
-    };
-    findAncestors(tokenId);
-
-    // Find descendants (DFS)
-    const descendants = new Set<string>();
-    const findDescendants = (currentId: string) => {
-        const token = tokenMap.get(currentId);
-        if (!token) return;
-
-        token.dependents.forEach(depId => {
-            if (!descendants.has(depId)) {
-                descendants.add(depId);
-                findDescendants(depId);
-            }
-        });
-    };
-    findDescendants(tokenId);
-
-    self.postMessage({
-        type: 'DEPENDENCIES',
-        payload: {
-            ancestors: Array.from(ancestors).map(id => tokenMap.get(id)!).filter(Boolean),
-            descendants: Array.from(descendants).map(id => tokenMap.get(id)!).filter(Boolean)
-        }
-    } as WorkerResponse);
-}
-
-/**
- * Filter tokens by criteria
- */
-function handleFiltering(payload: { filter: FilterCriteria; tokens: TokenEntity[] }): void {
-    const { filter, tokens } = payload;
-
-    const filtered = tokens.filter(token => {
-        // Filter by type
-        if (filter.type && token.$type !== filter.type) {
-            return false;
-        }
-
-        // Filter by collection
-        if (filter.collection && token.$extensions.figma.collectionId !== filter.collection) {
-            return false;
-        }
-
-        // Filter by usage existence
-        if (filter.hasUsage !== undefined) {
-            const hasUsage = Boolean(token.usage && token.usage.totalRawUsage > 0);
-            if (hasUsage !== filter.hasUsage) {
-                return false;
-            }
-        }
-
-        // Filter by minimum usage count
-        if (filter.minUsageCount !== undefined) {
-            const usageCount = token.usage?.totalRawUsage || 0;
-            if (usageCount < filter.minUsageCount) {
-                return false;
-            }
-        }
-
-        return true;
-    });
-
-    self.postMessage({
-        type: 'FILTERED_TOKENS',
-        payload: filtered
-    } as WorkerResponse);
 }
 
 `

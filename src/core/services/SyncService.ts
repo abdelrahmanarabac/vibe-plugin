@@ -48,7 +48,7 @@ export class SyncService {
         abortSignal?: AbortSignal
     ): AsyncGenerator<{
         tokens: TokenEntity[];
-        usageMap?: any; // Avoiding strict type import for now to keep it simple, or use TokenUsageMap if imported
+        usageMap?: any;
         chunkIndex: number;
         isLast: boolean;
         phase: 'definitions' | 'usage';
@@ -66,26 +66,9 @@ export class SyncService {
             };
         }
 
-        // Phase 2: Usage Analysis
-        // Lazy load analyzer
-        const { TokenUsageAnalyzer } = await import('../../features/tokens/domain/TokenUsageAnalyzer');
-        const analyzer = new TokenUsageAnalyzer();
-        const allTokens = this.repository.getAllNodes();
-
-        let usageChunkIndex = 0;
-        // Use the new incremental analyzer
-        // Note: casting allTokens to fit requirement if needed, assuming TokenEntity has id
-        for await (const { chunkTokens, usageMap, progress } of analyzer.analyzeIncremental(allTokens, abortSignal)) {
-            if (abortSignal?.aborted) return;
-
-            yield {
-                tokens: chunkTokens as TokenEntity[], // Re-emitting tokens with usage context if needed, or just for reference
-                usageMap: usageMap,
-                chunkIndex: usageChunkIndex++,
-                isLast: progress >= 100,
-                phase: 'usage'
-            };
-        }
+        // Phase 2: Usage Analysis (REMOVED - Handled by Controller Pre-calculation)
+        // We yield a final "complete" signal or just end.
+        // The controller will detect end of iteration.
     }
 
     /**
