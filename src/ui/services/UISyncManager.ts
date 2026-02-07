@@ -9,7 +9,7 @@
  */
 
 import type { TokenEntity } from '../../core/types';
-import { tokenWorker } from './TokenWorkerManager';
+
 
 export interface TokenChunk {
     tokens: TokenEntity[];
@@ -158,12 +158,17 @@ export class UISyncManager {
         // ✅ Notify subcribers immediately
         this.notifyTokenSubscribers();
 
+        // ✅ Notify subcribers immediately
+        this.notifyTokenSubscribers();
+
         // Background indexing (non-blocking) - Only index NEW tokens
-        tokenWorker.indexTokens(newTokens).catch(console.error);
+        // 🛑 REMOVED: Managed by Controller now
+        // tokenWorker.indexTokens(newTokens).catch(console.error);
     }
 
     /**
      * Handle progress update
+     * ... existing code for handleProgress ...
      */
     private handleProgress(progress: {
         current: number;
@@ -178,6 +183,8 @@ export class UISyncManager {
             estimatedRemaining: progress.estimatedTimeRemaining
         });
     }
+
+    // ... (rest of class)
 
     /**
      * Handle sync completion
@@ -230,16 +237,12 @@ export class UISyncManager {
 
     /**
      * Fast search using worker
+     * 🛑 DEPRECATED: Search is now handled by Controller + useTokens
+     * Keeping API for compatibility but invalidating usage
      */
-    async search(query: string): Promise<TokenEntity[]> {
-        if (!query) return this.tokens;
-
-        this.updateState({ isLoading: true }); // Show spinner on search? Maybe not needed if fast.
-        try {
-            return await tokenWorker.search(query, this.tokens);
-        } finally {
-            this.updateState({ isLoading: false });
-        }
+    async search(_query: string): Promise<TokenEntity[]> {
+        console.warn('UISyncManager.search is deprecated. Use useTokens().search() instead.');
+        return [];
     }
 
     /**
