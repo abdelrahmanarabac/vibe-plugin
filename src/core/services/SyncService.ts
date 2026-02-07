@@ -75,24 +75,22 @@ export class SyncService {
      * 🧠 Lazy Usage Analysis
      * Should be called ONLY when user requests it or on idle.
      */
-    async scanUsage(): Promise<any> { // Using any or specific type if import available, prefer weak typing here to avoid circular dep issues in signature if types aren't purely shared
+    async scanUsage(): Promise<any> {
         try {
             // Lazy load analyzer to avoid circular deps
             const { TokenUsageAnalyzer } = await import('../../features/tokens/domain/TokenUsageAnalyzer');
             const analyzer = new TokenUsageAnalyzer();
-            const usageMap = await analyzer.analyze();
+
+            // New Progressive API
+            await analyzer.prepare(true);
+            const usageMap = analyzer.getAllUsage();
 
             // Store in Repository
             // We need to update existing nodes in the repo with usage data
-            // This assumes nodes already exist.
             const allNodes = this.repository.getAllNodes();
             for (const node of allNodes) {
                 if (usageMap.has(node.id)) {
                     node.usage = usageMap.get(node.id);
-                    // No need to re-add, objects are ref? 
-                    // Repository might store copies.
-                    // If repo stores copies, we need repository.update(node).
-                    // core/TokenRepository is in-memory graph usually.
                 }
             }
 

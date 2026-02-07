@@ -288,88 +288,94 @@ function searchTokens(query: string): TokenEntity[] {
 // 🔄 SYNC & UTILS
 // ==========================================
 /**
- * 🔄 REFACTORED SYNC ROUTINE
- * Logic: Scan Usage First (Background) -> Stream Definitions + Usage (Chunked)
+ * 🔄 SYNC ROUTINE v2.0 (Zero-Lag Architecture)
  */
 async function performFullSync(abortSignal: AbortSignal) {
     if (abortSignal.aborted) return;
 
     try {
-        // 1. Notify UI: Starting Analysis
+        // 1️⃣ Phase 1: Rapid Preparation
         figma.ui.postMessage({
             type: 'OMNIBOX_NOTIFY',
-            payload: { message: "Analyzing Design System Usage...", type: 'info' }
+            payload: { message: "Scanning Document Structure...", type: 'info' }
         });
 
-        // 2. Perform Global Usage Scan (Optimized & Cached)
-        // This is the "heavy" part, but now it's highly optimized with yields.
-        // We do this FIRST so we can attach data to chunks immediately.
-        const globalUsageMap = await usageAnalyzer.analyze(true); // force=true to refresh
+        // Run Full Scan (Yielding)
+        await usageAnalyzer.prepare(true);
 
         if (abortSignal.aborted) return;
 
-        // 3. Start Token Sync & Stream Chunks
+        // 2️⃣ Phase 2: Flow with Analysis (Streaming + JIT Analysis)
         figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
 
-        // Retrieve all variables 
-        // We use syncWithUsageGenerator but only effectively use it for definitions streaming + injection
         const generator = root.syncService.syncWithUsageGenerator(abortSignal);
-
         let totalTokensProcessed = 0;
 
         for await (const chunk of generator) {
             if (abortSignal.aborted) break;
 
-            // ✨ MAGIC STEP: Inject Real Usage Data for this specific chunk
-            // We strip the generic usage map and only send what's needed for these tokens.
-            const chunkUsage: Record<string, any> = {};
+            // 🧠 The Magic: Fetch usage specific to this Chunk only
+            // This distributes processing load (CPU Load Balancing)
+            const chunkUsageMap = usageAnalyzer.getUsageForChunk(chunk.tokens.map((t: any) => t.id));
+            const chunkUsageObj = Object.fromEntries(chunkUsageMap);
 
-            chunk.tokens.forEach((token: any) => { // Type as any or TokenEntity
-                const usage = globalUsageMap.get(token.id);
-                if (usage) {
-                    chunkUsage[token.id] = usage;
-                }
-            });
+            totalTokensProcessed += chunk.tokens.length;
 
-            // Calculate Progress
-            if (chunk.phase === 'definitions') {
-                totalTokensProcessed += chunk.tokens.length;
-            }
-
-            // Send Combined Payload (Definition + Usage)
+            // Send "Fresh" data to Interface
             figma.ui.postMessage({
                 type: 'SYNC_CHUNK',
                 payload: {
                     tokens: chunk.tokens,
-                    usageMap: chunkUsage, // ✅ Real data, no lag at the end
+                    usageMap: chunkUsageObj, // ✅ Usage arrives immediately with the token
                     chunkIndex: chunk.chunkIndex,
                     phase: chunk.phase,
                     isLast: chunk.isLast,
                     progress: {
                         current: totalTokensProcessed,
-                        total: totalTokensProcessed + 50 // Rolling estimate
+                        total: totalTokensProcessed + 100 // Estimate
                     }
                 }
             });
 
-            // Breathe
+            // Artificial respiration for UI (Very important for smoothness)
             await new Promise(r => setTimeout(r, 5));
         }
 
-        // 4. Wrap up
+        if (abortSignal.aborted) return;
+
+        // 3️⃣ Phase 3: Immediate Completion
+        // User sees "Done" now, before heavy operations
         figma.ui.postMessage({
             type: 'SYNC_COMPLETE',
             payload: {
                 totalTokens: totalTokensProcessed,
-                message: '✅ Sync & Analysis Complete'
+                message: '✅ Sync Complete'
             }
         });
 
-        // Indexing for search
-        await buildSearchIndex(root.repository.getAllNodes());
+        // 4️⃣ Phase 4: Background Tasks
+        // Wait 500ms for UI animation to settle, then start hard work
+        setTimeout(async () => {
+            try {
+                // a. Build Search Index
+                await buildSearchIndex(root.repository.getAllNodes());
+
+                // b. Save to Persistent Memory (Storage I/O - Heaviest Operation)
+                // This operation used to cause freezing previously
+                const fullUsage = usageAnalyzer.getAllUsage();
+                const usagePayload = Object.fromEntries(fullUsage);
+
+                await figma.clientStorage.setAsync('internal_usage_cache', usagePayload);
+                logger.info('sync', 'Background persistence complete (Invisible to user).');
+
+            } catch (err) {
+                // Even if save fails, user is happy because current Session works perfectly
+                logger.warn('sync', 'Background task warning', { err });
+            }
+        }, 500);
 
     } catch (e) {
         logger.error('sync', 'Sync Failed', { error: e });
-        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Process Failed' });
+        figma.ui.postMessage({ type: 'ERROR', message: 'Sync Interrupted' });
     }
 }
