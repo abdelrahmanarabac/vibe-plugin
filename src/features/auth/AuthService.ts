@@ -88,15 +88,18 @@ export class AuthService {
     }
 
     static async signIn(email: string, password: string): Promise<AuthResult> {
-        const supabase = VibeSupabase.get();
-        if (!supabase) return { user: null, session: null, error: new Error("Supabase disconnected") };
+        // 🔒 SECURE PROXY: Route through Worker
+        const { VibeWorkerClient } = await import('../../infrastructure/network/VibeWorkerClient');
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { data, error } = await VibeWorkerClient.signIn(email, password);
 
-        return { user: data.user, session: data.session, error };
+        if (error || !data) {
+            const errorObj = typeof error === 'string' ? new Error(error) : new Error('Login failed');
+            return { user: null, session: null, error: errorObj };
+        }
+
+        // Assuming Worker returns { user, session } in data
+        return { user: data.user, session: data.session, error: null };
     }
 
     static async signOut(): Promise<{ error: AuthError | null }> {

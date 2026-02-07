@@ -114,9 +114,10 @@ export class TokenUsageAnalyzer {
                             const variableAlias = boundVars[key];
                             // Check if it's an array (gradients) or single
                             if (Array.isArray(variableAlias)) {
-                                variableAlias.forEach(a => {
+                                // ⚡ PERFORMANCE: for...of avoids closure allocation
+                                for (const a of variableAlias) {
                                     if (a && a.id) recordSourceUsage(a.id, { id: style.id, name: style.name }, false, true);
-                                });
+                                }
                             } else if (variableAlias && 'id' in variableAlias) {
                                 recordSourceUsage(variableAlias.id, { id: style.id, name: style.name }, false, true);
                             }
@@ -162,9 +163,10 @@ export class TokenUsageAnalyzer {
                         const alias = bindings[key];
                         if (alias) {
                             if (Array.isArray(alias)) {
-                                alias.forEach(a => {
+                                // ⚡ PERFORMANCE: for...of avoids closure allocation in hot path
+                                for (const a of alias) {
                                     if (a.id) recordSourceUsage(a.id, { id: node.id, name: node.name }, node.type === 'COMPONENT' || node.type === 'COMPONENT_SET', false);
-                                });
+                                }
                             } else if ('id' in alias) {
                                 recordSourceUsage(alias.id, { id: node.id, name: node.name }, node.type === 'COMPONENT' || node.type === 'COMPONENT_SET', false);
                             }

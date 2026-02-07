@@ -30,6 +30,7 @@ export type PluginAction =
     | { type: 'UPDATE_TOKEN'; id: string; newValue: string | number | { r: number; g: number; b: number; a?: number } }
     | { type: 'RENAME_TOKEN'; payload: { id: string; newName: string } }
     | { type: 'CREATE_COLLECTION'; payload: { name: string } }
+    | { type: 'SEARCH_QUERY'; payload: { query: string } } // 🔍 New Search Handler
     | { type: 'CREATE_STYLE'; payload: { name: string; type: 'typography' | 'effect' | 'grid'; value: string | number | { r: number; g: number; b: number; a?: number } } };
 
 export type PluginEvent =

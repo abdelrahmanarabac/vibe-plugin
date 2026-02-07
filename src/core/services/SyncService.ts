@@ -105,4 +105,28 @@ export class SyncService {
             collectionMap
         };
     }
+
+    /**
+     * ☁️ Cloud Sync (Worker Proxy)
+     * Pushes generic token data to the persistent store via Cloudflare Worker.
+     */
+    async pushToCloud(tokens: TokenEntity[]): Promise<boolean> {
+        try {
+            // Lazy load to ensure minimal bundle size if not used
+            const { VibeWorkerClient } = await import('../../infrastructure/network/VibeWorkerClient');
+
+            // 🛑 Chunking strategy could be implemented here if payload is too large
+            // For now, we push the whole batch as the worker snippet implies simple proxy
+            const { error } = await VibeWorkerClient.syncTokens(tokens);
+
+            if (error) {
+                console.error('[SyncService] Cloud push failed:', error);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('[SyncService] Cloud push exception:', e);
+            return false;
+        }
+    }
 }

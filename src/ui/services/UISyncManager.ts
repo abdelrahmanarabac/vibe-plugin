@@ -105,6 +105,10 @@ export class UISyncManager {
             case 'USAGE_ANALYSIS_STARTED':
                 this.updateState({ phase: 'usage' });
                 break;
+            case 'SCAN_COMPLETE':
+                // ✅ CRITICAL: Merge usage data into existing tokens
+                this.handleUsageData(msg.payload);
+                break;
             case 'USAGE_ANALYSIS_COMPLETE':
                 this.updateState({ phase: 'complete' });
                 break;
@@ -194,6 +198,34 @@ export class UISyncManager {
         this.notifyTokenSubscribers();
 
         console.log(`[UISyncManager] Sync complete: ${finalCount} tokens loaded`);
+    }
+
+    /**
+     * ✅ Merge usage data into existing tokens
+     */
+    private handleUsageData(payload: { usage: Record<string, any>; timestamp: number }): void {
+        if (!payload || !payload.usage) {
+            console.warn('[UISyncManager] Received SCAN_COMPLETE without usage data');
+            return;
+        }
+
+        console.log('[UISyncManager] Merging usage data into tokens...');
+        let mergedCount = 0;
+
+        // Iterate through usage map and merge into existing tokens
+        for (const [tokenId, usageStats] of Object.entries(payload.usage)) {
+            const tokenIdx = this.tokenIndex.get(tokenId);
+            if (tokenIdx !== undefined && this.tokens[tokenIdx]) {
+                // Merge usage data into token
+                this.tokens[tokenIdx].usage = usageStats;
+                mergedCount++;
+            }
+        }
+
+        console.log(`[UISyncManager] Merged usage data for ${mergedCount}/${this.tokens.length} tokens`);
+
+        // Notify subscribers of the update
+        this.notifyTokenSubscribers();
     }
 
     /**

@@ -161,6 +161,14 @@ figma.ui.onmessage = async (msg: PluginAction) => {
             } catch (err) {
                 logger.error('controller:usage', 'Failed to broadcast graph update', { error: err });
             }
+        } else if (msg.type === 'SEARCH_QUERY') {
+            // 🔍 Handle Search Request
+            const query = msg.payload?.query || '';
+            const results = searchTokens(query);
+            figma.ui.postMessage({
+                type: 'SEARCH_RESULTS',
+                payload: { matches: results, query }
+            });
         }
 
     } catch (error: unknown) {
@@ -174,7 +182,106 @@ figma.ui.onmessage = async (msg: PluginAction) => {
     }
 };
 
-// Helper: extracted sync logic
+// ==========================================
+// 🔍 SEARCH ENGINE (Main Thread + Yielding)
+// ==========================================
+
+import type { TokenEntity } from './core/types';
+
+let searchIndex: {
+    byName: Map<string, number[]>;
+    byPath: Map<string, number[]>;
+    byType: Map<string, number[]>;
+} = {
+    byName: new Map(),
+    byPath: new Map(),
+    byType: new Map()
+};
+
+// Cache tokens for search to avoid re-fetching from repo constantly
+let cachedSearchTokens: TokenEntity[] = [];
+
+async function buildSearchIndex(tokens: TokenEntity[]): Promise<void> {
+    // 1. Reset
+    searchIndex = {
+        byName: new Map(),
+        byPath: new Map(),
+        byType: new Map()
+    };
+    cachedSearchTokens = tokens;
+
+    logger.info('search', `Building index for ${tokens.length} tokens...`);
+
+    // 2. Batch Processing
+    const batchSize = 200; // slightly larger batch for performance
+
+    for (let i = 0; i < tokens.length; i += batchSize) {
+        const batch = tokens.slice(i, i + batchSize);
+
+        batch.forEach((token, localIndex) => {
+            const globalIndex = i + localIndex;
+
+            // Index by name parts
+            const nameParts = token.name.toLowerCase().split(/[-_./]/);
+            nameParts.forEach(part => {
+                if (!part) return;
+                if (!searchIndex.byName.has(part)) {
+                    searchIndex.byName.set(part, []);
+                }
+                searchIndex.byName.get(part)!.push(globalIndex);
+            });
+
+            // Index by path (full string)
+            // Assuming path is array of strings
+            if (Array.isArray(token.path)) {
+                const pathStr = token.path.join('/').toLowerCase();
+                if (!searchIndex.byPath.has(pathStr)) {
+                    searchIndex.byPath.set(pathStr, []);
+                }
+                searchIndex.byPath.get(pathStr)!.push(globalIndex);
+            }
+
+            // Index by type
+            if (!searchIndex.byType.has(token.$type)) {
+                searchIndex.byType.set(token.$type, []);
+            }
+            searchIndex.byType.get(token.$type)!.push(globalIndex);
+        });
+
+        // 🌊 Yield to Main Thread
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    logger.info('search', 'Index built successfully.');
+    figma.ui.postMessage({ type: 'INDEX_COMPLETE' });
+}
+
+function searchTokens(query: string): TokenEntity[] {
+    if (!query) return [];
+
+    const lowerQuery = query.toLowerCase();
+    const matchedIndices = new Set<number>();
+
+    // Search Name (Exact or Partial match on indexed parts)
+    for (const [key, indices] of searchIndex.byName) {
+        if (key.includes(lowerQuery)) {
+            indices.forEach(i => matchedIndices.add(i));
+        }
+    }
+
+    // Search Path
+    for (const [key, indices] of searchIndex.byPath) {
+        if (key.includes(lowerQuery)) {
+            indices.forEach(i => matchedIndices.add(i));
+        }
+    }
+
+    return Array.from(matchedIndices).map(idx => cachedSearchTokens[idx]);
+}
+
+// ==========================================
+// 🔄 SYNC & UTILS
+// ==========================================
 async function performFullSync(abortSignal: AbortSignal) {
     // 🌊 Progressive Protocol
     // 🛑 OPTIMIZATION: Do NOT buffer allTokens. UI rebuilds from chunks.
@@ -231,6 +338,10 @@ async function performFullSync(abortSignal: AbortSignal) {
             isIncremental: true, // 🚩 Signal UI to keep chunked data
             timestamp: Date.now()
         });
+
+        // 🔍 Auto-Index for Search
+        await buildSearchIndex(root.repository.getAllNodes());
+
 
     } catch (e) {
         if (e instanceof Error && e.message === 'Sync Aborted') {

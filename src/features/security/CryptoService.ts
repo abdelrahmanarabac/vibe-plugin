@@ -58,28 +58,18 @@ export const CryptoService = {
         // because each data item might have its own salt.
         // BUT, re-deriving PBKDF2 (310k iterations) on every read is slow.
 
-        // BETTER APPROACH:
-        // We do not hold a CryptoKey in memory that fits all data. 
-        // We hold the *Password* (as a string or wrapped) in memory? Dangerous if memory dump.
-        // OR we Cache the derived key for a specific salt? No, salt varies.
+        // 🔑 KEY MANAGEMENT STRATEGY (Vibe Enclave)
+        // We do NOT store the raw password in memory for longer than necessary to derive the key.
+        // We do NOT use a global salt for everything; we use a Master Salt to derive a
+        // "Session Master Key" which effectively acts as a Key Encryption Key (KEK).
 
-        // COMPROMISE for UX vs Security:
-        // Identify a "Master Salt" (generated once, stored in config) to derive a "Master Key"?
-        // No, that reduces salt uniqueness.
+        // ARCHITECTURE:
+        // 1. Session Init: Derive `sessionMasterKey` = PBKDF2(UserPassword, MasterSalt)
+        // 2. Storage: `sessionMasterKey` is held in a private module-level closure (RAM only).
+        // 3. Operations: All Vault I/O uses `sessionMasterKey` to encrypt/decrypt.
 
-        // Let's stick to: We need the PASSWORD available (in memory) to derive keys on the fly, 
-        // OR we ask the user for it every time (too annoying).
-        // storing the password in a closure is acceptable for the "Session" duration.
-        // We will store the `password` in a closure variable `_secret_` and wipe it on clear.
-
-        // wait, if we use a "Master Key" approach:
-        // Data = Encrypt(Payload, MasterKey)
-        // MasterKey = Derived from Password + StoredGlobalSalt.
-        // This is acceptable for a single-user client plugin.
-
-        // Let's implement:
-        // 1. Check if 'VIBE_MASTER_SALT' exists. If not, create and save it.
-        // 2. API Key is Encrypt(Key, MasterKey).
+        // This ensures that even if the plugin is reloaded, we force a re-auth (since RAM is wiped),
+        // and we never persist the key to `figma.clientStorage`.
 
         await this.createMasterSaltIfNeeded();
         const masterSalt = await this.getMasterSalt();

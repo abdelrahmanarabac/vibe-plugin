@@ -33,6 +33,8 @@ export interface TokensViewModel {
     traceLineage: (tokenId: string) => void;
     syncVariables: () => void;
     resetSync: () => void;
+    search: (query: string) => void;
+    searchResults: TokenEntity[];
     lineageData: { target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null;
 }
 
@@ -54,6 +56,7 @@ export function useTokens(): TokensViewModel {
     const [isSynced, setIsSynced] = useState(false);
     const [liveIndicator, setLiveIndicator] = useState(false);
     const [lineageData, setLineageData] = useState<{ target: TokenEntity, ancestors: TokenEntity[], descendants: TokenEntity[] } | null>(null);
+    const [searchResults, setSearchResults] = useState<TokenEntity[]>([]);
 
     // Refs for Promises
     const creationPromise = useRef<((success: boolean) => void) | null>(null);
@@ -187,6 +190,22 @@ export function useTokens(): TokensViewModel {
                 uiSyncManager.reset();
                 setIsSynced(false);
             }
+
+            if (type === 'SCAN_COMPLETE') {
+                console.log('[useTokens] Usage data received and integrated');
+                // UISyncManager already merged the data, just notify user
+                omnibox.show('✅ Usage analysis complete', { type: 'success', duration: 2000 });
+            }
+
+            // 🔍 Search Handling
+            if (type === 'INDEX_COMPLETE') {
+                omnibox.show('Search Index Built', { type: 'success' });
+            }
+            if (type === 'SEARCH_RESULTS') {
+                if (payload && Array.isArray(payload.matches)) {
+                    setSearchResults(payload.matches);
+                }
+            }
         };
 
         window.addEventListener('message', handleMessage);
@@ -256,6 +275,11 @@ export function useTokens(): TokensViewModel {
         parent.postMessage({ pluginMessage: { type: 'SYNC_TOKENS' } }, '*');
     }, [backendStats.totalVariables]);
 
+    // 🔍 Search Method
+    const search = useCallback((query: string) => {
+        parent.postMessage({ pluginMessage: { type: 'SEARCH_QUERY', payload: { query } } }, '*');
+    }, []);
+
     const resetSync = useCallback(() => {
         parent.postMessage({ pluginMessage: { type: 'SYNC_CANCEL' } }, '*');
         uiSyncManager.reset();
@@ -282,6 +306,8 @@ export function useTokens(): TokensViewModel {
         scanAnatomy,
         traceLineage,
         syncVariables,
-        resetSync
+        resetSync,
+        search,
+        searchResults
     };
 }

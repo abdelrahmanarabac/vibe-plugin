@@ -176,14 +176,31 @@ export class Dispatcher {
                 payload: { message: '🔍 Analyzing token usage...' }
             });
 
-            // Run usage analysis (can be slow, but runs after UI is already populated)
-            await this.root.syncService.scanUsage();
+            // \u26a1 FIX: Capture usage data instead of discarding it
+            const usageMap = await this.root.syncService.scanUsage();
+
+            // Convert Map to Record for transport (like controller.ts line 282)
+            const usageReport = Object.fromEntries(usageMap);
+
+            //  Persist for next startup
+            await figma.clientStorage.setAsync('internal_usage_cache', usageReport);
+
+            // \u2705 CRITICAL FIX: Send usage data to UI (was missing before!)
+            figma.ui.postMessage({
+                type: 'SCAN_COMPLETE',
+                payload: {
+                    timestamp: Date.now(),
+                    usage: usageReport
+                }
+            });
 
             // Notify completion
             figma.ui.postMessage({
                 type: 'USAGE_ANALYSIS_COMPLETE',
                 payload: { message: '✅ Usage analysis complete' }
             });
+
+            logger.info('dispatcher', 'Usage analysis complete and transmitted to UI');
 
         } catch (error) {
             logger.error('dispatcher', 'Usage analysis failed', { error });

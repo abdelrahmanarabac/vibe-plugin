@@ -42,6 +42,7 @@ export class VibeSupabase {
             });
             this.currentConfig = { url, key };
             console.log("✅ VibeSupabase: Connection Initialized.");
+            console.warn("⚠️ DEPRECATION NOTICE: Direct Supabase usage is deprecated for Auth and Sync. Use VibeWorkerClient instead.");
         } catch (e) {
             console.error("❌ VibeSupabase: Initialization Failed", e);
             this.instance = null;
