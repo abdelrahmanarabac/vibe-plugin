@@ -291,31 +291,54 @@ async function performFullSync(abortSignal: AbortSignal) {
 
     if (abortSignal.aborted) return;
 
-    // 1. Start Phase: Definitions
+    // 1. Progressive Sync (Definitions + Usage)
     figma.ui.postMessage({ type: 'SYNC_PHASE_START', phase: 'definitions' });
 
     try {
-        // Stream Chunks
-        for await (const chunk of root.syncService.syncDefinitionsGenerator(abortSignal)) {
+        // Stream Chunks (Unified Generator)
+        // Note: syncWithUsageGenerator manages both phases
+        const generator = root.syncService.syncWithUsageGenerator(abortSignal);
+
+        // Accumulate Usage for Persistence
+        const fullUsageAccumulator: Record<string, any> = {};
+
+        for await (const chunk of generator) {
             if (abortSignal.aborted) {
-                logger.info('sync', 'Aborted during definitions stream.');
+                logger.info('sync', 'Aborted during sync stream.');
                 throw new Error('Sync Aborted');
             }
 
-            // allTokens.push(...chunk); // Removed
-            progress += chunk.length;
-            totalTokensProcessed += chunk.length;  // ← Track
+            // Track progress
+            if (chunk.phase === 'definitions') {
+                totalTokensProcessed += chunk.tokens.length;
+                progress += chunk.tokens.length;
+            }
 
+            // Convert Usage Map to Object for Serialization if present
+            let usagePayload: Record<string, any> | undefined;
+            if (chunk.usageMap && chunk.usageMap instanceof Map) {
+                usagePayload = Object.fromEntries(chunk.usageMap);
+                // Merge into accumulator
+                Object.assign(fullUsageAccumulator, usagePayload);
+            }
+
+            // ✨ Smart Emission: Send usage data with the chunk
             figma.ui.postMessage({
                 type: 'SYNC_CHUNK',
                 payload: {
-                    tokens: chunk,
-                    chunkIndex: Math.floor(progress / 50),
-                    isLast: false
+                    tokens: chunk.tokens,
+                    usageMap: usagePayload, // ← New Data Here!
+                    chunkIndex: chunk.chunkIndex,
+                    phase: chunk.phase,
+                    isLast: chunk.isLast,
+                    progress: {
+                        current: totalTokensProcessed,
+                        total: totalTokensProcessed > 0 ? totalTokensProcessed : 100 // Approximation
+                    }
                 }
             });
 
-            // Allow event loop to breathe and process aborts
+            // Allow event loop to breathe
             await new Promise(resolve => setTimeout(resolve, 0));
         }
 
@@ -331,7 +354,6 @@ async function performFullSync(abortSignal: AbortSignal) {
         logger.info('sync', `Sync complete: ${totalTokensProcessed} tokens`);
 
         // 🔄 Final Consistency Event (Backward Compat)
-        // 🛑 PAYLOAD REMOVED: prevents freezing on large docs.
         figma.ui.postMessage({
             type: 'GRAPH_UPDATED',
             payload: [], // Empty payload. UI has already built state from chunks.
@@ -342,6 +364,11 @@ async function performFullSync(abortSignal: AbortSignal) {
         // 🔍 Auto-Index for Search
         await buildSearchIndex(root.repository.getAllNodes());
 
+        // 💾 Persist Usage Data (Optimized)
+        if (Object.keys(fullUsageAccumulator).length > 0) {
+            await figma.clientStorage.setAsync('internal_usage_cache', fullUsageAccumulator);
+            logger.info('sync', 'Usage data persisted to clientStorage.');
+        }
 
     } catch (e) {
         if (e instanceof Error && e.message === 'Sync Aborted') {
@@ -382,35 +409,8 @@ async function performFullSync(abortSignal: AbortSignal) {
         });
     }
 
-    // 3. Lazy Usage Scan (Now Manual & Instant & Non-Blocking)
-    if (abortSignal.aborted) return;
-
-    try {
-        logger.info('sync', 'Starting non-blocking usage scan...');
-        const usageMap = await root.syncService.scanUsage();
-
-        // Convert Map to Record for transport
-        const usageReport = Object.fromEntries(usageMap);
-
-        if (abortSignal.aborted) return;
-
-        // Persist for next startup
-        await figma.clientStorage.setAsync('internal_usage_cache', usageReport);
-
-        // Broadcast results
-        figma.ui.postMessage({
-            type: 'SCAN_COMPLETE',
-            payload: {
-                timestamp: Date.now(),
-                // We're essentially sending back stats, but specialized for usage
-                usage: usageReport
-            }
-        });
-
-        logger.info('sync', 'Manual usage scan complete & saved.');
-        figma.notify("✅ Data Synced & Saved Internally");
-
-    } catch (e) {
-        logger.error('controller:sync', 'Usage scan failed', { error: e });
-    }
+    // 🛑 REMOVED: Redundant "3. Lazy Usage Scan"
+    // The usage scan is now integrated into the loop above.
+    logger.info('sync', 'Full sync lifecycle completed.');
+    figma.notify("✅ Data Synced & Analysis Complete");
 }

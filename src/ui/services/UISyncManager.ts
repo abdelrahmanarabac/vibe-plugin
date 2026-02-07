@@ -13,6 +13,8 @@ import type { TokenEntity } from '../../core/types';
 
 export interface TokenChunk {
     tokens: TokenEntity[];
+    usageMap?: Record<string, any>; // ← Added
+    phase?: 'definitions' | 'usage'; // ← Added
     chunkIndex: number;
     isLast: boolean;
 }
@@ -122,7 +124,7 @@ export class UISyncManager {
         const startIndex = this.tokens.length;
         const newTokens: TokenEntity[] = [];
 
-        // ✅ FILTER: Only add tokens we haven't seen before
+        // 1. Process Definitions: Only add tokens we haven't seen before
         for (const token of chunk.tokens) {
             if (!this.existingIds.has(token.id)) {
                 this.existingIds.add(token.id);
@@ -130,15 +132,29 @@ export class UISyncManager {
             }
         }
 
-        if (newTokens.length === 0) return; // Skip if all tokens are duplicates
+        if (newTokens.length > 0) {
+            // Add confirmed unique tokens
+            this.tokens.push(...newTokens);
 
-        // Add confirmed unique tokens
-        this.tokens.push(...newTokens);
+            // Build fast lookup index for NEW tokens only
+            newTokens.forEach((token, i) => {
+                this.tokenIndex.set(token.id, startIndex + i);
+            });
+        }
 
-        // Build fast lookup index for NEW tokens only
-        newTokens.forEach((token, i) => {
-            this.tokenIndex.set(token.id, startIndex + i);
-        });
+        // 2. Process Usage Data (Incremental Updates)
+        if (chunk.usageMap) {
+            // Merge usage data into EXISTING tokens
+            for (const [tokenId, usageStats] of Object.entries(chunk.usageMap)) {
+                const tokenIdx = this.tokenIndex.get(tokenId);
+                if (tokenIdx !== undefined && this.tokens[tokenIdx]) {
+                    this.tokens[tokenIdx].usage = {
+                        ...this.tokens[tokenIdx].usage,
+                        ...usageStats
+                    };
+                }
+            }
+        }
 
         // ✅ CRITICAL: Update total if we got more than expected
         const newTotal = Math.max(
@@ -150,13 +166,11 @@ export class UISyncManager {
         this.updateState({
             totalTokens: newTotal,
             loadedTokens: this.tokens.length,
+            phase: chunk.phase || this.state.phase, // Update phase if provided
             progress: newTotal > 0
                 ? Math.min(100, (this.tokens.length / newTotal) * 100)
                 : 0
         });
-
-        // ✅ Notify subcribers immediately
-        this.notifyTokenSubscribers();
 
         // ✅ Notify subcribers immediately
         this.notifyTokenSubscribers();

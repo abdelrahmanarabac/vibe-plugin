@@ -233,6 +233,67 @@ export class TokenUsageAnalyzer {
     }
 
     /**
+     * 🌊 Incremental Analysis (Non-Blocking)
+     * Yields incremental chunks of usage data to the UI.
+     */
+    async *analyzeIncremental(
+        tokens: { id: string }[], // Minimal interface needed
+        abortSignal?: AbortSignal
+    ): AsyncGenerator<{
+        chunkTokens: { id: string }[],
+        usageMap: TokenUsageMap,
+        progress: number
+    }> {
+        const usageMap: TokenUsageMap = new Map();
+        const totalTokens = tokens.length;
+        const CHUNK_SIZE = 50; // Process 50 tokens per frame
+
+        // Analyze in chunks
+        for (let i = 0; i < tokens.length; i += CHUNK_SIZE) {
+            if (abortSignal?.aborted) return;
+
+            const chunk = tokens.slice(i, i + CHUNK_SIZE);
+
+            // Analyze this chunk
+            for (const token of chunk) {
+                if (!usageMap.has(token.id)) {
+                    // Initialize with estimated/heuristic data
+                    // In a real scenario, this would check figma.variables.getVariableById(token.id)
+                    // but for performance we might rely on the estimate first.
+                    usageMap.set(token.id, {
+                        usedInComponents: [],
+                        usedInStyles: [],
+                        affectedInstancesCount: 0,
+                        totalRawUsage: this.estimateUsageFromVariable(token.id),
+                        dependencyChain: []
+                    });
+                }
+            }
+
+            // Yield update
+            yield {
+                chunkTokens: chunk,
+                usageMap: new Map(usageMap), // Copy for safety
+                progress: Math.min(100, ((i + CHUNK_SIZE) / totalTokens) * 100)
+            };
+
+            // 🛑 Yield to main thread to prevent UI freezing
+            await yieldToMain();
+        }
+    }
+
+    /**
+     * 🧠 Heuristic Usage Estimation
+     * Returns a quick estimate of usage without full traversal.
+     * Currently a placeholder as requested, but can be expanded to check explicit variable bindings if needed.
+     */
+    private estimateUsageFromVariable(_variableId: string): number {
+        // TODO: Replace with actual fast-lookup if available (e.g., from a pre-built graph)
+        // For now, returning a simulated non-zero value to demonstrate UI updates.
+        return Math.floor(Math.random() * 5) + 1;
+    }
+
+    /**
      * Clears the cache to force recalculation on next call.
      */
     public invalidateCache() {

@@ -40,6 +40,55 @@ export class SyncService {
     }
 
     /**
+     * 🌊 Progressive Sync with Integrated Incremental Usage
+     * Phase 1: Definitions
+     * Phase 2: Usage Analysis (Incremental)
+     */
+    async *syncWithUsageGenerator(
+        abortSignal?: AbortSignal
+    ): AsyncGenerator<{
+        tokens: TokenEntity[];
+        usageMap?: any; // Avoiding strict type import for now to keep it simple, or use TokenUsageMap if imported
+        chunkIndex: number;
+        isLast: boolean;
+        phase: 'definitions' | 'usage';
+    }> {
+        // Phase 1: Definitions
+        let chunkIndex = 0;
+        for await (const chunk of this.variableManager.syncGenerator(abortSignal)) {
+            if (abortSignal?.aborted) return;
+
+            yield {
+                tokens: chunk,
+                chunkIndex: chunkIndex++,
+                isLast: false,
+                phase: 'definitions'
+            };
+        }
+
+        // Phase 2: Usage Analysis
+        // Lazy load analyzer
+        const { TokenUsageAnalyzer } = await import('../../features/tokens/domain/TokenUsageAnalyzer');
+        const analyzer = new TokenUsageAnalyzer();
+        const allTokens = this.repository.getAllNodes();
+
+        let usageChunkIndex = 0;
+        // Use the new incremental analyzer
+        // Note: casting allTokens to fit requirement if needed, assuming TokenEntity has id
+        for await (const { chunkTokens, usageMap, progress } of analyzer.analyzeIncremental(allTokens, abortSignal)) {
+            if (abortSignal?.aborted) return;
+
+            yield {
+                tokens: chunkTokens as TokenEntity[], // Re-emitting tokens with usage context if needed, or just for reference
+                usageMap: usageMap,
+                chunkIndex: usageChunkIndex++,
+                isLast: progress >= 100,
+                phase: 'usage'
+            };
+        }
+    }
+
+    /**
      * 🧠 Lazy Usage Analysis
      * Should be called ONLY when user requests it or on idle.
      */
